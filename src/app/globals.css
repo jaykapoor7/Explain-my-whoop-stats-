@@ -1,0 +1,80 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --surface-1: #1a1a19;
+  --page: #0d0d0d;
+  --text-primary: #ffffff;
+  --text-secondary: #c3c2b7;
+  --text-muted: #898781;
+  --grid: #2c2c2a;
+  --baseline: #383835;
+  --series-1: #3987e5;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--page);
+  color: var(--text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04";
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(57, 135, 229, 0.35);
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: #383835;
+  border-radius: 8px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.glass {
+  background: rgba(26, 26, 25, 0.72);
+  backdrop-filter: blur(20px) saturate(1.4);
+  -webkit-backdrop-filter: blur(20px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.card {
+  @apply rounded-2xl border border-white/[0.06] bg-base-850 shadow-card;
+}
+
+.hairline {
+  border-color: rgba(255, 255, 255, 0.07);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.text-gradient {
+  background: linear-gradient(135deg, #fff 20%, rgba(255, 255, 255, 0.55));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.markdown p { margin-bottom: 0.6em; }
+.markdown ul { list-style: disc; padding-left: 1.2em; margin-bottom: 0.6em; }
+.markdown li { margin-bottom: 0.25em; }
+.markdown strong { color: var(--text-primary); font-weight: 600; }
+.markdown em { color: var(--text-muted); }
+
+@media print {
+  body { background: #fff; color: #0b0b0b; }
+  .no-print { display: none !important; }
+  .print-page { break-inside: avoid; }
+}
