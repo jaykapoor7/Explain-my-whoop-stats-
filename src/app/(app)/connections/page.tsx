@@ -13,7 +13,6 @@ import {
   Lock,
   Plug,
   RefreshCw,
-  Sparkles,
   TriangleAlert,
   Upload,
   X,
@@ -26,7 +25,6 @@ import {
   ProviderInfo,
 } from "@/lib/connections/registry";
 import { useApp } from "@/lib/store";
-import { generateDemoData } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
 
 type SyncState = "idle" | "connecting" | "syncing" | "done" | "error";
@@ -293,7 +291,6 @@ function ConnectionsBody() {
   const [statuses, setStatuses] = useState<ConnectionStatus[]>([]);
   const [states, setStates] = useState<Record<string, { state: SyncState; message?: string }>>({});
   const [formProvider, setFormProvider] = useState<string | null>(null);
-  const [demoState, setDemoState] = useState<SyncState>("idle");
   const [origin, setOrigin] = useState("");
 
   const setState = (id: string, state: SyncState, message?: string) => setStates((s) => ({ ...s, [id]: { state, message } }));
@@ -380,42 +377,6 @@ function ConnectionsBody() {
           Upload files instead →
         </Link>
       </div>
-
-      {/* Demo / simulated sync */}
-      <FadeIn className="mt-6">
-        <Card className="gradient-ring flex flex-col items-start justify-between gap-4 p-5 sm:flex-row sm:items-center">
-          <div className="flex items-start gap-3">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-vivid-violet to-vivid-cyan text-white shadow-glow">
-              <Sparkles size={18} />
-            </span>
-            <div>
-              <h3 className="font-semibold">Just want to look around?</h3>
-              <p className="mt-0.5 text-sm text-base-400">
-                Load six months of realistic demo data instantly — no account, no setup.
-              </p>
-            </div>
-          </div>
-          <Button
-            onClick={async () => {
-              setDemoState("syncing");
-              await new Promise((r) => setTimeout(r, 700));
-              mergeSynced(generateDemoData(), "demo", "WHOOP (demo)");
-              setDemoState("done");
-            }}
-            disabled={demoState === "syncing"}
-            className="shrink-0"
-          >
-            {demoState === "syncing" && <><Loader2 size={14} className="animate-spin" /> Loading…</>}
-            {demoState === "done" && <><CheckCircle2 size={14} /> Loaded — open dashboard</>}
-            {demoState === "idle" && <><Plug size={14} /> Load demo data</>}
-          </Button>
-        </Card>
-        {demoState === "done" && (
-          <div className="mt-2 text-center text-sm text-base-400">
-            <Link href="/dashboard" className="text-accent-soft hover:underline">Go to your dashboard →</Link>
-          </div>
-        )}
-      </FadeIn>
 
       <SectionHeading title="Auto-sync wearables" subtitle="Connect once — syncs every visit" />
       <AnimatePresence>

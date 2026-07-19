@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
+import { useMemo } from "react";
 import Link from "next/link";
 import { ArrowRight, Moon, Sparkles, UtensilsCrossed } from "lucide-react";
 import { useApp } from "@/lib/store";
@@ -26,17 +25,6 @@ function trendData(days: DayRecord[], k: MetricKey) {
 }
 
 const CONF_TONE = { high: "good", moderate: "warning", exploratory: "neutral" } as const;
-
-function DemoLoader() {
-  const params = useSearchParams();
-  const loadDemo = useApp((s) => s.loadDemo);
-  const hydrated = useApp((s) => s.hydrated);
-  const hasData = useApp((s) => s.days.length > 0);
-  useEffect(() => {
-    if (hydrated && !hasData && params.get("demo") === "1") loadDemo();
-  }, [hydrated, hasData, params, loadDemo]);
-  return null;
-}
 
 function Understand() {
   const { days } = useHealthData();
@@ -171,13 +159,8 @@ function Understand() {
 
 export default function DashboardPage() {
   return (
-    <>
-      <Suspense fallback={null}>
-        <DemoLoader />
-      </Suspense>
-      <RequireData>
-        <Understand />
-      </RequireData>
-    </>
+    <RequireData>
+      <Understand />
+    </RequireData>
   );
 }

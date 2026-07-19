@@ -3,21 +3,19 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment, FoodEntry, HealthGoals, NutritionGoals } from "./types";
-import { generateDemoData } from "./demo-data";
-import { generateDemoCalendar } from "./calendar/demo-calendar";
 import { mergeDays } from "./merge";
 import { DEFAULT_GOALS } from "./nutrition/nutrition";
 
 export const DEFAULT_HEALTH_GOALS: HealthGoals = { recovery: 60, sleepHours: 8, steps: 10000 };
 
 export interface CalendarMeta {
-  source: string; // "Google Calendar", "Apple Calendar", "Demo calendar", ...
+  source: string; // "Google Calendar", "Apple Calendar", ...
   fileNames: string[];
   importedAt: string;
 }
 
 export interface SyncedSource {
-  provider: string; // "whoop" | "oura" | "fitbit" | "demo"
+  provider: string; // "whoop" | "oura" | "fitbit"
   label: string; // "WHOOP", "Oura", ...
   lastSync: string; // ISO
   dayCount: number; // days contributed on the last sync
@@ -41,7 +39,6 @@ interface AppState {
   chat: ChatMessage[];
   hydrated: boolean;
 
-  loadDemo: () => void;
   setData: (days: DayRecord[], meta: DatasetMeta) => void;
   mergeSynced: (days: DayRecord[], provider: string, label: string) => number;
   setCalendar: (events: CalendarEvent[], meta: CalendarMeta) => void;
@@ -74,23 +71,6 @@ export const useApp = create<AppState>()(
       chat: [],
       hydrated: false,
 
-      loadDemo: () => {
-        const days = generateDemoData();
-        set({
-          days,
-          meta: {
-            source: "Demo dataset",
-            fileNames: ["demo-6-months.generated"],
-            importedAt: new Date().toISOString(),
-          },
-          calendarEvents: generateDemoCalendar(days),
-          calendarMeta: {
-            source: "Demo calendar",
-            fileNames: ["work-life.generated.ics"],
-            importedAt: new Date().toISOString(),
-          },
-        });
-      },
       setData: (days, meta) => set({ days, meta }),
       mergeSynced: (incoming, provider, label) => {
         let added = 0;

@@ -12,6 +12,7 @@ import {
   ArrowRight,
   BarChart3,
   Lock,
+  Plug,
   Sparkles,
   Target,
   Upload,
@@ -111,11 +112,11 @@ export default function LandingPage() {
             <span className="text-white">why</span> your metrics changed.
           </p>
           <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <LinkButton href="/upload" size="lg">
-              <Upload size={16} /> Upload Data
+            <LinkButton href="/connections" size="lg">
+              <Plug size={16} /> Connect a Device
             </LinkButton>
-            <LinkButton href="/dashboard?demo=1" variant="ghost" size="lg">
-              Demo Dashboard <ArrowRight size={16} />
+            <LinkButton href="/upload" variant="ghost" size="lg">
+              <Upload size={16} /> Upload Data <ArrowRight size={16} />
             </LinkButton>
           </div>
         </motion.div>
@@ -249,11 +250,11 @@ export default function LandingPage() {
             Six months of data has a story. Hear it.
           </h2>
           <div className="mt-7 flex items-center justify-center gap-3">
-            <LinkButton href="/upload" size="lg">
-              <Upload size={16} /> Upload Data
+            <LinkButton href="/connections" size="lg">
+              <Plug size={16} /> Connect a Device
             </LinkButton>
-            <LinkButton href="/dashboard?demo=1" variant="ghost" size="lg">
-              Try the demo
+            <LinkButton href="/upload" variant="ghost" size="lg">
+              Upload Data
             </LinkButton>
           </div>
           <p className="mt-12 text-xs text-base-400">

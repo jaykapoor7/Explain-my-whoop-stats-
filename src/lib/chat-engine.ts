@@ -132,7 +132,7 @@ function driversOf(days: DayRecord[], target: MetricKey, lag: number): { label: 
 
 export function answerQuestion(q: string, days: DayRecord[], events: CalendarEvent[] = []): ChatAnswer {
   if (days.length < 7) {
-    return { content: "I don't have enough data yet — upload at least a week of history (or load the demo dataset) and I can start finding patterns." };
+    return { content: "I don't have enough data yet — connect a device or upload at least a week of history and I can start finding patterns." };
   }
   const lower = q.toLowerCase();
   const hasCalendar = days.some((d) => d.meetingCount !== undefined);

@@ -152,7 +152,7 @@ export default function GoalsPage() {
             </div>
           ) : (
             <p className="py-4 text-sm text-base-400">
-              Connect a device or load demo data to track recovery, sleep and steps against your targets.{" "}
+              Connect a device to track recovery, sleep and steps against your targets.{" "}
               <Link href="/connections" className="text-accent-soft hover:underline">Connect a device →</Link>
             </p>
           )}

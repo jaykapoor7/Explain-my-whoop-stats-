@@ -174,11 +174,11 @@ function DataBadge() {
         </>
       ) : (
         <div className="text-[11px] leading-relaxed text-base-400">
-          No data loaded.{" "}
-          <Link href="/upload" className="text-accent-soft hover:underline">
-            Upload
+          No data yet.{" "}
+          <Link href="/connections" className="text-accent-soft hover:underline">
+            Connect a device
           </Link>{" "}
-          or try the demo.
+          or upload a file.
         </div>
       )}
     </div>
