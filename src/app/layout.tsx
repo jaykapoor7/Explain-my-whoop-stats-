@@ -14,13 +14,18 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0d0d0d",
+  themeColor: "#0e1136",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans min-h-screen bg-base-950 text-white`}>
+      <body className={`${inter.variable} font-sans min-h-screen text-white`}>
+        <div className="aurora" aria-hidden>
+          <span />
+          <span />
+          <span />
+        </div>
         {children}
       </body>
     </html>

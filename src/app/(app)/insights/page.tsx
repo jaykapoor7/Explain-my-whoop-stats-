@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Beaker, ChevronDown, FlaskConical, Microscope, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { Badge, Card, FadeIn } from "@/components/ui";
 import { CompareBars, CorrelationScatter, TrendChart } from "@/components/charts";
@@ -15,6 +15,7 @@ import { rollingMean } from "@/lib/stats";
 
 const CATEGORIES: { id: InsightCategory | "all"; label: string }[] = [
   { id: "all", label: "All" },
+  { id: "worklife", label: "Work & Life" },
   { id: "sleep", label: "Sleep" },
   { id: "recovery", label: "Recovery" },
   { id: "heart", label: "Heart" },
@@ -122,7 +123,7 @@ function InsightCard({ insight, index }: { insight: Insight; index: number }) {
 }
 
 function InsightsBody() {
-  const days = useApp((s) => s.days);
+  const { days, hasCalendar } = useHealthData();
   const [category, setCategory] = useState<InsightCategory | "all">("all");
   const insights = useMemo(() => generateInsights(days), [days]);
   const filtered = category === "all" ? insights : insights.filter((i) => i.category === category);
@@ -131,12 +132,24 @@ function InsightsBody() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">AI Insights</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">AI Discoveries</h1>
           <p className="mt-1 text-sm text-base-400">
-            {insights.length} statistically meaningful patterns found across {days.length} days — correlations, not diagnoses.
+            The engine continuously scans your {days.length} days
+            {hasCalendar ? " — including calendar context —" : ""} for statistically meaningful patterns. {insights.length} surfaced. Correlations, not diagnoses.
           </p>
         </div>
       </div>
+
+      {!hasCalendar && (
+        <Link
+          href="/upload#calendar"
+          className="mt-4 block rounded-xl border border-accent/25 bg-accent/[0.06] px-4 py-3 text-sm text-base-200 transition hover:border-accent/40"
+        >
+          <span className="font-medium text-accent-soft">Connect your calendar</span> to unlock work-life
+          discoveries — meeting load vs HRV, early meetings vs recovery, travel signatures and more. Parsed locally,
+          never uploaded.
+        </Link>
+      )}
 
       <div className="mt-5 flex flex-wrap gap-1.5">
         {CATEGORIES.map((c) => (

@@ -3,9 +3,10 @@
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { CheckCircle2, FileUp, Loader2, Lock, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileUp, Loader2, Lock, ShieldCheck, Trash2 } from "lucide-react";
 import { Button, Card, FadeIn } from "@/components/ui";
 import { importFiles } from "@/lib/parsers";
+import { parseIcs } from "@/lib/calendar/ics";
 import { useApp } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
@@ -24,6 +25,122 @@ type Status =
   | { state: "parsing" }
   | { state: "done"; days: number; sources: string[]; skipped: string[] }
   | { state: "error"; message: string };
+
+function CalendarConnect() {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const setCalendar = useApp((s) => s.setCalendar);
+  const clearCalendar = useApp((s) => s.clearCalendar);
+  const calendarMeta = useApp((s) => s.calendarMeta);
+  const calendarEvents = useApp((s) => s.calendarEvents);
+  const days = useApp((s) => s.days);
+  const hydrated = useApp((s) => s.hydrated);
+  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState("Google Calendar");
+
+  const handleIcs = async (files: File[]) => {
+    setError(null);
+    try {
+      const events = files.length
+        ? (await Promise.all(files.map(async (f) => parseIcs(await f.text(), days[0]?.date, days[days.length - 1]?.date)))).flat()
+        : [];
+      if (!events.length) {
+        setError("No events found in that file — make sure it's an .ics export with events inside your data's date range.");
+        return;
+      }
+      setCalendar(events, {
+        source,
+        fileNames: files.map((f) => f.name),
+        importedAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to parse the calendar file.");
+    }
+  };
+
+  return (
+    <FadeIn delay={0.16}>
+      <Card id="calendar" className="mt-8 scroll-mt-24 p-6">
+        <div className="flex items-start gap-4">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/12 text-accent-soft">
+            <CalendarDays size={18} strokeWidth={1.8} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold">Connect your calendar</h3>
+            <p className="mt-1 text-sm leading-relaxed text-base-300">
+              This is where the product gets interesting: meetings, flights, social evenings and study blocks get
+              cross-referenced with HRV, recovery and sleep — so the app can explain <em>why</em> your metrics moved,
+              not just that they did. The calendar file is parsed locally and never uploaded.
+            </p>
+
+            {hydrated && calendarMeta ? (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-status-good/25 bg-status-good/[0.06] px-4 py-3">
+                <div className="text-sm">
+                  <span className="font-medium text-[#6ee7b7]">{calendarMeta.source} connected</span>
+                  <span className="ml-2 text-xs text-base-400">
+                    {calendarEvents.length} events · {calendarMeta.fileNames.join(", ")}
+                  </span>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => inputRef.current?.click()}>
+                    Replace
+                  </Button>
+                  <Button
+                    variant="danger"
+                    size="sm"
+                    onClick={() => {
+                      if (confirm("Disconnect calendar and delete its events from this device?")) clearCalendar();
+                    }}
+                  >
+                    Disconnect
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {["Google Calendar", "Apple Calendar", "Outlook / other"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setSource(s)}
+                    className={cn(
+                      "rounded-full px-3.5 py-1.5 text-xs font-medium transition",
+                      source === s ? "bg-white text-base-950" : "border border-white/10 text-base-300 hover:bg-white/[0.06]"
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+                <Button size="sm" className="ml-auto" onClick={() => inputRef.current?.click()}>
+                  <FileUp size={13} /> Import .ics
+                </Button>
+              </div>
+            )}
+
+            <input
+              ref={inputRef}
+              type="file"
+              accept=".ics,text/calendar"
+              multiple
+              className="hidden"
+              onChange={(e) => handleIcs(Array.from(e.target.files ?? []))}
+            />
+
+            {!calendarMeta && (
+              <p className="mt-3 text-xs leading-relaxed text-base-400">
+                {source === "Google Calendar" &&
+                  "Google Calendar → Settings → Import & export → Export. Unzip and import the .ics for your main calendar."}
+                {source === "Apple Calendar" &&
+                  "Apple Calendar → select a calendar → File → Export → Export…. Import the resulting .ics file."}
+                {source === "Outlook / other" &&
+                  "Any calendar app that exports iCalendar (.ics) works — events are classified automatically by title."}
+              </p>
+            )}
+            {error && <p className="mt-3 text-xs text-[#ffa2b0]">{error}</p>}
+          </div>
+        </div>
+      </Card>
+    </FadeIn>
+  );
+}
 
 export default function UploadPage() {
   const [dragOver, setDragOver] = useState(false);
@@ -106,7 +223,7 @@ export default function UploadPage() {
             </>
           ) : status.state === "done" ? (
             <>
-              <CheckCircle2 size={30} className="text-[#5ecb5e]" />
+              <CheckCircle2 size={30} className="text-[#6ee7b7]" />
               <div>
                 <p className="font-medium">
                   Imported {status.days} days {status.sources.length ? `from ${status.sources.join(" + ")}` : ""}
@@ -132,7 +249,7 @@ export default function UploadPage() {
       </FadeIn>
 
       {status.state === "error" && (
-        <p className="mt-4 rounded-xl border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-sm text-[#f28b8b]">
+        <p className="mt-4 rounded-xl border border-status-critical/30 bg-status-critical/10 px-4 py-3 text-sm text-[#ffa2b0]">
           {status.message}
         </p>
       )}
@@ -146,9 +263,11 @@ export default function UploadPage() {
         ))}
       </FadeIn>
 
+      <CalendarConnect />
+
       <FadeIn delay={0.2}>
         <Card className="mt-8 flex items-start gap-4 border-status-good/15 bg-status-good/[0.04]">
-          <ShieldCheck size={20} className="mt-0.5 shrink-0 text-[#5ecb5e]" />
+          <ShieldCheck size={20} className="mt-0.5 shrink-0 text-[#6ee7b7]" />
           <div className="text-sm leading-relaxed text-base-300">
             <span className="font-medium text-white">Local-first by design.</span> Files are parsed in
             your browser and stored only on this device. No account, no server upload, and your

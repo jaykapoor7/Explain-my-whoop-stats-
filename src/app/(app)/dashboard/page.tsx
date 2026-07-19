@@ -4,8 +4,9 @@ import { Suspense, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
-import { Badge, Card, CardTitle, FadeIn, SectionHeading, StatTile } from "@/components/ui";
+import { Badge, Card, CardTitle, FadeIn, RingGauge, SectionHeading, StatTile } from "@/components/ui";
 import { CompareBars, DistributionChart, SleepStagesChart, TrendChart, ZonesChart } from "@/components/charts";
 import { DayRecord, METRICS, MetricKey } from "@/lib/types";
 import { fmt, mean, rollingMean } from "@/lib/stats";
@@ -43,7 +44,7 @@ function DemoLoader() {
 }
 
 function Dashboard() {
-  const days = useApp((s) => s.days);
+  const { days, hasCalendar } = useHealthData();
   const last90 = useMemo(() => days.slice(-90), [days]);
   const insights = useMemo(() => generateInsights(days).slice(0, 2), [days]);
 
@@ -87,10 +88,19 @@ function Dashboard() {
             Last {last90.length} days · most recent: {formatDate(today.date, { weekday: "long", month: "long", day: "numeric" })}
           </p>
         </div>
-        <div className="flex gap-2 text-xs text-base-400">
-          {(["recovery", "sleep", "heart", "activity", "lifestyle"] as const).map((s) => (
-            <a key={s} href={`#${s}`} className="rounded-full border border-white/10 px-3 py-1.5 capitalize transition hover:bg-white/[0.05] hover:text-white">
-              {s}
+        <div className="flex flex-wrap gap-2 text-xs text-base-400">
+          {(
+            [
+              ["recovery", "Recovery"],
+              ["sleep", "Sleep"],
+              ["heart", "Heart"],
+              ["activity", "Activity"],
+              ["lifestyle", "Lifestyle"],
+              ["worklife", "Work & Life"],
+            ] as const
+          ).map(([id, label]) => (
+            <a key={id} href={`#${id}`} className="rounded-full border border-white/10 px-3 py-1.5 transition hover:bg-white/[0.05] hover:text-white">
+              {label}
             </a>
           ))}
         </div>
@@ -119,15 +129,30 @@ function Dashboard() {
       {/* ============ RECOVERY ============ */}
       <SectionHeading id="recovery" title="Recovery" subtitle="How ready your body is to take on strain" />
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile
-          label="Today"
-          value={today.recovery !== undefined ? String(today.recovery) : "–"}
-          unit="%"
-          sub={today.recovery !== undefined ? (today.recovery >= 67 ? "Green — go hard" : today.recovery >= 34 ? "Yellow — moderate" : "Red — recover") : undefined}
-        />
-        <StatTile label="90-day average" value={fmt(mean(recoveries), 0)} unit="%" {...deltaLabel(days, "recovery")} />
-        <StatTile label="Green days" value={String(recoveries.filter((r) => r >= 67).length)} sub={`of ${recoveries.length} scored days`} />
-        <StatTile label="Red days" value={String(recoveries.filter((r) => r < 34).length)} sub={`of ${recoveries.length} scored days`} />
+        <div className="gradient-ring card-hover flex items-center gap-4 rounded-2xl p-5 shadow-card">
+          <RingGauge
+            value={today.recovery ?? 0}
+            size={104}
+            display={today.recovery !== undefined ? String(today.recovery) : "–"}
+            color={today.recovery === undefined ? undefined : recoveryColor(today.recovery)}
+          />
+          <div>
+            <div className="text-xs font-medium uppercase tracking-wider text-base-400">Today</div>
+            <div className="mt-1 text-sm font-semibold" style={{ color: recoveryColor(today.recovery) }}>
+              {today.recovery !== undefined
+                ? today.recovery >= 67
+                  ? "Green — go hard"
+                  : today.recovery >= 34
+                    ? "Yellow — moderate"
+                    : "Red — recover"
+                : "No score yet"}
+            </div>
+            <div className="mt-0.5 text-xs text-base-400">recovery score</div>
+          </div>
+        </div>
+        <StatTile label="90-day average" value={fmt(mean(recoveries), 0)} unit="%" accent="#34d399" {...deltaLabel(days, "recovery")} />
+        <StatTile label="Green days" value={String(recoveries.filter((r) => r >= 67).length)} accent="#34d399" sub={`of ${recoveries.length} scored days`} />
+        <StatTile label="Red days" value={String(recoveries.filter((r) => r < 34).length)} accent="#fb7185" sub={`of ${recoveries.length} scored days`} />
       </div>
       <div className="mt-3 grid gap-3 lg:grid-cols-3">
         <Card className="lg:col-span-2">
@@ -172,10 +197,10 @@ function Dashboard() {
           </div>
           <div className="mt-3 flex flex-wrap gap-4 text-xs text-base-400">
             {[
-              ["Deep", "#1c5cab"],
-              ["REM", "#9085e9"],
-              ["Light", "#6da7ec"],
-              ["Awake", "#52514e"],
+              ["Deep", "#3b82f6"],
+              ["REM", "#a78bfa"],
+              ["Light", "#7cc4ff"],
+              ["Awake", "#4a5090"],
             ].map(([label, color]) => (
               <span key={label} className="flex items-center gap-1.5">
                 <span className="h-2 w-2 rounded-sm" style={{ background: color }} /> {label}
@@ -314,7 +339,113 @@ function Dashboard() {
           )}
         </>
       )}
+
+      {/* ============ WORK & LIFE ============ */}
+      <SectionHeading
+        id="worklife"
+        title="Work & Life"
+        subtitle="Your calendar, cross-referenced with your physiology"
+      />
+      {hasCalendar ? (
+        <WorkLifeSection days={days} last90={last90} />
+      ) : (
+        <Card className="flex flex-col items-start justify-between gap-4 border-accent/20 bg-accent/[0.05] p-6 sm:flex-row sm:items-center">
+          <div>
+            <p className="font-medium">Connect your calendar to see what your schedule does to your body.</p>
+            <p className="mt-1 text-sm text-base-400">
+              Meeting load vs HRV · early meetings vs recovery · evening events vs sleep · travel signatures.
+              Parsed locally from an .ics export — nothing is uploaded.
+            </p>
+          </div>
+          <Link
+            href="/upload#calendar"
+            className="inline-flex h-10 shrink-0 items-center rounded-full bg-accent px-5 text-sm font-medium text-white transition hover:bg-accent-soft"
+          >
+            Connect calendar
+          </Link>
+        </Card>
+      )}
     </div>
+  );
+}
+
+function WorkLifeSection({ days, last90 }: { days: DayRecord[]; last90: DayRecord[] }) {
+  const workdays = last90.filter((d) => d.workday && d.meetingCount !== undefined);
+  const meetingsAvg = mean(workdays.map((d) => d.meetingCount!));
+  const meetingMinAvg = mean(workdays.map((d) => d.meetingMinutes ?? 0));
+  const officeDays = workdays.filter((d) => d.officeDay === true).length;
+  const locatedDays = workdays.filter((d) => d.officeDay !== undefined).length;
+
+  const heavy = last90.filter((d) => (d.meetingCount ?? 0) >= 5);
+  const light = last90.filter((d) => d.workday && (d.meetingCount ?? 99) <= 2);
+  const heavyHrv = heavy.map((d) => d.hrv).filter((v): v is number => v !== undefined);
+  const lightHrv = light.map((d) => d.hrv).filter((v): v is number => v !== undefined);
+
+  const early = last90.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour < 9);
+  const late = last90.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour >= 10);
+  const earlyRec = early.map((d) => d.recovery).filter((v): v is number => v !== undefined);
+  const lateRec = late.map((d) => d.recovery).filter((v): v is number => v !== undefined);
+
+  return (
+    <>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <StatTile label="Meetings per workday" value={fmt(meetingsAvg, 1)} sub={`${fmt(meetingMinAvg, 0)} min/day average`} />
+        <StatTile
+          label="Heavy days (5+ mtgs)"
+          value={String(heavy.length)}
+          sub={`of ${workdays.length} workdays (90d)`}
+        />
+        <StatTile
+          label="Office vs home"
+          value={locatedDays ? `${Math.round((officeDays / locatedDays) * 100)}%` : "–"}
+          sub="share of located workdays in office"
+        />
+        <StatTile
+          label="Evening events"
+          value={String(last90.filter((d) => d.hasEveningEvent).length)}
+          sub="days with events past 8 PM"
+        />
+      </div>
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {heavyHrv.length >= 4 && lightHrv.length >= 4 && (
+          <Card>
+            <CardTitle>HRV · heavy vs light meeting days</CardTitle>
+            <div className="mt-4">
+              <CompareBars
+                metric="hrv"
+                height={190}
+                groups={[
+                  { label: "5+ meetings", value: mean(heavyHrv), n: heavyHrv.length },
+                  { label: "≤2 meetings", value: mean(lightHrv), n: lightHrv.length },
+                ]}
+              />
+            </div>
+          </Card>
+        )}
+        {earlyRec.length >= 4 && lateRec.length >= 4 && (
+          <Card>
+            <CardTitle>Recovery · by first meeting time</CardTitle>
+            <div className="mt-4">
+              <CompareBars
+                metric="recovery"
+                height={190}
+                groups={[
+                  { label: "First mtg before 9 AM", value: mean(earlyRec), n: earlyRec.length },
+                  { label: "First mtg after 10 AM", value: mean(lateRec), n: lateRec.length },
+                ]}
+              />
+            </div>
+          </Card>
+        )}
+      </div>
+      <p className="mt-3 text-xs text-base-400">
+        Full statistical treatment of these patterns — with confidence levels and suggested experiments — lives in{" "}
+        <Link href="/insights" className="text-accent-soft hover:underline">
+          AI Discoveries
+        </Link>
+        .
+      </p>
+    </>
   );
 }
 

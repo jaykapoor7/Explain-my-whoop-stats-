@@ -175,6 +175,47 @@ function trendInsight(days: DayRecord[], metric: MetricKey, category: InsightCat
   };
 }
 
+/** "Wednesday is historically your highest-performing training day." */
+function bestTrainingDay(days: DayRecord[]): Insight | null {
+  const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const byDow: number[][] = [[], [], [], [], [], [], []];
+  for (const d of days) {
+    const strains = (d.workouts ?? []).map((w) => w.strain).filter((s): s is number => s !== undefined);
+    if (!strains.length) continue;
+    byDow[new Date(d.date + "T12:00:00").getDay()].push(Math.max(...strains));
+  }
+  const eligible = byDow.map((xs, dow) => ({ dow, xs })).filter((g) => g.xs.length >= 5);
+  if (eligible.length < 4) return null;
+  const ranked = [...eligible].sort((a, b) => mean(b.xs) - mean(a.xs));
+  const best = ranked[0];
+  const rest = eligible.filter((g) => g.dow !== best.dow).flatMap((g) => g.xs);
+  const cmp = compareGroups(best.xs, rest);
+  if (!cmp || cmp.p > 0.1 || cmp.d < 0.35) return null;
+  const { tier, score } = confidenceTier(cmp.p, best.xs.length + rest.length);
+  return {
+    id: "best-training-day",
+    category: "activity",
+    headline: `${names[best.dow]} is historically your highest-performing training day.`,
+    confidence: tier,
+    confidenceScore: score,
+    evidence: [
+      `${names[best.dow]} sessions: avg workout strain ${fmt(cmp.meanA, 1)} across ${cmp.nA} workouts`,
+      `All other days: avg ${fmt(cmp.meanB, 1)} across ${cmp.nB} workouts`,
+      `Gap of ${fmt(cmp.diff, 1)} strain (effect size d = ${fmt(cmp.d, 2)}, p ≈ ${cmp.p < 0.001 ? "<0.001" : fmt(cmp.p, 3)})`,
+    ],
+    explanation: `Something about your ${names[best.dow]}s — accumulated recovery, schedule room, training-partner timing — lets you push harder. Worth knowing when you plan key sessions.`,
+    experiment: `Schedule your next four priority workouts on ${names[best.dow]}s and see if session quality holds up against the historical pattern.`,
+    chart: {
+      kind: "compare",
+      metric: "strain",
+      groups: eligible
+        .sort((a, b) => a.dow - b.dow)
+        .map((g) => ({ label: names[g.dow].slice(0, 3), value: mean(g.xs), n: g.xs.length })),
+    },
+    stats: { n: cmp.nA + cmp.nB, p: cmp.p, effect: cmp.d },
+  };
+}
+
 export function generateInsights(days: DayRecord[]): Insight[] {
   if (days.length < 14) return [];
   const insights: Insight[] = [];
@@ -310,6 +351,155 @@ export function generateInsights(days: DayRecord[]): Insight[] {
   }
 
   // Two consecutive green days -> next-day strain capacity
+  // ---- Work & life context (requires calendar-enriched days) ----
+  const hasCalendar = days.some((d) => d.meetingCount !== undefined);
+  if (hasCalendar) {
+    const worklifeSpecs: CompareSpec[] = [
+      {
+        id: "meetings-hrv",
+        category: "worklife",
+        metric: "hrv",
+        predicate: (d) => {
+          if (d.meetingCount === undefined || !d.workday) return undefined;
+          if (d.meetingCount >= 5) return true;
+          if (d.meetingCount <= 2) return false;
+          return undefined;
+        },
+        labels: ["Days with 5+ meetings", "Days with ≤2 meetings"],
+        headline: (diff) => `Your HRV averages ${fmt(Math.abs(diff), 0)} ms ${diff < 0 ? "lower" : "higher"} on days with more than five meetings.`,
+        explanation:
+          "Meeting-dense days usually mean sustained sympathetic activation — less physical movement, more cognitive load, compressed recovery windows. Your nervous system reads a stacked calendar the same way it reads a training session.",
+        experiment: "Pick one heavy meeting day per week and convert two meetings to async updates for a month; compare HRV on trimmed vs untrimmed heavy days.",
+      },
+      {
+        id: "first-meeting-recovery",
+        category: "worklife",
+        metric: "recovery",
+        predicate: (d) => {
+          if (!d.workday || d.firstMeetingHour === undefined) return undefined;
+          if (d.firstMeetingHour >= 10) return true;
+          if (d.firstMeetingHour < 9) return false;
+          return undefined;
+        },
+        labels: ["First meeting after 10 AM", "First meeting before 9 AM"],
+        headline: (diff) => `You recover ${diff > 0 ? "significantly better" : "worse"} when your first meeting starts after 10 AM (${diff > 0 ? "+" : ""}${fmt(diff, 0)} points).`,
+        explanation:
+          "Early first meetings compress your sleep opportunity from the wake side — the alarm moves, the sleep debt lands on that morning's recovery. Late-start days let sleep run to its natural end.",
+        experiment: "Block 9–10 AM as no-meeting focus time for two weeks and compare recovery on those mornings with your early-meeting baseline.",
+      },
+      {
+        id: "evening-events-sleep",
+        category: "worklife",
+        metric: "sleepHours",
+        lag: 1,
+        predicate: (d) => d.hasEveningEvent ?? false,
+        labels: ["Nights after evening events", "Quiet evenings"],
+        headline: (diff) => `You sleep ${fmt(Math.abs(diff) * 60, 0)} minutes ${diff < 0 ? "less" : "more"} after days with evening social events.`,
+        explanation:
+          "Evening plans push bedtime later while your wake time stays anchored by work — the difference comes straight out of sleep. Alcohol and late stimulation often compound it.",
+        experiment: "For the next month, give evening events a 10:30 PM hard stop twice; compare those nights' sleep to your usual event nights.",
+      },
+      {
+        id: "backtoback-recovery",
+        category: "worklife",
+        metric: "recovery",
+        predicate: (d) => {
+          if (!d.workday || d.meetingCount === undefined || d.meetingCount === 0) return undefined;
+          if ((d.backToBackMeetings ?? 0) >= 2) return true;
+          if ((d.backToBackMeetings ?? 0) === 0) return false;
+          return undefined;
+        },
+        labels: ["Back-to-back meeting days", "Days with breathing room"],
+        headline: (diff) => `Days stacked with back-to-back meetings coincide with ${fmt(Math.abs(diff), 0)}-point ${diff < 0 ? "lower" : "higher"} recovery.`,
+        explanation:
+          "Zero-gap scheduling removes the micro-recoveries — standing up, daylight, water, two minutes of nothing — that keep stress physiology from accumulating across the day.",
+        experiment: "Switch default meeting lengths to 25/50 minutes for two weeks so every block ends with a gap, then compare stress and next-morning recovery.",
+        minEach: 5,
+      },
+      {
+        id: "wfh-recovery",
+        category: "worklife",
+        metric: "recovery",
+        predicate: (d) => (d.workday && d.officeDay !== undefined ? !d.officeDay : undefined),
+        labels: ["Work-from-home days", "Office days"],
+        headline: (diff) => `You recover ${diff > 0 ? "better" : "worse"} on work-from-home days (${diff > 0 ? "+" : ""}${fmt(diff, 0)} points vs office days).`,
+        explanation:
+          "Commutes, earlier alarms and in-person intensity all tax the same recovery budget. The effect often runs through sleep timing more than the workplace itself — check whether your office mornings start earlier.",
+        experiment: "On your next four office days, keep bedtime identical to WFH nights and see how much of the gap survives.",
+        minEach: 8,
+      },
+    ];
+    for (const spec of worklifeSpecs) {
+      const ins = runCompare(days, spec);
+      if (ins) insights.push(ins);
+    }
+  }
+
+  // ---- Discovery engine: training-pattern hypotheses ----
+  const threeDay = runCompare(days, {
+    id: "three-strain-days",
+    category: "activity",
+    metric: "recovery",
+    lag: 1,
+    predicate: (d, i, all) => {
+      if (i < 2) return undefined;
+      const window = [all[i - 2], all[i - 1], d];
+      if (window.some((x) => x.strain === undefined)) return undefined;
+      return window.every((x) => x.strain! > 13);
+    },
+    labels: ["After 3 straight high-strain days", "Other days"],
+    headline: (diff) => `Recovery ${diff < 0 ? "declines" : "rises"} about ${fmt(Math.abs(diff), 0)} points after three consecutive high-strain days.`,
+    explanation:
+      "Training stress compounds faster than single-day recovery scores suggest — three hard days in a row outruns sleep's ability to repay the debt, and the third morning usually shows it.",
+    experiment: "Cap hard blocks at two consecutive days for a month; insert a sub-10-strain day and compare how the block's third morning looks.",
+    minEach: 5,
+  });
+  if (threeDay) insights.push(threeDay);
+
+  const afternoonWorkout = runCompare(days, {
+    id: "afternoon-workouts",
+    category: "activity",
+    metric: "recovery",
+    lag: 1,
+    predicate: (d) => {
+      const starts = (d.workouts ?? []).map((w) => w.startHour).filter((h): h is number => h !== undefined);
+      if (!starts.length) return undefined;
+      const main = Math.max(...starts);
+      if (main >= 12 && main < 18) return true;
+      if (main < 12) return false;
+      return undefined; // evening sessions covered by the late-workout insight
+    },
+    labels: ["Afternoon workouts", "Morning workouts"],
+    headline: (diff) => `Your body appears to recover ${diff > 0 ? "better" : "worse"} after afternoon workouts than morning ones (${diff > 0 ? "+" : ""}${fmt(diff, 0)} points).`,
+    explanation:
+      "Body temperature, joint readiness and reaction time all peak in the afternoon, so the same session costs less. Morning training also often trades sleep for gym time, which shows up the next day.",
+    experiment: "Move two weekly sessions from morning to 3–6 PM for three weeks, holding intensity constant, and compare next-morning recovery.",
+    minEach: 8,
+  });
+  if (afternoonWorkout) insights.push(afternoonWorkout);
+
+  const outdoorCardio = runCompare(days, {
+    id: "outdoor-cardio-sleep",
+    category: "sleep",
+    metric: "sleepEfficiency",
+    lag: 1,
+    predicate: (d) => {
+      if (!d.workouts?.length) return undefined;
+      const sports = d.workouts.map((w) => w.sport.toLowerCase());
+      return sports.some((s) => s.includes("run") || s.includes("cycl") || s.includes("hik"));
+    },
+    labels: ["After outdoor cardio", "After other training"],
+    headline: (diff) => `You consistently sleep ${diff > 0 ? "better" : "worse"} after outdoor runs and rides (${diff > 0 ? "+" : ""}${fmt(diff, 1)}% efficiency).`,
+    explanation:
+      "Daylight exposure anchors your circadian clock and outdoor cardio adds rhythmic, low-arousal fatigue — a combination that tends to deepen sleep more than indoor training.",
+    experiment: "Swap two indoor sessions for outdoor equivalents over two weeks and compare sleep efficiency and deep sleep.",
+    minEach: 8,
+  });
+  if (outdoorCardio) insights.push(outdoorCardio);
+
+  const bestDay = bestTrainingDay(days);
+  if (bestDay) insights.push(bestDay);
+
   const greenPair = runCompare(days, {
     id: "green-streak",
     category: "recovery",

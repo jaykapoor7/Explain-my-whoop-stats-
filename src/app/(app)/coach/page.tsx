@@ -3,16 +3,16 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { Activity, BedDouble, Dumbbell, FlaskConical, HeartPulse } from "lucide-react";
-import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { Badge, Card, CardTitle, FadeIn, SectionHeading } from "@/components/ui";
 import { dailyBriefing, experimentIdeas, monthlyReport, suggestions, weeklyReport, PeriodReport } from "@/lib/coach";
 import { cn } from "@/lib/utils";
 
 const STATUS_STYLES = {
-  green: { ring: "border-status-good/30", bg: "bg-status-good/[0.07]", text: "text-[#5ecb5e]", label: "Green day" },
-  yellow: { ring: "border-status-warning/30", bg: "bg-status-warning/[0.07]", text: "text-[#f7c95c]", label: "Yellow day" },
-  red: { ring: "border-status-critical/30", bg: "bg-status-critical/[0.07]", text: "text-[#f28b8b]", label: "Red day" },
+  green: { ring: "border-status-good/30", bg: "bg-status-good/[0.07]", text: "text-[#6ee7b7]", label: "Green day" },
+  yellow: { ring: "border-status-warning/30", bg: "bg-status-warning/[0.07]", text: "text-[#fcd34d]", label: "Yellow day" },
+  red: { ring: "border-status-critical/30", bg: "bg-status-critical/[0.07]", text: "text-[#ffa2b0]", label: "Red day" },
 } as const;
 
 const AREA_ICON = { training: Dumbbell, sleep: BedDouble, recovery: HeartPulse } as const;
@@ -30,8 +30,8 @@ function ReportCard({ report }: { report: PeriodReport }) {
               <span
                 className={cn(
                   "text-xs tabular",
-                  s.good === true && "text-[#5ecb5e]",
-                  s.good === false && "text-[#f28b8b]",
+                  s.good === true && "text-[#6ee7b7]",
+                  s.good === false && "text-[#ffa2b0]",
                   s.good == null && "text-base-400"
                 )}
               >
@@ -53,7 +53,7 @@ function ReportCard({ report }: { report: PeriodReport }) {
 }
 
 function CoachBody() {
-  const days = useApp((s) => s.days);
+  const { days } = useHealthData();
   const briefing = useMemo(() => dailyBriefing(days), [days]);
   const weekly = useMemo(() => weeklyReport(days), [days]);
   const monthly = useMemo(() => monthlyReport(days), [days]);

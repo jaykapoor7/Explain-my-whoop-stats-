@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Eraser, Send, Sparkles } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { MiniMarkdown } from "@/components/ui";
 import { CompareBars, CorrelationScatter, TrendChart } from "@/components/charts";
@@ -27,7 +28,7 @@ function MessageChart({ chart }: { chart: Insight["chart"] }) {
 }
 
 function ChatBody() {
-  const days = useApp((s) => s.days);
+  const { days, events, hasCalendar } = useHealthData();
   const chat = useApp((s) => s.chat);
   const addChatMessage = useApp((s) => s.addChatMessage);
   const clearChat = useApp((s) => s.clearChat);
@@ -47,7 +48,7 @@ function ChatBody() {
     setThinking(true);
     // Brief delay so the exchange reads naturally; analysis itself is synchronous and local.
     setTimeout(() => {
-      const answer = answerQuestion(q, days);
+      const answer = answerQuestion(q, days, events);
       addChatMessage({
         id: uid(),
         role: "assistant",
@@ -70,7 +71,8 @@ function ChatBody() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Ask Your Health Data</h1>
           <p className="mt-1 text-sm text-base-400">
-            Every answer is computed from your {days.length} days of data, with the reasoning shown.
+            Every answer is computed from your {days.length} days of data
+            {hasCalendar ? " and your calendar" : ""}, with the reasoning shown.
           </p>
         </div>
         {chat.length > 0 && (

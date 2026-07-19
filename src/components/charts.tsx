@@ -21,10 +21,10 @@ import { formatDate } from "@/lib/utils";
 import { METRICS, MetricKey, ChartPoint } from "@/lib/types";
 import { fmt } from "@/lib/stats";
 
-/* Shared dark chart chrome (validated palette: grid #2c2c2a, muted ink #898781). */
+/* Shared dark chart chrome (validated palette: grid #2a2f63, muted ink #8b91c7). */
 
-const AXIS = { stroke: "#383835", tick: { fill: "#898781", fontSize: 11 }, tickLine: false, axisLine: false } as const;
-const GRID = { stroke: "#2c2c2a", strokeDasharray: "0", vertical: false } as const;
+const AXIS = { stroke: "#3a4080", tick: { fill: "#8b91c7", fontSize: 11 }, tickLine: false, axisLine: false } as const;
+const GRID = { stroke: "#2a2f63", strokeDasharray: "0", vertical: false } as const;
 
 function ChartTooltip({ active, payload, label, labelFormatter, valueFormatter }: {
   active?: boolean;
@@ -41,7 +41,7 @@ function ChartTooltip({ active, payload, label, labelFormatter, valueFormatter }
       </div>
       {payload.map((p, i) => (
         <div key={i} className="flex items-center gap-2 text-base-200">
-          <span className="h-2 w-2 rounded-full" style={{ background: p.color ?? "#3987e5" }} />
+          <span className="h-2 w-2 rounded-full" style={{ background: p.color ?? "#4d9fff" }} />
           <span>
             {valueFormatter && typeof p.value === "number" ? valueFormatter(p.value, p.name) : `${p.name}: ${p.value}`}
           </span>
@@ -86,11 +86,11 @@ export function TrendChart({
               valueFormatter={(v, name) => `${name === "7-day avg" ? "7-day avg: " : `${meta.shortLabel}: `}${fmt(v, meta.decimals)}${meta.unit}`}
             />
           }
-          cursor={{ stroke: "#383835" }}
+          cursor={{ stroke: "#3a4080" }}
         />
         <Area type="monotone" dataKey="value" name={meta.shortLabel} stroke={c} strokeWidth={2} fill={`url(#${gradId})`} dot={false} activeDot={{ r: 4, strokeWidth: 0 }} connectNulls />
         {showAverage && (
-          <Line type="monotone" dataKey="avg" name="7-day avg" stroke="#c3c2b7" strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
+          <Line type="monotone" dataKey="avg" name="7-day avg" stroke="#b9befa" strokeWidth={1.5} strokeDasharray="5 4" dot={false} connectNulls />
         )}
       </AreaChart>
     </ResponsiveContainer>
@@ -132,7 +132,7 @@ export function CorrelationScatter({
           domain={["auto", "auto"]}
           {...AXIS}
           tickFormatter={(v) => fmt(v, xMeta.decimals > 0 ? 1 : 0)}
-          label={{ value: `${xMeta.label}${xMeta.unit ? ` (${xMeta.unit})` : ""}`, position: "insideBottom", offset: -2, fill: "#898781", fontSize: 11 }}
+          label={{ value: `${xMeta.label}${xMeta.unit ? ` (${xMeta.unit})` : ""}`, position: "insideBottom", offset: -2, fill: "#8b91c7", fontSize: 11 }}
         />
         <YAxis
           dataKey="y"
@@ -157,13 +157,13 @@ export function CorrelationScatter({
               }
             />
           }
-          cursor={{ stroke: "#383835" }}
+          cursor={{ stroke: "#3a4080" }}
         />
-        <Scatter data={points} fill="#3987e5" fillOpacity={0.75} shape="circle" isAnimationActive={false} />
+        <Scatter data={points} fill="#4d9fff" fillOpacity={0.75} shape="circle" isAnimationActive={false} />
         {trend && (
           <Scatter
             data={trendData}
-            line={{ stroke: "#c3c2b7", strokeWidth: 1.5, strokeDasharray: "6 4" }}
+            line={{ stroke: "#b9befa", strokeWidth: 1.5, strokeDasharray: "6 4" }}
             shape={() => <g />}
             isAnimationActive={false}
           />
@@ -187,7 +187,7 @@ export function CompareBars({
     <ResponsiveContainer width="100%" height={height}>
       <BarChart data={groups} margin={{ top: 8, right: 4, left: -14, bottom: 0 }} barCategoryGap="32%">
         <CartesianGrid {...GRID} />
-        <XAxis dataKey="label" {...AXIS} interval={0} tick={{ fill: "#898781", fontSize: 11 }} />
+        <XAxis dataKey="label" {...AXIS} interval={0} tick={{ fill: "#8b91c7", fontSize: 11 }} />
         <YAxis {...AXIS} width={46} tickFormatter={(v) => fmt(v, 0)} />
         <Tooltip
           content={
@@ -203,7 +203,7 @@ export function CompareBars({
         />
         <Bar dataKey="value" name={meta.shortLabel} radius={[4, 4, 0, 0]} maxBarSize={64} isAnimationActive={false}>
           {groups.map((_, i) => (
-            <Cell key={i} fill={i === 0 ? meta.color : "#52514e"} />
+            <Cell key={i} fill={i === 0 ? meta.color : "#4a5090"} />
           ))}
         </Bar>
       </BarChart>
@@ -273,17 +273,17 @@ export function SleepStagesChart({
           }
           cursor={{ fill: "rgba(255,255,255,0.04)" }}
         />
-        <Bar dataKey="deep" name="Deep" stackId="s" fill="#1c5cab" isAnimationActive={false} />
-        <Bar dataKey="rem" name="REM" stackId="s" fill="#9085e9" isAnimationActive={false} />
-        <Bar dataKey="light" name="Light" stackId="s" fill="#6da7ec" isAnimationActive={false} />
-        <Bar dataKey="awake" name="Awake" stackId="s" fill="#52514e" radius={[3, 3, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="deep" name="Deep" stackId="s" fill="#3b82f6" isAnimationActive={false} />
+        <Bar dataKey="rem" name="REM" stackId="s" fill="#a78bfa" isAnimationActive={false} />
+        <Bar dataKey="light" name="Light" stackId="s" fill="#7cc4ff" isAnimationActive={false} />
+        <Bar dataKey="awake" name="Awake" stackId="s" fill="#4a5090" radius={[3, 3, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   );
 }
 
 export function ZonesChart({ zones, height = 180 }: { zones: number[]; height?: number }) {
-  const colors = ["#6da7ec", "#199e70", "#c98500", "#d95926", "#e66767"];
+  const colors = ["#7cc4ff", "#34d399", "#fbbf24", "#fb8a67", "#fb7185"];
   const data = zones.map((min, i) => ({ label: `Zone ${i + 1}`, minutes: min }));
   return (
     <ResponsiveContainer width="100%" height={height}>

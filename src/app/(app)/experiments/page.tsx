@@ -133,7 +133,7 @@ function ExperimentCard({ exp }: { exp: Experiment }) {
           onClick={() => {
             if (confirm(`Delete experiment "${exp.name}"?`)) removeExperiment(exp.id);
           }}
-          className="text-base-400 transition hover:text-[#f28b8b]"
+          className="text-base-400 transition hover:text-[#ffa2b0]"
           aria-label="Delete experiment"
         >
           <Trash2 size={15} />
@@ -160,7 +160,7 @@ function ExperimentCard({ exp }: { exp: Experiment }) {
                       <span className="text-xs text-base-400">{fmt(r.before, meta.decimals)}{meta.unit}</span>
                       <span className="text-xs text-base-400">→</span>
                       <span className="text-base font-semibold">{fmt(r.after, meta.decimals)}{meta.unit}</span>
-                      <span className={cn("text-xs", r.diff > 0 ? "text-[#5ecb5e]" : r.diff < 0 ? "text-[#f28b8b]" : "text-base-400")}>
+                      <span className={cn("text-xs", r.diff > 0 ? "text-[#6ee7b7]" : r.diff < 0 ? "text-[#ffa2b0]" : "text-base-400")}>
                         {r.diff >= 0 ? "+" : ""}{fmt(r.diff, meta.decimals)}
                       </span>
                     </div>

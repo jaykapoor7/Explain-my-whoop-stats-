@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { ArrowLeftRight } from "lucide-react";
-import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { Badge, Card, FadeIn } from "@/components/ui";
 import { CorrelationScatter } from "@/components/charts";
@@ -13,6 +13,9 @@ import { cn } from "@/lib/utils";
 /** Curated pairs shown as quick-select chips; any pair is selectable below. */
 const FEATURED: { x: MetricKey; y: MetricKey; lag: number; label: string }[] = [
   { x: "sleepHours", y: "hrv", lag: 0, label: "Sleep vs HRV" },
+  { x: "meetingCount", y: "hrv", lag: 0, label: "Meetings vs HRV" },
+  { x: "firstMeetingHour", y: "recovery", lag: 0, label: "First Meeting vs Recovery" },
+  { x: "meetingMinutes", y: "sleepHours", lag: 1, label: "Meeting Load vs Sleep" },
   { x: "sleepHours", y: "recovery", lag: 0, label: "Sleep vs Recovery" },
   { x: "proteinG", y: "recovery", lag: 1, label: "Protein vs Recovery" },
   { x: "calorieIntake", y: "sleepHours", lag: 1, label: "Calories vs Sleep" },
@@ -62,7 +65,7 @@ function interpret(x: MetricKey, y: MetricKey, r: number, p: number, slope: numb
 }
 
 function CorrelationsBody() {
-  const days = useApp((s) => s.days);
+  const { days } = useHealthData();
   const [xKey, setXKey] = useState<MetricKey>("sleepHours");
   const [yKey, setYKey] = useState<MetricKey>("hrv");
   const [lag, setLag] = useState(0);

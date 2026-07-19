@@ -13,6 +13,27 @@ export interface Workout {
   zones?: number[];
 }
 
+export type EventType =
+  | "meeting"
+  | "social"
+  | "travel"
+  | "workout"
+  | "study"
+  | "personal"
+  | "vacation";
+
+export interface CalendarEvent {
+  id: string;
+  date: string; // YYYY-MM-DD (local start date)
+  title: string;
+  type: EventType;
+  startHour: number; // fractional local hour
+  endHour: number;
+  durationMin: number;
+  location?: string;
+  allDay?: boolean;
+}
+
 export interface DayRecord {
   date: string; // YYYY-MM-DD
 
@@ -58,6 +79,17 @@ export interface DayRecord {
   sauna?: boolean;
   meditation?: boolean;
   notes?: string;
+
+  // Calendar-derived context (materialized by enrichDaysWithCalendar)
+  meetingCount?: number;
+  meetingMinutes?: number;
+  firstMeetingHour?: number;
+  backToBackMeetings?: number;
+  eveningEventHour?: number; // latest end of an evening event, if any
+  hasEveningEvent?: boolean;
+  hasFlight?: boolean;
+  officeDay?: boolean; // true = at least one in-person meeting location
+  workday?: boolean;
 }
 
 export type MetricKey =
@@ -81,7 +113,10 @@ export type MetricKey =
   | "mood"
   | "proteinG"
   | "calorieIntake"
-  | "screenTimeMin";
+  | "screenTimeMin"
+  | "meetingCount"
+  | "meetingMinutes"
+  | "firstMeetingHour";
 
 export interface MetricMeta {
   key: MetricKey;
@@ -95,27 +130,30 @@ export interface MetricMeta {
 }
 
 export const METRICS: Record<MetricKey, MetricMeta> = {
-  recovery: { key: "recovery", label: "Recovery score", shortLabel: "Recovery", unit: "%", color: "#199e70", higherIsBetter: true, decimals: 0 },
-  hrv: { key: "hrv", label: "Heart rate variability", shortLabel: "HRV", unit: "ms", color: "#3987e5", higherIsBetter: true, decimals: 0 },
-  rhr: { key: "rhr", label: "Resting heart rate", shortLabel: "RHR", unit: "bpm", color: "#e66767", higherIsBetter: false, decimals: 0 },
-  sleepHours: { key: "sleepHours", label: "Sleep duration", shortLabel: "Sleep", unit: "h", color: "#9085e9", higherIsBetter: true, decimals: 1 },
-  sleepEfficiency: { key: "sleepEfficiency", label: "Sleep efficiency", shortLabel: "Efficiency", unit: "%", color: "#6da7ec", higherIsBetter: true, decimals: 0 },
-  sleepConsistency: { key: "sleepConsistency", label: "Sleep consistency", shortLabel: "Consistency", unit: "%", color: "#d55181", higherIsBetter: true, decimals: 0 },
-  sleepDebtHours: { key: "sleepDebtHours", label: "Sleep debt", shortLabel: "Sleep debt", unit: "h", color: "#c98500", higherIsBetter: false, decimals: 1 },
-  deepHours: { key: "deepHours", label: "Deep sleep", shortLabel: "Deep", unit: "h", color: "#1c5cab", higherIsBetter: true, decimals: 1 },
-  remHours: { key: "remHours", label: "REM sleep", shortLabel: "REM", unit: "h", color: "#9085e9", higherIsBetter: true, decimals: 1 },
-  strain: { key: "strain", label: "Day strain", shortLabel: "Strain", unit: "", color: "#d95926", higherIsBetter: null, decimals: 1 },
-  steps: { key: "steps", label: "Steps", shortLabel: "Steps", unit: "", color: "#199e70", higherIsBetter: true, decimals: 0 },
-  calories: { key: "calories", label: "Calories burned", shortLabel: "Cal burn", unit: "kcal", color: "#c98500", higherIsBetter: null, decimals: 0 },
-  maxHr: { key: "maxHr", label: "Max heart rate", shortLabel: "Max HR", unit: "bpm", color: "#d03b3b", higherIsBetter: null, decimals: 0 },
-  bedtimeHour: { key: "bedtimeHour", label: "Bedtime", shortLabel: "Bedtime", unit: "", color: "#9085e9", higherIsBetter: false, decimals: 1 },
-  alcoholDrinks: { key: "alcoholDrinks", label: "Alcohol", shortLabel: "Alcohol", unit: "drinks", color: "#e66767", higherIsBetter: false, decimals: 1 },
-  caffeineMg: { key: "caffeineMg", label: "Caffeine", shortLabel: "Caffeine", unit: "mg", color: "#c98500", higherIsBetter: null, decimals: 0 },
-  stress: { key: "stress", label: "Stress", shortLabel: "Stress", unit: "/10", color: "#d95926", higherIsBetter: false, decimals: 1 },
-  mood: { key: "mood", label: "Mood", shortLabel: "Mood", unit: "/10", color: "#199e70", higherIsBetter: true, decimals: 1 },
-  proteinG: { key: "proteinG", label: "Protein intake", shortLabel: "Protein", unit: "g", color: "#3987e5", higherIsBetter: true, decimals: 0 },
-  calorieIntake: { key: "calorieIntake", label: "Calorie intake", shortLabel: "Intake", unit: "kcal", color: "#c98500", higherIsBetter: null, decimals: 0 },
-  screenTimeMin: { key: "screenTimeMin", label: "Screen time", shortLabel: "Screen", unit: "min", color: "#898781", higherIsBetter: false, decimals: 0 },
+  recovery: { key: "recovery", label: "Recovery score", shortLabel: "Recovery", unit: "%", color: "#34d399", higherIsBetter: true, decimals: 0 },
+  hrv: { key: "hrv", label: "Heart rate variability", shortLabel: "HRV", unit: "ms", color: "#4d9fff", higherIsBetter: true, decimals: 0 },
+  rhr: { key: "rhr", label: "Resting heart rate", shortLabel: "RHR", unit: "bpm", color: "#fb7185", higherIsBetter: false, decimals: 0 },
+  sleepHours: { key: "sleepHours", label: "Sleep duration", shortLabel: "Sleep", unit: "h", color: "#a78bfa", higherIsBetter: true, decimals: 1 },
+  sleepEfficiency: { key: "sleepEfficiency", label: "Sleep efficiency", shortLabel: "Efficiency", unit: "%", color: "#7cc4ff", higherIsBetter: true, decimals: 0 },
+  sleepConsistency: { key: "sleepConsistency", label: "Sleep consistency", shortLabel: "Consistency", unit: "%", color: "#f472b6", higherIsBetter: true, decimals: 0 },
+  sleepDebtHours: { key: "sleepDebtHours", label: "Sleep debt", shortLabel: "Sleep debt", unit: "h", color: "#fbbf24", higherIsBetter: false, decimals: 1 },
+  deepHours: { key: "deepHours", label: "Deep sleep", shortLabel: "Deep", unit: "h", color: "#3b82f6", higherIsBetter: true, decimals: 1 },
+  remHours: { key: "remHours", label: "REM sleep", shortLabel: "REM", unit: "h", color: "#a78bfa", higherIsBetter: true, decimals: 1 },
+  strain: { key: "strain", label: "Day strain", shortLabel: "Strain", unit: "", color: "#fb8a67", higherIsBetter: null, decimals: 1 },
+  steps: { key: "steps", label: "Steps", shortLabel: "Steps", unit: "", color: "#34d399", higherIsBetter: true, decimals: 0 },
+  calories: { key: "calories", label: "Calories burned", shortLabel: "Cal burn", unit: "kcal", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
+  maxHr: { key: "maxHr", label: "Max heart rate", shortLabel: "Max HR", unit: "bpm", color: "#fb7185", higherIsBetter: null, decimals: 0 },
+  bedtimeHour: { key: "bedtimeHour", label: "Bedtime", shortLabel: "Bedtime", unit: "", color: "#a78bfa", higherIsBetter: false, decimals: 1 },
+  alcoholDrinks: { key: "alcoholDrinks", label: "Alcohol", shortLabel: "Alcohol", unit: "drinks", color: "#fb7185", higherIsBetter: false, decimals: 1 },
+  caffeineMg: { key: "caffeineMg", label: "Caffeine", shortLabel: "Caffeine", unit: "mg", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
+  stress: { key: "stress", label: "Stress", shortLabel: "Stress", unit: "/10", color: "#fb8a67", higherIsBetter: false, decimals: 1 },
+  mood: { key: "mood", label: "Mood", shortLabel: "Mood", unit: "/10", color: "#34d399", higherIsBetter: true, decimals: 1 },
+  proteinG: { key: "proteinG", label: "Protein intake", shortLabel: "Protein", unit: "g", color: "#4d9fff", higherIsBetter: true, decimals: 0 },
+  calorieIntake: { key: "calorieIntake", label: "Calorie intake", shortLabel: "Intake", unit: "kcal", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
+  screenTimeMin: { key: "screenTimeMin", label: "Screen time", shortLabel: "Screen", unit: "min", color: "#8b91c7", higherIsBetter: false, decimals: 0 },
+  meetingCount: { key: "meetingCount", label: "Meetings per day", shortLabel: "Meetings", unit: "", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
+  meetingMinutes: { key: "meetingMinutes", label: "Time in meetings", shortLabel: "Meeting time", unit: "min", color: "#fb8a67", higherIsBetter: null, decimals: 0 },
+  firstMeetingHour: { key: "firstMeetingHour", label: "First meeting start", shortLabel: "First meeting", unit: "", color: "#a78bfa", higherIsBetter: null, decimals: 1 },
 };
 
 export const METRIC_LIST = Object.values(METRICS);
@@ -132,6 +170,7 @@ export type InsightCategory =
   | "heart"
   | "activity"
   | "lifestyle"
+  | "worklife"
   | "trend";
 
 export interface Insight {

@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import { Printer } from "lucide-react";
 import { useApp } from "@/lib/store";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { Button, Card, SectionHeading } from "@/components/ui";
 import { TrendChart } from "@/components/charts";
@@ -50,7 +51,7 @@ function score(avg: number, lo: number, hi: number): number {
 }
 
 function ReportBody() {
-  const days = useApp((s) => s.days);
+  const { days } = useHealthData();
   const meta = useApp((s) => s.meta);
   const insights = useMemo(() => generateInsights(days).slice(0, 4), [days]);
   const monthly = useMemo(() => monthlyReport(days), [days]);
@@ -113,12 +114,12 @@ function ReportBody() {
         {/* Movers */}
         <div className="grid gap-4 sm:grid-cols-2">
           <Card className="print-page">
-            <h3 className="text-sm font-semibold text-[#5ecb5e]">Biggest improvements (30d vs prior)</h3>
+            <h3 className="text-sm font-semibold text-[#6ee7b7]">Biggest improvements (30d vs prior)</h3>
             <div className="mt-3 space-y-2">
               {improvements.length ? improvements.map((m) => (
                 <div key={m.metric} className="flex items-center justify-between text-sm">
                   <span className="text-base-200">{METRICS[m.metric].label}</span>
-                  <span className="tabular font-medium text-[#5ecb5e]">
+                  <span className="tabular font-medium text-[#6ee7b7]">
                     {m.diff > 0 ? "+" : ""}{fmt(m.diff, METRICS[m.metric].decimals)}{METRICS[m.metric].unit}
                   </span>
                 </div>
@@ -126,12 +127,12 @@ function ReportBody() {
             </div>
           </Card>
           <Card className="print-page">
-            <h3 className="text-sm font-semibold text-[#f28b8b]">Biggest declines (30d vs prior)</h3>
+            <h3 className="text-sm font-semibold text-[#ffa2b0]">Biggest declines (30d vs prior)</h3>
             <div className="mt-3 space-y-2">
               {declines.length ? declines.map((m) => (
                 <div key={m.metric} className="flex items-center justify-between text-sm">
                   <span className="text-base-200">{METRICS[m.metric].label}</span>
-                  <span className="tabular font-medium text-[#f28b8b]">
+                  <span className="tabular font-medium text-[#ffa2b0]">
                     {m.diff > 0 ? "+" : ""}{fmt(m.diff, METRICS[m.metric].decimals)}{METRICS[m.metric].unit}
                   </span>
                 </div>
@@ -180,7 +181,7 @@ function ReportBody() {
                   <div className="text-[11px] text-base-400">{s.label}</div>
                   <div className="mt-0.5 flex items-baseline gap-1.5">
                     <span className="text-base font-semibold tabular">{s.value}</span>
-                    <span className={cn("text-[11px] tabular", s.good === true ? "text-[#5ecb5e]" : s.good === false ? "text-[#f28b8b]" : "text-base-400")}>
+                    <span className={cn("text-[11px] tabular", s.good === true ? "text-[#6ee7b7]" : s.good === false ? "text-[#ffa2b0]" : "text-base-400")}>
                       {s.delta}
                     </span>
                   </div>

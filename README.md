@@ -1,27 +1,38 @@
 # Recovery Intelligence
 
-**Understand your body, not just your metrics.**
+**A personal health intelligence engine — it explains *why* your metrics changed.**
 
-Recovery Intelligence is the AI-powered analytics layer on top of your wearable — upload exports
-from WHOOP, Apple Health, Fitbit, Garmin, Oura, Polar, Coros or Samsung Health and get
-personalized insights, correlations, natural-language answers, coaching and experiments, all
-computed from your own data.
+Your wearable records what happened. Recovery Intelligence connects those metrics to your real
+life — calendar, meetings, travel, training, late nights — and answers the question every
+wearable user actually has: *"What in my life is causing these changes?"*
+
+Upload exports from WHOOP, Apple Health, Fitbit, Garmin, Oura, Polar, Coros or Samsung Health,
+connect Google Calendar or Apple Calendar (.ics), and get life-context insights, correlations,
+natural-language answers, coaching and experiments — all computed locally from your own data.
 
 ## Features
 
-- **Dashboard** — Recovery, Sleep, Heart, Activity and Lifestyle sections with trends,
-  distributions, sleep stages, HR zones, training load and best/worst days.
-- **AI Insights Engine** — runs a battery of pre-registered statistical hypotheses
-  (sleep → HRV, alcohol → recovery, weekend effect, strain → sleep, travel → RHR, …) and
-  surfaces only what clears the bar, each with confidence level, evidence, a visualization,
-  a plain-English explanation and a suggested experiment.
-- **Correlation Explorer** — scatter + trend line + honest interpretation for any metric pair,
-  same-day or lagged.
-- **Ask Your Health Data** — a chat interface whose answers are computed exclusively from the
-  uploaded dataset, with the reasoning shown.
+- **Calendar Intelligence** — connect Google/Apple Calendar via .ics export (parsed locally).
+  Events are auto-classified (meetings, flights, social, workouts, study) and materialized into
+  per-day features: meeting count/minutes, first-meeting time, back-to-back blocks, evening
+  events, office vs WFH, travel days. The whole analytics stack cross-references them with HRV,
+  RHR, recovery, sleep and strain.
+- **AI Discovery Engine** — continuously runs pre-registered statistical hypotheses (meeting
+  load → HRV, first-meeting time → recovery, evening events → sleep, 3 consecutive high-strain
+  days → recovery, afternoon vs morning workouts, best training weekday, alcohol → HRV, travel →
+  RHR, …) and surfaces only what clears the bar — each with a confidence level, supporting-data
+  count, visualization, plain-English explanation, suggested experiment, and an explicit
+  correlation-not-causation caveat.
+- **Unified Timeline** — schedule and biology on one axis: every day shows calendar events,
+  workouts, sleep, recovery, nutrition, travel, mood and notes.
+- **Conversational Analytics** — "Do early meetings affect my sleep?", "What usually happens
+  after I travel?", "Does working from home improve recovery?" — answered from the user's own
+  data with reasoning shown and uncertainty acknowledged.
+- **Dashboard** — Recovery, Sleep, Heart, Activity, Lifestyle and Work & Life sections.
+- **Correlation Explorer** — scatter + trend line + honest interpretation for any metric pair
+  (including calendar metrics), same-day or lagged.
 - **AI Coach** — morning briefing, weekly report, monthly review, ranked suggestions and
   personalized experiment ideas.
-- **Health Timeline** — a git-history-style browser over every logged day.
 - **Experiment Mode** — before/after analysis with effect sizes and p-values, explicitly
   distinguishing correlation from causation.
 - **Health Report** — a print-optimized report (save as PDF) with scores, movers, insights and
@@ -29,9 +40,21 @@ computed from your own data.
 
 ## Privacy model
 
-All parsing and analysis run **client-side in the browser**. Data is persisted only to
-`localStorage` on the user's device; there is no server upload, no account, and a one-click
-"delete everything." Uploaded health data is never used to train AI models.
+All parsing and analysis run **client-side in the browser** — including calendar files. Data is
+persisted only to `localStorage` on the user's device; there is no server upload, no account,
+and a one-click "delete everything." Uploaded health and calendar data is never used to train
+AI models.
+
+## Extending
+
+- **Data providers** live in `src/lib/parsers/` — implement `Provider`
+  (`detect(file) → confidence`, `parse(files) → DayRecord[]`) and register it in `index.ts`.
+- **Calendar** lives in `src/lib/calendar/` — `ics.ts` (RFC 5545 parsing + basic RRULE
+  expansion), `classify.ts` (keyword event classifier), `features.ts` (per-day feature
+  materialization). OAuth-based live sync can be layered on by feeding fetched events through
+  the same `CalendarEvent` shape.
+- **Hypotheses** live in `src/lib/insights.ts` — add a `CompareSpec` or `CorrSpec` and the
+  discovery engine, coach and report pick it up automatically.
 
 ## Tech stack
 

@@ -1,4 +1,4 @@
-import { DayRecord, Insight, MetricKey, METRICS } from "./types";
+import { CalendarEvent, DayRecord, Insight, MetricKey, METRICS } from "./types";
 import { compareGroups, fmt, mean, pearson, pearsonP, std } from "./stats";
 import { generateInsights } from "./insights";
 
@@ -23,6 +23,13 @@ function weekdayName(date: string) {
   return new Date(date + "T12:00:00").toLocaleDateString("en-US", { weekday: "long" });
 }
 
+function fmtHour(h: number): string {
+  const hour = ((h % 24) + 24) % 24;
+  const hh = Math.floor(hour);
+  const mm = Math.round((hour - hh) * 60);
+  return `${hh % 12 === 0 ? 12 : hh % 12}:${String(mm).padStart(2, "0")} ${hh >= 12 ? "PM" : "AM"}`;
+}
+
 function findDate(q: string, days: DayRecord[]): DayRecord | undefined {
   const iso = q.match(/\d{4}-\d{2}-\d{2}/);
   if (iso) return days.find((d) => d.date === iso[0]);
@@ -41,7 +48,7 @@ function findDate(q: string, days: DayRecord[]): DayRecord | undefined {
   return undefined;
 }
 
-function explainDay(d: DayRecord, days: DayRecord[]): ChatAnswer {
+function explainDay(d: DayRecord, days: DayRecord[], events?: CalendarEvent[]): ChatAnswer {
   const idx = days.findIndex((x) => x.date === d.date);
   const prev = idx > 0 ? days[idx - 1] : undefined;
   const hrvBase = mean(seriesOf(days, "hrv").map((s) => s.value));
@@ -70,6 +77,15 @@ function explainDay(d: DayRecord, days: DayRecord[]): ChatAnswer {
   if (d.sleepEfficiency !== undefined && d.sleepEfficiency < 85) factors.push(`Sleep efficiency was ${d.sleepEfficiency}% — fragmented sleep.`);
   if (prev?.lateCaffeine) factors.push(`Late caffeine was logged the day before.`);
 
+  // Calendar context, when connected
+  if (prev?.hasEveningEvent) {
+    const evening = events?.filter((e) => e.date === prev.date && e.endHour >= 20 && e.type === "social");
+    factors.push(`There was an evening event the night before${evening?.length ? ` (“${evening[0].title}”)` : ""} — late nights usually cost you sleep.`);
+  }
+  if ((d.meetingCount ?? 0) >= 5) factors.push(`A heavy calendar day: ${d.meetingCount} meetings${(d.backToBackMeetings ?? 0) >= 2 ? ", several back-to-back" : ""}.`);
+  if (d.firstMeetingHour !== undefined && d.firstMeetingHour < 9) factors.push(`Your first meeting was at ${fmtHour(d.firstMeetingHour)} — early starts compress your sleep window.`);
+  if (prev?.hasFlight || d.hasFlight) factors.push(`A flight was on the calendar around this date.`);
+
   const header = `**${weekdayName(d.date)} ${d.date}** — recovery ${d.recovery ?? "–"}%, HRV ${d.hrv ?? "–"} ms, RHR ${d.rhr ?? "–"} bpm, sleep ${d.sleepHours ?? "–"}h.`;
   const body = factors.length
     ? `Here's what stands out:\n\n${factors.map((f) => `- ${f}`).join("\n")}`
@@ -90,6 +106,9 @@ function driversOf(days: DayRecord[], target: MetricKey, lag: number): { label: 
     ["stress", lag],
     ["proteinG", 1],
     ["screenTimeMin", lag],
+    ["meetingCount", lag],
+    ["meetingMinutes", lag],
+    ["firstMeetingHour", lag],
   ];
   const out: { label: string; r: number; n: number; p: number }[] = [];
   for (const [k, l] of drivers) {
@@ -111,19 +130,154 @@ function driversOf(days: DayRecord[], target: MetricKey, lag: number): { label: 
   return out.sort((a, b) => Math.abs(b.r) - Math.abs(a.r));
 }
 
-export function answerQuestion(q: string, days: DayRecord[]): ChatAnswer {
+export function answerQuestion(q: string, days: DayRecord[], events: CalendarEvent[] = []): ChatAnswer {
   if (days.length < 7) {
     return { content: "I don't have enough data yet — upload at least a week of history (or load the demo dataset) and I can start finding patterns." };
   }
   const lower = q.toLowerCase();
+  const hasCalendar = days.some((d) => d.meetingCount !== undefined);
   const insights = generateInsights(days);
 
   // "Why was my recovery low on <day>?"
   if ((lower.includes("why") && (lower.includes("recovery") || lower.includes("hrv") || lower.includes("tired"))) || lower.match(/what happened on/)) {
     const day = findDate(q, days);
-    if (day) return explainDay(day, days);
+    if (day) return explainDay(day, days, events);
     const worst = [...days].filter((d) => d.recovery !== undefined).sort((a, b) => a.recovery! - b.recovery!)[0];
-    if (worst) return explainDay(worst, days);
+    if (worst) return explainDay(worst, days, events);
+  }
+
+  // "Do early meetings affect my sleep?"
+  if (lower.includes("meeting") && (lower.includes("sleep") || lower.includes("early") || lower.includes("affect") || lower.includes("recovery") || lower.includes("hrv"))) {
+    if (!hasCalendar)
+      return { content: "I don't see a connected calendar yet. Connect Google Calendar or Apple Calendar on the Upload page (export as .ics — parsed locally) and I can cross-reference meetings with your sleep, HRV and recovery." };
+    const early = days.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour < 9);
+    const late = days.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour >= 10);
+    const lines: string[] = [];
+    for (const k of ["sleepHours", "recovery", "hrv"] as MetricKey[]) {
+      const a = early.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
+      const b = late.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
+      const cmp = compareGroups(a, b);
+      if (!cmp) continue;
+      const meta = METRICS[k];
+      lines.push(
+        `- **${meta.label}**: ${fmt(cmp.meanA, meta.decimals)}${meta.unit} on early-meeting mornings vs ${fmt(cmp.meanB, meta.decimals)}${meta.unit} on late-start mornings (${cmp.diff > 0 ? "+" : ""}${fmt(cmp.diff, meta.decimals)}${meta.unit}${cmp.p < 0.05 ? ", solid" : ", noisy"})`
+      );
+    }
+    if (!lines.length)
+      return { content: "There aren't enough mornings with both a first-meeting time and sleep data to compare yet." };
+    const heavy = days.filter((d) => (d.meetingCount ?? 0) >= 5);
+    const light = days.filter((d) => d.workday && (d.meetingCount ?? 9) <= 2);
+    const hCmp = compareGroups(
+      heavy.map((d) => d.hrv).filter((v): v is number => v !== undefined),
+      light.map((d) => d.hrv).filter((v): v is number => v !== undefined)
+    );
+    return {
+      content: `Comparing mornings whose first meeting starts **before 9 AM** (${early.length} days) with mornings starting **after 10 AM** (${late.length} days):\n\n${lines.join("\n")}\n\n${hCmp ? `Meeting *volume* matters too: HRV averages ${fmt(hCmp.meanA, 0)} ms on 5+ meeting days vs ${fmt(hCmp.meanB, 0)} ms on light days.\n\n` : ""}The likely mechanism is simple — the early meeting moves your alarm, and the lost sleep shows up in the morning's numbers. That's a correlation in your data, not a controlled experiment, but it's consistent and actionable: protect late starts after short nights.`,
+      chart: {
+        kind: "compare",
+        metric: "sleepHours",
+        groups: [
+          { label: "First meeting <9 AM", value: mean(early.map((d) => d.sleepHours!).filter(isFinite)), n: early.length },
+          { label: "First meeting 10 AM+", value: mean(late.map((d) => d.sleepHours!).filter(isFinite)), n: late.length },
+        ],
+      },
+    };
+  }
+
+  // "What usually happens after I travel?"
+  if (lower.includes("travel") || lower.includes("flight") || lower.includes("trip")) {
+    const travelIdx = days.map((d, i) => (d.travel || d.hasFlight ? i : -1)).filter((i) => i >= 0);
+    if (travelIdx.length < 3)
+      return { content: "I only see a couple of travel days in your data — not enough to describe a reliable pattern yet. Log travel (or connect a calendar with flights) and ask again." };
+    const lines: string[] = [];
+    for (const k of ["rhr", "hrv", "recovery", "sleepHours"] as MetricKey[]) {
+      const meta = METRICS[k];
+      const baseline = days.filter((_, i) => !travelIdx.some((t) => i >= t && i <= t + 2)).map((d) => val(d, k)).filter((v): v is number => v !== undefined);
+      const day0 = travelIdx.map((i) => val(days[i], k)).filter((v): v is number => v !== undefined);
+      const day1 = travelIdx.map((i) => days[i + 1] && val(days[i + 1], k)).filter((v): v is number => v !== undefined);
+      const day2 = travelIdx.map((i) => days[i + 2] && val(days[i + 2], k)).filter((v): v is number => v !== undefined);
+      if (baseline.length < 10 || day0.length < 3) continue;
+      const b = mean(baseline);
+      const fmtDelta = (xs: number[]) => (xs.length ? `${mean(xs) - b >= 0 ? "+" : ""}${fmt(mean(xs) - b, meta.decimals)}` : "–");
+      lines.push(`- **${meta.label}** (vs ${fmt(b, meta.decimals)}${meta.unit} baseline): ${fmtDelta(day0)} on travel day, ${fmtDelta(day1)} next day, ${fmtDelta(day2)} day two`);
+    }
+    return {
+      content: `Here's your typical travel signature, averaged over ${travelIdx.length} trips:\n\n${lines.join("\n")}\n\nThe pattern usually reads: elevated resting HR and suppressed HRV on the travel day, partial rebound the next day, and back to baseline around day two or three. Dehydration, disrupted sleep timing and in-flight alcohol are the usual levers if you want to shrink the dip.`,
+    };
+  }
+
+  // "When do I perform my best workouts?"
+  if ((lower.includes("best") || lower.includes("perform")) && (lower.includes("workout") || lower.includes("train"))) {
+    const names = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const byDow: number[][] = [[], [], [], [], [], [], []];
+    const byTime: Record<string, number[]> = { "Morning (<12)": [], "Afternoon (12–6)": [], "Evening (6+)": [] };
+    for (const d of days) {
+      for (const w of d.workouts ?? []) {
+        if (w.strain === undefined) continue;
+        byDow[new Date(d.date + "T12:00:00").getDay()].push(w.strain);
+        if (w.startHour !== undefined) {
+          const bucket = w.startHour < 12 ? "Morning (<12)" : w.startHour < 18 ? "Afternoon (12–6)" : "Evening (6+)";
+          byTime[bucket].push(w.strain);
+        }
+      }
+    }
+    const dowStats = byDow.map((xs, i) => ({ name: names[i], avg: xs.length >= 4 ? mean(xs) : NaN, n: xs.length })).filter((s) => isFinite(s.avg));
+    if (!dowStats.length) return { content: "I need more labeled workouts to answer that — upload workout history and ask again." };
+    const bestDow = [...dowStats].sort((a, b) => b.avg - a.avg)[0];
+    const timeStats = Object.entries(byTime).filter(([, xs]) => xs.length >= 4).map(([k, xs]) => ({ k, avg: mean(xs), n: xs.length }));
+    const bestTime = timeStats.length ? [...timeStats].sort((a, b) => b.avg - a.avg)[0] : null;
+    const greenIns = insights.find((i) => i.id === "green-streak");
+    return {
+      content: `Two patterns stand out in your ${byDow.flat().length} logged workouts:\n\n- **Day of week:** ${bestDow.name} is your strongest (avg workout strain ${fmt(bestDow.avg, 1)} over ${bestDow.n} sessions)${dowStats.length > 2 ? `; your softest is ${[...dowStats].sort((a, b) => a.avg - b.avg)[0].name}` : ""}.\n${bestTime ? `- **Time of day:** ${bestTime.k} sessions run hardest (avg ${fmt(bestTime.avg, 1)} across ${bestTime.n}).` : ""}\n${greenIns ? `- **Readiness:** ${greenIns.headline}` : ""}\n\nStrain here is a proxy for output, not quality — but it's the most consistent performance signal in wearable data. Schedule your priority sessions where your history says you show up strongest.`,
+      chart: {
+        kind: "compare",
+        metric: "strain",
+        groups: dowStats.map((s) => ({ label: s.name.slice(0, 3), value: s.avg, n: s.n })),
+      },
+    };
+  }
+
+  // "Does working from home improve recovery?"
+  if (lower.includes("work from home") || lower.includes("working from home") || lower.includes("wfh") || lower.includes("office")) {
+    if (!hasCalendar)
+      return { content: "I can't tell office days from home days without your calendar. Connect it on the Upload page (.ics export, parsed locally) and I'll compare recovery, HRV and sleep across the two." };
+    const wfh = days.filter((d) => d.workday && d.officeDay === false);
+    const office = days.filter((d) => d.workday && d.officeDay === true);
+    if (wfh.length < 5 || office.length < 5)
+      return { content: `I can see ${wfh.length} home days and ${office.length} office days with meeting locations — not enough of both to compare fairly yet.` };
+    const lines: string[] = [];
+    for (const k of ["recovery", "hrv", "sleepHours", "stress"] as MetricKey[]) {
+      const a = wfh.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
+      const b = office.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
+      const cmp = compareGroups(a, b);
+      if (!cmp) continue;
+      const meta = METRICS[k];
+      lines.push(`- **${meta.label}**: ${fmt(cmp.meanA, meta.decimals)}${meta.unit} at home vs ${fmt(cmp.meanB, meta.decimals)}${meta.unit} in office (${cmp.diff > 0 ? "+" : ""}${fmt(cmp.diff, meta.decimals)}${meta.unit}${cmp.p < 0.05 ? "" : ", within noise"})`);
+    }
+    return {
+      content: `Comparing ${wfh.length} work-from-home days against ${office.length} office days (classified from meeting locations):\n\n${lines.join("\n")}\n\nOne caution: office days may also be your heavier-meeting or earlier-alarm days, so the location itself may not be the cause. If it matters, match bedtimes across both for two weeks and re-ask.`,
+      chart: {
+        kind: "compare",
+        metric: "recovery",
+        groups: [
+          { label: "WFH days", value: mean(wfh.map((d) => d.recovery!).filter(isFinite)), n: wfh.length },
+          { label: "Office days", value: mean(office.map((d) => d.recovery!).filter(isFinite)), n: office.length },
+        ],
+      },
+    };
+  }
+
+  // "What habits are most associated with higher HRV?"
+  if ((lower.includes("habit") || lower.includes("associated") || lower.includes("correlate")) && lower.includes("hrv")) {
+    const drivers = driversOf(days, "hrv", 0);
+    if (!drivers.length) return { content: "No lifestyle or calendar variable shows a meaningful relationship with your HRV yet — more logged days will sharpen this." };
+    const positive = drivers.filter((d) => d.r > 0).slice(0, 4);
+    const negative = drivers.filter((d) => d.r < 0).slice(0, 4);
+    const fmtDriver = (d: { label: string; r: number; p: number; n: number }) =>
+      `- **${d.label}** — r = ${fmt(d.r, 2)} over ${d.n} days${d.p < 0.05 ? "" : " (weak)"}`;
+    return {
+      content: `Ranked associations with your HRV, across health${hasCalendar ? " and calendar" : ""} data:\n\n**Linked to higher HRV:**\n${positive.map(fmtDriver).join("\n") || "- nothing clear yet"}\n\n**Linked to lower HRV:**\n${negative.map(fmtDriver).join("\n") || "- nothing clear yet"}\n\nThese are correlations — some arrows run backward (feeling good may cause the habit, not vice versa). The top negative item is still the best candidate for a two-week experiment.`,
+    };
   }
 
   // "When do I get my best sleep?"
@@ -302,11 +456,11 @@ export function answerQuestion(q: string, days: DayRecord[]): ChatAnswer {
 
 export const SUGGESTED_QUESTIONS = [
   "Why was my recovery low last Tuesday?",
-  "When do I get my best sleep?",
-  "What hurts my HRV the most?",
+  "Do early meetings affect my sleep?",
+  "What usually happens after I travel?",
+  "When do I perform my best workouts?",
+  "Does working from home improve recovery?",
+  "What habits are most associated with higher HRV?",
   "How much does alcohol affect me?",
-  "Do I recover better after cardio or lifting?",
   "What changed this month?",
-  "How often do I overtrain?",
-  "Why has my resting heart rate increased?",
 ];

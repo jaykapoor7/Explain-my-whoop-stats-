@@ -2,8 +2,15 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { ChatMessage, DatasetMeta, DayRecord, Experiment } from "./types";
+import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment } from "./types";
 import { generateDemoData } from "./demo-data";
+import { generateDemoCalendar } from "./calendar/demo-calendar";
+
+export interface CalendarMeta {
+  source: string; // "Google Calendar", "Apple Calendar", "Demo calendar", ...
+  fileNames: string[];
+  importedAt: string;
+}
 
 /**
  * All health data lives client-side (localStorage) — processing happens in
@@ -13,12 +20,16 @@ import { generateDemoData } from "./demo-data";
 interface AppState {
   days: DayRecord[];
   meta: DatasetMeta | null;
+  calendarEvents: CalendarEvent[];
+  calendarMeta: CalendarMeta | null;
   experiments: Experiment[];
   chat: ChatMessage[];
   hydrated: boolean;
 
   loadDemo: () => void;
   setData: (days: DayRecord[], meta: DatasetMeta) => void;
+  setCalendar: (events: CalendarEvent[], meta: CalendarMeta) => void;
+  clearCalendar: () => void;
   clearAll: () => void;
   addExperiment: (exp: Experiment) => void;
   removeExperiment: (id: string) => void;
@@ -32,21 +43,34 @@ export const useApp = create<AppState>()(
     (set) => ({
       days: [],
       meta: null,
+      calendarEvents: [],
+      calendarMeta: null,
       experiments: [],
       chat: [],
       hydrated: false,
 
-      loadDemo: () =>
+      loadDemo: () => {
+        const days = generateDemoData();
         set({
-          days: generateDemoData(),
+          days,
           meta: {
             source: "Demo dataset",
             fileNames: ["demo-6-months.generated"],
             importedAt: new Date().toISOString(),
           },
-        }),
+          calendarEvents: generateDemoCalendar(days),
+          calendarMeta: {
+            source: "Demo calendar",
+            fileNames: ["work-life.generated.ics"],
+            importedAt: new Date().toISOString(),
+          },
+        });
+      },
       setData: (days, meta) => set({ days, meta }),
-      clearAll: () => set({ days: [], meta: null, experiments: [], chat: [] }),
+      setCalendar: (calendarEvents, calendarMeta) => set({ calendarEvents, calendarMeta }),
+      clearCalendar: () => set({ calendarEvents: [], calendarMeta: null }),
+      clearAll: () =>
+        set({ days: [], meta: null, calendarEvents: [], calendarMeta: null, experiments: [], chat: [] }),
       addExperiment: (exp) => set((s) => ({ experiments: [...s.experiments, exp] })),
       removeExperiment: (id) => set((s) => ({ experiments: s.experiments.filter((e) => e.id !== id) })),
       addChatMessage: (msg) => set((s) => ({ chat: [...s.chat, msg] })),
@@ -56,7 +80,14 @@ export const useApp = create<AppState>()(
     {
       name: "recovery-intelligence",
       storage: createJSONStorage(() => localStorage),
-      partialize: (s) => ({ days: s.days, meta: s.meta, experiments: s.experiments, chat: s.chat }),
+      partialize: (s) => ({
+        days: s.days,
+        meta: s.meta,
+        calendarEvents: s.calendarEvents,
+        calendarMeta: s.calendarMeta,
+        experiments: s.experiments,
+        chat: s.chat,
+      }),
       onRehydrateStorage: () => (state) => state?.setHydrated(),
     }
   )

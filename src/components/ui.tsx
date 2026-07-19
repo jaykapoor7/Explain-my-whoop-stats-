@@ -1,9 +1,9 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
+import { motion, useInView, useSpring } from "framer-motion";
 import Link from "next/link";
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useRef } from "react";
 
 /* Minimal shadcn-style primitives, tuned for the dark-first aesthetic. */
 
@@ -22,19 +22,21 @@ export function CardTitle({ className, children }: { className?: string; childre
 export function SectionHeading({ title, subtitle, id }: { title: string; subtitle?: string; id?: string }) {
   return (
     <div id={id} className="mb-4 mt-10 scroll-mt-24 first:mt-0">
-      <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-sm text-base-400">{subtitle}</p>}
+      <div className="flex items-center gap-2.5">
+        <span className="h-5 w-1 rounded-full bg-gradient-to-b from-vivid-violet via-vivid-cyan to-vivid-pink" />
+        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+      </div>
+      {subtitle && <p className="ml-[14px] mt-0.5 text-sm text-base-400">{subtitle}</p>}
     </div>
   );
 }
 
 const buttonStyles = {
-  primary:
-    "bg-white text-base-950 hover:bg-base-100 shadow-[0_1px_0_rgba(255,255,255,0.3)_inset]",
+  primary: "btn-gradient text-white shadow-glow",
   accent: "bg-accent text-white hover:bg-accent-soft shadow-glow",
-  ghost: "bg-transparent text-base-200 hover:bg-white/[0.06] border border-white/10",
-  subtle: "bg-white/[0.06] text-base-100 hover:bg-white/[0.1]",
-  danger: "bg-status-critical/15 text-[#f28b8b] hover:bg-status-critical/25 border border-status-critical/30",
+  ghost: "bg-transparent text-base-200 hover:bg-white/[0.08] border border-white/15",
+  subtle: "bg-white/[0.08] text-base-100 hover:bg-white/[0.12]",
+  danger: "bg-status-critical/15 text-[#ffa2b0] hover:bg-status-critical/25 border border-status-critical/30",
 } as const;
 
 export function Button({
@@ -104,15 +106,49 @@ export function Badge({
   children: ReactNode;
 }) {
   const tones = {
-    neutral: "bg-white/[0.07] text-base-200",
-    good: "bg-status-good/15 text-[#5ecb5e]",
-    warning: "bg-status-warning/15 text-[#f7c95c]",
-    critical: "bg-status-critical/15 text-[#f28b8b]",
-    accent: "bg-accent/15 text-accent-soft",
+    neutral: "bg-white/[0.09] text-base-200",
+    good: "bg-status-good/15 text-[#6ee7b7]",
+    warning: "bg-status-warning/15 text-[#fcd34d]",
+    critical: "bg-status-critical/15 text-[#ffa2b0]",
+    accent: "bg-accent/20 text-accent-soft",
   };
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide", tones[tone], className)}>
       {children}
+    </span>
+  );
+}
+
+/** Animated number that springs from 0 when scrolled into view. Handles "1,234"-style strings. */
+export function CountUp({ value, className }: { value: string; className?: string }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: "-30px" });
+  const numeric = parseFloat(value.replace(/,/g, ""));
+  const isNumeric = isFinite(numeric) && /^[\d,.\-]+$/.test(value.trim());
+  const decimals = isNumeric && value.includes(".") ? value.split(".")[1].length : 0;
+  const useGrouping = value.includes(",");
+  const spring = useSpring(0, { stiffness: 65, damping: 18 });
+
+  useEffect(() => {
+    if (inView && isNumeric) spring.set(numeric);
+  }, [inView, isNumeric, numeric, spring]);
+
+  useEffect(() => {
+    if (!isNumeric) return;
+    return spring.on("change", (v) => {
+      if (ref.current)
+        ref.current.textContent = v.toLocaleString("en-US", {
+          minimumFractionDigits: decimals,
+          maximumFractionDigits: decimals,
+          useGrouping,
+        });
+    });
+  }, [spring, decimals, isNumeric, useGrouping]);
+
+  if (!isNumeric) return <span className={className}>{value}</span>;
+  return (
+    <span ref={ref} className={cn("tabular", className)}>
+      0
     </span>
   );
 }
@@ -125,6 +161,7 @@ export function StatTile({
   deltaGood,
   sub,
   className,
+  accent = "#7c6bff",
 }: {
   label: string;
   value: string;
@@ -133,19 +170,24 @@ export function StatTile({
   deltaGood?: boolean | null;
   sub?: string;
   className?: string;
+  accent?: string;
 }) {
   return (
-    <Card className={cn("flex flex-col gap-1", className)}>
+    <Card className={cn("card-hover relative flex flex-col gap-1 overflow-hidden", className)}>
+      <span
+        className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl"
+        style={{ background: accent }}
+      />
       <span className="text-xs font-medium uppercase tracking-wider text-base-400">{label}</span>
       <div className="flex items-baseline gap-1.5">
-        <span className="text-3xl font-semibold tracking-tight">{value}</span>
+        <CountUp value={value} className="text-3xl font-semibold tracking-tight" />
         {unit && <span className="text-sm text-base-400">{unit}</span>}
         {delta && (
           <span
             className={cn(
               "ml-auto text-xs font-medium tabular",
-              deltaGood === true && "text-[#5ecb5e]",
-              deltaGood === false && "text-[#f28b8b]",
+              deltaGood === true && "text-[#6ee7b7]",
+              deltaGood === false && "text-[#ffa2b0]",
               deltaGood == null && "text-base-400"
             )}
           >
@@ -155,6 +197,61 @@ export function StatTile({
       </div>
       {sub && <span className="text-xs text-base-400">{sub}</span>}
     </Card>
+  );
+}
+
+/** Animated circular gauge with a vivid gradient stroke. */
+export function RingGauge({
+  value,
+  max = 100,
+  size = 132,
+  label,
+  display,
+  color,
+}: {
+  value: number;
+  max?: number;
+  size?: number;
+  label?: string;
+  display?: string;
+  color?: string;
+}) {
+  const stroke = 10;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const frac = Math.max(0, Math.min(1, value / max));
+  const gradId = `ring-grad-${(color ?? "default").replace(/[^a-z0-9]/gi, "")}`;
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={color ?? "#7c6bff"} />
+            <stop offset="55%" stopColor={color ?? "#2dd4ee"} />
+            <stop offset="100%" stopColor={color ?? "#34d399"} />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={`url(#${gradId})`}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          whileInView={{ strokeDashoffset: c * (1 - frac) }}
+          viewport={{ once: true }}
+          transition={{ duration: 1.4, ease: [0.22, 0.61, 0.36, 1] }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <CountUp value={display ?? String(Math.round(value))} className="text-3xl font-bold tracking-tight" />
+        {label && <span className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-base-400">{label}</span>}
+      </div>
+    </div>
   );
 }
 
@@ -203,7 +300,13 @@ export function MiniMarkdown({ text, className }: { text: string; className?: st
 export function EmptyState({ title, body, cta }: { title: string; body: string; cta?: ReactNode }) {
   return (
     <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.05] text-2xl">📈</div>
+      <motion.div
+        animate={{ y: [0, -10, 0] }}
+        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
+        className="gradient-ring flex h-16 w-16 items-center justify-center rounded-2xl text-3xl shadow-glow"
+      >
+        📈
+      </motion.div>
       <div>
         <h2 className="text-lg font-semibold">{title}</h2>
         <p className="mt-1 max-w-sm text-sm text-base-400">{body}</p>

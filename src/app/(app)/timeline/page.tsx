@@ -3,11 +3,11 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { BedDouble, Dumbbell, HeartPulse, NotebookPen, Utensils, Zap } from "lucide-react";
-import { useApp } from "@/lib/store";
+import { BedDouble, CalendarDays, Dumbbell, HeartPulse, NotebookPen, Utensils, Zap } from "lucide-react";
+import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
 import { Badge, Card } from "@/components/ui";
-import { DayRecord } from "@/lib/types";
+import { CalendarEvent, DayRecord } from "@/lib/types";
 import { fmt } from "@/lib/stats";
 import { cn, formatDateLong, hourLabel, recoveryColor, recoveryLabel } from "@/lib/utils";
 
@@ -41,7 +41,44 @@ function Row({ icon: Icon, label, children }: { icon: React.ElementType; label: 
   );
 }
 
-function DayDetail({ day }: { day: DayRecord }) {
+const EVENT_COLORS: Record<string, string> = {
+  meeting: "#fbbf24",
+  social: "#f472b6",
+  travel: "#4d9fff",
+  workout: "#34d399",
+  study: "#a78bfa",
+  personal: "#8b91c7",
+  vacation: "#7cc4ff",
+};
+
+function Schedule({ events }: { events: CalendarEvent[] }) {
+  const timed = events.filter((e) => !e.allDay).sort((a, b) => a.startHour - b.startHour);
+  const allDay = events.filter((e) => e.allDay);
+  return (
+    <div className="space-y-1.5">
+      {allDay.map((e) => (
+        <div key={e.id} className="flex items-center gap-2 text-sm">
+          <span className="h-2 w-2 rounded-full" style={{ background: EVENT_COLORS[e.type] }} />
+          <span className="text-base-100">{e.title}</span>
+          <span className="text-xs text-base-400">all day</span>
+        </div>
+      ))}
+      {timed.map((e) => (
+        <div key={e.id} className="flex items-center gap-2.5 text-sm">
+          <span className="w-[4.6rem] shrink-0 text-xs tabular text-base-400">{hourLabel(e.startHour)}</span>
+          <span className="h-4 w-1 shrink-0 rounded-full" style={{ background: EVENT_COLORS[e.type] }} />
+          <span className="truncate text-base-100">{e.title}</span>
+          <span className="shrink-0 text-xs text-base-400">
+            {e.durationMin >= 60 ? `${Math.round((e.durationMin / 60) * 10) / 10}h` : `${e.durationMin}m`}
+          </span>
+          {e.location && <span className="hidden truncate text-xs text-base-400 sm:inline">· {e.location}</span>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function DayDetail({ day, events }: { day: DayRecord; events: CalendarEvent[] }) {
   const tone = day.recovery === undefined ? "neutral" : day.recovery >= 67 ? "good" : day.recovery >= 34 ? "warning" : "critical";
   return (
     <motion.div
@@ -74,6 +111,18 @@ function DayDetail({ day }: { day: DayRecord }) {
         </div>
 
         <div className="mt-4">
+          {events.length > 0 && (
+            <Row icon={CalendarDays} label={`Schedule · ${events.length} event${events.length > 1 ? "s" : ""}`}>
+              <Schedule events={events} />
+              {(day.meetingCount ?? 0) > 0 && (
+                <div className="mt-1.5 text-xs text-base-400">
+                  {day.meetingCount} meeting{day.meetingCount! > 1 ? "s" : ""} · {day.meetingMinutes} min
+                  {(day.backToBackMeetings ?? 0) >= 1 ? ` · ${day.backToBackMeetings} back-to-back` : ""}
+                  {day.officeDay === true ? " · in office" : day.officeDay === false ? " · from home" : ""}
+                </div>
+              )}
+            </Row>
+          )}
           <Row icon={BedDouble} label="Sleep">
             {day.sleepHours !== undefined ? (
               <>
@@ -150,7 +199,7 @@ function DayDetail({ day }: { day: DayRecord }) {
 }
 
 function TimelineBody() {
-  const days = useApp((s) => s.days);
+  const { days, eventsByDate } = useHealthData();
   const params = useSearchParams();
   const requested = params.get("date");
   const [selected, setSelected] = useState<string>(requested ?? days[days.length - 1]?.date);
@@ -182,9 +231,9 @@ function TimelineBody() {
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold tracking-tight">Health Timeline</h1>
+      <h1 className="text-2xl font-semibold tracking-tight">Timeline</h1>
       <p className="mt-1 text-sm text-base-400">
-        Every day, like a commit history of your body. Color = recovery. Click any square.
+        Your calendar and your body, side by side — every day like a commit history. Color = recovery. Click any square.
       </p>
 
       <div ref={scrollerRef} className="mt-6 overflow-x-auto pb-3">
@@ -228,7 +277,7 @@ function TimelineBody() {
 
       <div className="mt-5">
         <AnimatePresence mode="wait">
-          <DayDetail day={selectedDay} />
+          <DayDetail day={selectedDay} events={eventsByDate.get(selectedDay.date)?.all ?? []} />
         </AnimatePresence>
       </div>
     </div>

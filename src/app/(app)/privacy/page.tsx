@@ -8,7 +8,7 @@ const PRINCIPLES = [
   {
     icon: Cpu,
     title: "Local processing",
-    body: "Your exports are parsed and analyzed entirely in your browser. The statistics engine, insight generation and chat answers all run on-device — there is no server-side processing of your health data.",
+    body: "Your health exports and calendar files are parsed and analyzed entirely in your browser. The statistics engine, insight generation and chat answers all run on-device — there is no server-side processing of your health or schedule data.",
   },
   {
     icon: Database,
@@ -35,7 +35,7 @@ export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <FadeIn>
-        <span className="inline-flex items-center gap-2 rounded-full border border-status-good/25 bg-status-good/[0.07] px-4 py-1.5 text-xs font-medium text-[#5ecb5e]">
+        <span className="inline-flex items-center gap-2 rounded-full border border-status-good/25 bg-status-good/[0.07] px-4 py-1.5 text-xs font-medium text-[#6ee7b7]">
           <ShieldCheck size={13} /> Privacy is the product
         </span>
         <h1 className="mt-4 text-3xl font-semibold tracking-tight">Your health data stays yours.</h1>
@@ -49,7 +49,7 @@ export default function PrivacyPage() {
         {PRINCIPLES.map((p, i) => (
           <FadeIn key={p.title} delay={i * 0.06}>
             <Card className="h-full p-6">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-status-good/12 text-[#5ecb5e]">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-status-good/12 text-[#6ee7b7]">
                 <p.icon size={18} strokeWidth={1.8} />
               </span>
               <h3 className="mt-4 font-semibold">{p.title}</h3>

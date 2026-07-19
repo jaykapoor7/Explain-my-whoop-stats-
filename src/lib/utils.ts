@@ -29,10 +29,10 @@ export function hourLabel(h: number | undefined): string {
 }
 
 export function recoveryColor(recovery: number | undefined): string {
-  if (recovery === undefined) return "#898781";
-  if (recovery >= 67) return "#0ca30c";
-  if (recovery >= 34) return "#fab219";
-  return "#d03b3b";
+  if (recovery === undefined) return "#8b91c7";
+  if (recovery >= 67) return "#34d399";
+  if (recovery >= 34) return "#fbbf24";
+  return "#fb7185";
 }
 
 export function recoveryLabel(recovery: number | undefined): string {
