@@ -6,6 +6,8 @@ import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CheckCircle2,
+  Copy,
+  KeyRound,
   Link2,
   Loader2,
   Lock,
@@ -37,7 +39,7 @@ function timeAgo(iso: string): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-function ProviderLogo({ p }: { p: ProviderInfo }) {
+function ProviderLogo({ p, size = 11 }: { p: ProviderInfo; size?: number }) {
   return (
     <span
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-sm font-bold text-white shadow-lg"
@@ -45,6 +47,146 @@ function ProviderLogo({ p }: { p: ProviderInfo }) {
     >
       {p.name.slice(0, 2)}
     </span>
+  );
+}
+
+/** Inline connect form: PAT (easiest) and/or in-app OAuth credentials. */
+function ConnectPanel({
+  p,
+  origin,
+  onPatConnected,
+  onClose,
+}: {
+  p: ProviderInfo;
+  origin: string;
+  onPatConnected: () => void;
+  onClose: () => void;
+}) {
+  const [mode, setMode] = useState<"pat" | "oauth">(p.supportsPat ? "pat" : "oauth");
+  const [pat, setPat] = useState("");
+  const [clientId, setClientId] = useState("");
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const redirect = `${origin}/api/oauth/${p.id}/callback`;
+
+  const savePat = async () => {
+    setBusy(true);
+    setErr("");
+    const res = await fetch("/api/connections/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: p.id, accessToken: pat.trim() }),
+    }).catch(() => null);
+    setBusy(false);
+    if (!res || !res.ok) return setErr("Couldn't save that token. Double-check it and try again.");
+    onPatConnected();
+  };
+
+  const saveOauth = async () => {
+    setBusy(true);
+    setErr("");
+    const res = await fetch("/api/connections/credentials", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ provider: p.id, clientId: clientId.trim(), clientSecret: secret.trim() || undefined }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setBusy(false);
+      return setErr("Couldn't save credentials. Check the fields and try again.");
+    }
+    // Credentials saved server-side — kick off the OAuth redirect.
+    window.location.href = `/api/oauth/${p.id}/start`;
+  };
+
+  const field =
+    "h-10 w-full rounded-lg border border-white/12 bg-base-900 px-3 text-sm outline-none focus:border-accent/60";
+
+  return (
+    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
+      <Card className="gradient-ring mb-4 p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="flex items-center gap-2 font-semibold">
+            <ProviderLogo p={p} /> Connect {p.name}
+          </h3>
+          <button onClick={onClose} className="text-base-400 hover:text-white">
+            <X size={16} />
+          </button>
+        </div>
+
+        {p.supportsPat && (
+          <div className="mt-4 flex gap-1.5">
+            <button
+              onClick={() => setMode("pat")}
+              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", mode === "pat" ? "bg-white text-base-950" : "border border-white/12 text-base-300 hover:bg-white/[0.08]")}
+            >
+              Personal token · easiest
+            </button>
+            <button
+              onClick={() => setMode("oauth")}
+              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", mode === "oauth" ? "bg-white text-base-950" : "border border-white/12 text-base-300 hover:bg-white/[0.08]")}
+            >
+              OAuth app
+            </button>
+          </div>
+        )}
+
+        {mode === "pat" && p.supportsPat ? (
+          <div className="mt-4">
+            <p className="text-sm text-base-300">
+              Generate a token at{" "}
+              <a href={p.patUrl} target="_blank" rel="noreferrer" className="text-accent-soft hover:underline">
+                {p.patUrl?.replace("https://", "")}
+              </a>{" "}
+              and paste it below. That&apos;s it — no app, no Vercel.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                value={pat}
+                onChange={(e) => setPat(e.target.value)}
+                placeholder="Paste your Personal Access Token"
+                className={field}
+                type="password"
+              />
+              <Button onClick={savePat} disabled={busy || !pat.trim()} className="shrink-0">
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <KeyRound size={14} />} Connect
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-4">
+            <p className="text-sm text-base-300">{p.credHint}</p>
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs">
+              <span className="shrink-0 text-base-400">Redirect URL:</span>
+              <code className="min-w-0 flex-1 truncate text-base-200">{redirect}</code>
+              <button
+                onClick={() => navigator.clipboard?.writeText(redirect)}
+                className="shrink-0 text-base-400 hover:text-white"
+                title="Copy"
+              >
+                <Copy size={13} />
+              </button>
+            </div>
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              <input value={clientId} onChange={(e) => setClientId(e.target.value)} placeholder="Client ID" className={field} />
+              {p.secretRequired && (
+                <input value={secret} onChange={(e) => setSecret(e.target.value)} placeholder="Client Secret" className={field} type="password" />
+              )}
+            </div>
+            <div className="mt-3 flex items-center justify-between">
+              <a href={p.devConsole} target="_blank" rel="noreferrer" className="text-xs text-accent-soft hover:underline">
+                Open {p.name} developer console →
+              </a>
+              <Button onClick={saveOauth} disabled={busy || !clientId.trim() || (p.secretRequired && !secret.trim())}>
+                {busy ? <Loader2 size={14} className="animate-spin" /> : <Link2 size={14} />} Save &amp; connect
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {err && <p className="mt-3 flex items-center gap-1.5 text-xs text-[#ffa2b0]"><TriangleAlert size={13} /> {err}</p>}
+      </Card>
+    </motion.div>
   );
 }
 
@@ -70,27 +212,19 @@ function OAuthCard({
   dayCount?: number;
 }) {
   const connected = status?.connected;
-  const configured = status?.configured;
   const busy = state === "connecting" || state === "syncing";
 
   return (
     <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 260, damping: 20 }}>
       <Card className="relative flex h-full flex-col overflow-hidden p-5">
-        <span
-          className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-20 blur-3xl"
-          style={{ background: p.color }}
-        />
+        <span className="pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full opacity-20 blur-3xl" style={{ background: p.color }} />
         <div className="flex items-start gap-3">
           <ProviderLogo p={p} />
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">{p.name}</h3>
               {connected ? (
-                <Badge tone="good">
-                  <CheckCircle2 size={11} /> Connected
-                </Badge>
-              ) : configured === false ? (
-                <Badge tone="warning">Needs setup</Badge>
+                <Badge tone="good"><CheckCircle2 size={11} /> Connected</Badge>
               ) : (
                 <Badge tone="neutral">Not connected</Badge>
               )}
@@ -103,13 +237,7 @@ function OAuthCard({
           {connected ? (
             <span>
               Auto-syncs when you open the app.
-              {lastSync && (
-                <>
-                  {" "}
-                  Last sync <span className="text-base-200">{timeAgo(lastSync)}</span>
-                  {dayCount ? ` · ${dayCount} days` : ""}.
-                </>
-              )}
+              {lastSync && <> Last sync <span className="text-base-200">{timeAgo(lastSync)}</span>{dayCount ? ` · ${dayCount} days` : ""}.</>}
             </span>
           ) : (
             <span>{p.note}</span>
@@ -118,14 +246,9 @@ function OAuthCard({
 
         <AnimatePresence>
           {busy && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: "auto" }}
-              exit={{ opacity: 0, height: 0 }}
-              className="mt-3 flex items-center gap-2 text-xs text-accent-soft"
-            >
+            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="mt-3 flex items-center gap-2 text-xs text-accent-soft">
               <Loader2 size={13} className="animate-spin" />
-              {state === "connecting" ? "Redirecting to authorize…" : "Syncing your data…"}
+              {state === "connecting" ? "Opening authorization…" : "Syncing your data…"}
             </motion.div>
           )}
           {state === "done" && (
@@ -152,58 +275,12 @@ function OAuthCard({
             </>
           ) : (
             <Button size="sm" onClick={onConnect} disabled={busy}>
-              <Link2 size={13} /> {configured === false ? "Set up & connect" : `Connect ${p.name}`}
+              <Plug size={13} /> Connect {p.name}
             </Button>
-          )}
-          {p.scopes && !connected && (
-            <span className="ml-auto hidden text-[10px] text-base-400 sm:block">scopes: {p.scopes}</span>
           )}
         </div>
       </Card>
     </motion.div>
-  );
-}
-
-function SetupNotice({ provider, onClose }: { provider: ProviderInfo; onClose: () => void }) {
-  const envPrefix = provider.id.toUpperCase();
-  return (
-    <FadeIn>
-      <Card className="gradient-ring relative mb-4 p-5">
-        <button onClick={onClose} className="absolute right-4 top-4 text-base-400 hover:text-white">
-          <X size={16} />
-        </button>
-        <h3 className="flex items-center gap-2 font-semibold">
-          <Plug size={16} className="text-accent-soft" /> Finish setting up {provider.name}
-        </h3>
-        <p className="mt-2 text-sm text-base-300">
-          {provider.name} live-sync needs a free developer app so the connection can run on your own deployment. One-time setup:
-        </p>
-        <ol className="mt-3 space-y-1.5 text-sm text-base-200">
-          <li>
-            1. Create an app at{" "}
-            <a href={provider.devConsole} target="_blank" rel="noreferrer" className="text-accent-soft hover:underline">
-              {provider.devConsole?.replace("https://", "")}
-            </a>
-            .
-          </li>
-          <li>
-            2. Set its redirect / callback URL to{" "}
-            <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs">
-              {typeof window !== "undefined" ? window.location.origin : "https://your-app"}/api/oauth/{provider.id}/callback
-            </code>
-            .
-          </li>
-          <li>
-            3. In Vercel → Project → Settings → Environment Variables, add{" "}
-            <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs">{envPrefix}_CLIENT_ID</code> and{" "}
-            <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs">{envPrefix}_CLIENT_SECRET</code>, then redeploy.
-          </li>
-        </ol>
-        <p className="mt-3 text-xs text-base-400">
-          Prefer to explore first? Use <span className="text-base-200">Try a simulated sync</span> below — no setup needed.
-        </p>
-      </Card>
-    </FadeIn>
   );
 }
 
@@ -212,15 +289,14 @@ function ConnectionsBody() {
   const params = useSearchParams();
   const mergeSynced = useApp((s) => s.mergeSynced);
   const syncedSources = useApp((s) => s.syncedSources);
-  const hydrated = useApp((s) => s.hydrated);
 
   const [statuses, setStatuses] = useState<ConnectionStatus[]>([]);
   const [states, setStates] = useState<Record<string, { state: SyncState; message?: string }>>({});
-  const [setupFor, setSetupFor] = useState<string | null>(null);
+  const [formProvider, setFormProvider] = useState<string | null>(null);
   const [demoState, setDemoState] = useState<SyncState>("idle");
+  const [origin, setOrigin] = useState("");
 
-  const setState = (id: string, state: SyncState, message?: string) =>
-    setStates((s) => ({ ...s, [id]: { state, message } }));
+  const setState = (id: string, state: SyncState, message?: string) => setStates((s) => ({ ...s, [id]: { state, message } }));
 
   const loadStatus = useCallback(async () => {
     try {
@@ -228,8 +304,7 @@ function ConnectionsBody() {
       const json = await res.json();
       setStatuses(json.providers ?? []);
     } catch {
-      // API unavailable (e.g. static preview) — treat all as unconfigured.
-      setStatuses(OAUTH_PROVIDERS.map((p) => ({ id: p.id, configured: false, connected: false })));
+      setStatuses(OAUTH_PROVIDERS.map((p) => ({ id: p.id, configured: false, hasClientId: false, connected: false })));
     }
   }, []);
 
@@ -254,19 +329,18 @@ function ConnectionsBody() {
     [mergeSynced]
   );
 
-  // Handle OAuth callback query params once on mount.
   useEffect(() => {
+    setOrigin(window.location.origin);
     loadStatus();
     const connected = params.get("connected");
     const setup = params.get("setup");
     const error = params.get("error");
-    if (connected) {
-      runSync(connected).then(loadStatus);
-    }
-    if (setup) setSetupFor(setup);
+    if (connected) runSync(connected).then(loadStatus);
+    if (setup) setFormProvider(setup);
     if (error) {
       const [prov, reason] = error.split(":");
       setState(prov, "error", reason === "denied" ? "Authorization was cancelled." : "Connection failed.");
+      setFormProvider(prov);
     }
     if (connected || setup || error) router.replace("/connections");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -274,43 +348,32 @@ function ConnectionsBody() {
 
   const connect = (id: string) => {
     const status = statuses.find((s) => s.id === id);
-    if (status && !status.configured) {
-      setSetupFor(id);
-      return;
+    // Already has credentials saved → straight to OAuth. Otherwise open the form.
+    if (status?.configured) {
+      setState(id, "connecting");
+      window.location.href = `/api/oauth/${id}/start`;
+    } else {
+      setFormProvider(formProvider === id ? null : id);
     }
-    setState(id, "connecting");
-    window.location.href = `/api/oauth/${id}/start`;
   };
 
   const disconnect = async (id: string) => {
-    await fetch(`/api/oauth/${id}/disconnect`, { method: "POST" }).catch(() => {});
+    await fetch(`/api/connections/credentials?provider=${id}`, { method: "DELETE" }).catch(() => {});
     setState(id, "idle");
     loadStatus();
   };
 
-  const runDemo = async () => {
-    setDemoState("connecting");
-    await new Promise((r) => setTimeout(r, 700));
-    setDemoState("syncing");
-    await new Promise((r) => setTimeout(r, 900));
-    const days = generateDemoData();
-    mergeSynced(days, "demo", "WHOOP (demo)");
-    setDemoState("done");
-  };
-
-  const syncedByProvider = useMemo(
-    () => Object.fromEntries(syncedSources.map((s) => [s.provider, s])),
-    [syncedSources]
-  );
+  const syncedByProvider = useMemo(() => Object.fromEntries(syncedSources.map((s) => [s.provider, s])), [syncedSources]);
+  const openProvider = OAUTH_PROVIDERS.find((p) => p.id === formProvider);
 
   return (
     <div>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Connections</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Connect a device</h1>
           <p className="mt-1 max-w-2xl text-sm text-base-400">
-            Connect a wearable account and your data syncs automatically — no exporting files. Tokens stay in a secure
-            server-side cookie; synced data lands only in this browser.
+            Link a wearable and your data syncs automatically. Paste a token or key right here — no environment
+            variables, no redeploys. Everything stays in a secure cookie on your side.
           </p>
         </div>
         <Link href="/upload" className="text-sm font-medium text-accent-soft hover:underline">
@@ -326,36 +389,49 @@ function ConnectionsBody() {
               <Sparkles size={18} />
             </span>
             <div>
-              <h3 className="font-semibold">Try a simulated live sync</h3>
+              <h3 className="font-semibold">Just want to look around?</h3>
               <p className="mt-0.5 text-sm text-base-400">
-                See the connect → sync → dashboard flow instantly with six months of realistic demo data. No account needed.
+                Load six months of realistic demo data instantly — no account, no setup.
               </p>
             </div>
           </div>
-          <Button onClick={runDemo} disabled={demoState === "connecting" || demoState === "syncing"} className="shrink-0">
-            {demoState === "connecting" && <><Loader2 size={14} className="animate-spin" /> Connecting…</>}
-            {demoState === "syncing" && <><Loader2 size={14} className="animate-spin" /> Syncing…</>}
-            {demoState === "done" && <><CheckCircle2 size={14} /> Synced — open dashboard</>}
-            {demoState === "idle" && <><Plug size={14} /> Run simulated sync</>}
+          <Button
+            onClick={async () => {
+              setDemoState("syncing");
+              await new Promise((r) => setTimeout(r, 700));
+              mergeSynced(generateDemoData(), "demo", "WHOOP (demo)");
+              setDemoState("done");
+            }}
+            disabled={demoState === "syncing"}
+            className="shrink-0"
+          >
+            {demoState === "syncing" && <><Loader2 size={14} className="animate-spin" /> Loading…</>}
+            {demoState === "done" && <><CheckCircle2 size={14} /> Loaded — open dashboard</>}
+            {demoState === "idle" && <><Plug size={14} /> Load demo data</>}
           </Button>
         </Card>
         {demoState === "done" && (
           <div className="mt-2 text-center text-sm text-base-400">
-            Demo data loaded.{" "}
-            <Link href="/dashboard" className="text-accent-soft hover:underline">
-              Go to your dashboard →
-            </Link>
+            <Link href="/dashboard" className="text-accent-soft hover:underline">Go to your dashboard →</Link>
           </div>
         )}
       </FadeIn>
 
-      <SectionHeading title="Auto-sync wearables" subtitle="OAuth connections — connect once, sync every visit" />
-      {setupFor && (
-        <SetupNotice
-          provider={OAUTH_PROVIDERS.find((p) => p.id === setupFor)!}
-          onClose={() => setSetupFor(null)}
-        />
-      )}
+      <SectionHeading title="Auto-sync wearables" subtitle="Connect once — syncs every visit" />
+      <AnimatePresence>
+        {openProvider && (
+          <ConnectPanel
+            key={openProvider.id}
+            p={openProvider}
+            origin={origin}
+            onPatConnected={() => {
+              setFormProvider(null);
+              runSync(openProvider.id).then(loadStatus);
+            }}
+            onClose={() => setFormProvider(null)}
+          />
+        )}
+      </AnimatePresence>
       <div className="grid gap-3 md:grid-cols-3">
         {OAUTH_PROVIDERS.map((p) => (
           <OAuthCard
@@ -385,10 +461,7 @@ function ConnectionsBody() {
               </div>
             </div>
             <p className="mt-3 flex-1 text-xs leading-relaxed text-base-400">{p.note}</p>
-            <Link
-              href="/upload"
-              className="mt-4 inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-white/15 px-3.5 text-xs font-medium text-base-200 transition hover:bg-white/[0.08]"
-            >
+            <Link href="/upload" className="mt-4 inline-flex h-8 w-fit items-center gap-1.5 rounded-full border border-white/15 px-3.5 text-xs font-medium text-base-200 transition hover:bg-white/[0.08]">
               <Upload size={12} /> Upload {p.name}
             </Link>
           </Card>
@@ -399,10 +472,10 @@ function ConnectionsBody() {
         <Card className="mt-8 flex items-start gap-4 border-status-good/15 bg-status-good/[0.04]">
           <Lock size={18} className="mt-0.5 shrink-0 text-[#6ee7b7]" />
           <p className="text-sm leading-relaxed text-base-300">
-            <span className="font-medium text-white">How connected sync stays private:</span> the OAuth token is held in a
-            secure, httpOnly cookie your browser never exposes to scripts. On each sync a serverless function fetches your
-            data, normalizes it, and returns it — it isn&apos;t stored on any server. The result is saved only in this
-            browser, exactly like uploaded files, and your data is never used to train AI models.
+            <span className="font-medium text-white">Where your keys live:</span> tokens and keys are stored in a secure,
+            httpOnly cookie your browser never exposes to scripts — not in env vars, not in a database. Each sync fetches
+            your data through a serverless function that returns it without storing it; the result is saved only in this
+            browser, and you can disconnect (which forgets the key) any time.
           </p>
         </Card>
       </FadeIn>

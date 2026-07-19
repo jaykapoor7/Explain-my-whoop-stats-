@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthConfig, isConfigured, redirectUri } from "@/lib/connections/server/config";
+import { oauthReady, redirectUri, resolvedConfig } from "@/lib/connections/server/config";
 import { buildAuthUrl, pkcePair, randomToken, STATE_COOKIE, VERIFIER_COOKIE } from "@/lib/connections/server/oauth";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest, { params }: { params: { provider: string } }) {
-  const config = getOAuthConfig(params.provider);
   const origin = new URL(req.url).origin;
-  if (!config) return NextResponse.json({ error: "unknown_provider" }, { status: 404 });
-  if (!isConfigured(params.provider)) {
-    // Not set up: bounce back with a flag the UI turns into setup instructions.
+  const config = resolvedConfig(params.provider, req);
+  if (!config || !oauthReady(params.provider, req)) {
+    // No credentials yet — bounce back so the in-app connect form opens.
     return NextResponse.redirect(new URL(`/connections?setup=${params.provider}`, origin));
   }
 

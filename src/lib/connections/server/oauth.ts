@@ -1,6 +1,6 @@
 import "server-only";
 import crypto from "crypto";
-import { OAuthConfig } from "./config";
+import { ResolvedConfig } from "./config";
 
 /** OAuth 2.0 helpers: PKCE, CSRF state, code exchange, refresh, token cookies. */
 
@@ -24,7 +24,7 @@ export function pkcePair(): { verifier: string; challenge: string } {
 }
 
 export function buildAuthUrl(
-  config: OAuthConfig,
+  config: ResolvedConfig,
   redirectUri: string,
   state: string,
   challenge?: string
@@ -43,14 +43,16 @@ export function buildAuthUrl(
   return `${config.authUrl}?${params.toString()}`;
 }
 
-async function tokenRequest(config: OAuthConfig, body: URLSearchParams): Promise<TokenSet> {
+async function tokenRequest(config: ResolvedConfig, body: URLSearchParams): Promise<TokenSet> {
   const headers: Record<string, string> = { "Content-Type": "application/x-www-form-urlencoded" };
-  if (config.tokenAuth === "basic") {
+  // Fitbit confidential clients use Basic auth; public PKCE clients (and
+  // WHOOP/Oura) pass credentials in the body.
+  if (config.id === "fitbit" && config.clientSecret) {
     headers.Authorization =
       "Basic " + Buffer.from(`${config.clientId}:${config.clientSecret}`).toString("base64");
   } else {
-    body.set("client_id", config.clientId!);
-    body.set("client_secret", config.clientSecret!);
+    body.set("client_id", config.clientId);
+    if (config.clientSecret) body.set("client_secret", config.clientSecret);
   }
   const res = await fetch(config.tokenUrl, { method: "POST", headers, body });
   if (!res.ok) {
@@ -70,7 +72,7 @@ async function tokenRequest(config: OAuthConfig, body: URLSearchParams): Promise
 }
 
 export function exchangeCode(
-  config: OAuthConfig,
+  config: ResolvedConfig,
   code: string,
   redirectUri: string,
   verifier?: string
@@ -84,7 +86,7 @@ export function exchangeCode(
   return tokenRequest(config, body);
 }
 
-export function refreshToken(config: OAuthConfig, refresh_token: string): Promise<TokenSet> {
+export function refreshToken(config: ResolvedConfig, refresh_token: string): Promise<TokenSet> {
   const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token });
   // Some providers require the scope be re-sent on refresh; harmless when ignored.
   if (config.id === "whoop") body.set("scope", "offline");

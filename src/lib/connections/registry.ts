@@ -19,28 +19,31 @@ export interface ProviderInfo {
   devConsole?: string;
   /** OAuth scopes requested (for transparency in the UI) */
   scopes?: string;
+  // ---- in-app connect hints ----
+  /** OAuth needs a client secret (else it's a public / PKCE client). */
+  secretRequired?: boolean;
+  /** provider supports a pasteable personal access token (simplest path). */
+  supportsPat?: boolean;
+  /** where to generate a personal access token */
+  patUrl?: string;
+  /** one-line instruction for getting the credentials */
+  credHint?: string;
 }
 
 export const OAUTH_PROVIDERS: ProviderInfo[] = [
-  {
-    id: "whoop",
-    name: "WHOOP",
-    method: "oauth",
-    color: "#34d399",
-    provides: "Recovery, HRV, resting HR, sleep stages, day strain, workouts",
-    note: "Connect your WHOOP account and auto-sync every visit.",
-    devConsole: "https://developer.whoop.com",
-    scopes: "recovery · sleep · workouts · cycles · profile",
-  },
   {
     id: "oura",
     name: "Oura",
     method: "oauth",
     color: "#7c6bff",
     provides: "Readiness, HRV, resting HR, sleep, activity, workouts",
-    note: "Connect your Oura ring and auto-sync every visit.",
+    note: "Easiest: paste a Personal Access Token — no app to register.",
     devConsole: "https://cloud.ouraring.com/oauth/applications",
     scopes: "daily · heartrate · workout · personal",
+    secretRequired: true,
+    supportsPat: true,
+    patUrl: "https://cloud.ouraring.com/personal-access-tokens",
+    credHint: "Generate a token in seconds — no OAuth app needed.",
   },
   {
     id: "fitbit",
@@ -48,9 +51,23 @@ export const OAUTH_PROVIDERS: ProviderInfo[] = [
     method: "oauth",
     color: "#2dd4ee",
     provides: "Resting HR, HRV, sleep stages, steps, calories",
-    note: "Connect your Fitbit account and auto-sync every visit.",
+    note: "Just paste a Client ID — no secret, no Vercel setup.",
     devConsole: "https://dev.fitbit.com/apps",
     scopes: "heartrate · sleep · activity · profile",
+    secretRequired: false,
+    credHint: "Register a free 'Personal' app (OAuth type: Client) and copy its Client ID.",
+  },
+  {
+    id: "whoop",
+    name: "WHOOP",
+    method: "oauth",
+    color: "#34d399",
+    provides: "Recovery, HRV, resting HR, sleep stages, day strain, workouts",
+    note: "Paste your app's Client ID + Secret once — right here, no env vars.",
+    devConsole: "https://developer.whoop.com",
+    scopes: "recovery · sleep · workouts · cycles · profile",
+    secretRequired: true,
+    credHint: "Create an app, set the redirect URL shown below, then copy its Client ID + Secret.",
   },
 ];
 
@@ -88,6 +105,7 @@ export function providerInfo(id: string): ProviderInfo | undefined {
 
 export interface ConnectionStatus {
   id: string;
-  configured: boolean; // server has client id/secret env vars
-  connected: boolean; // a valid token cookie exists
+  configured: boolean; // OAuth is ready to run (credentials present)
+  hasClientId: boolean; // a client id has been saved (env or in-app)
+  connected: boolean; // a valid token/PAT cookie exists
 }

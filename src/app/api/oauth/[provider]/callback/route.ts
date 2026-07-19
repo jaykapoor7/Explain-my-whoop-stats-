@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthConfig, redirectUri } from "@/lib/connections/server/config";
+import { redirectUri, resolvedConfig } from "@/lib/connections/server/config";
 import {
   exchangeCode,
   serializeToken,
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest, { params }: { params: { provider: string } }) {
   const url = new URL(req.url);
   const origin = url.origin;
-  const config = getOAuthConfig(params.provider);
+  const config = resolvedConfig(params.provider, req);
   const fail = (reason: string) =>
     NextResponse.redirect(new URL(`/connections?error=${params.provider}:${reason}`, origin));
 

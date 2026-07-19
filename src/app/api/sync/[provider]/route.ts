@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOAuthConfig } from "@/lib/connections/server/config";
+import { getSpec, resolvedConfig } from "@/lib/connections/server/config";
 import {
   parseToken,
   refreshToken,
@@ -12,15 +12,16 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { provider: string } }) {
-  const config = getOAuthConfig(params.provider);
-  if (!config) return NextResponse.json({ error: "unknown_provider" }, { status: 404 });
+  const spec = getSpec(params.provider);
+  if (!spec) return NextResponse.json({ error: "unknown_provider" }, { status: 404 });
 
   const cookieName = tokenCookieName(params.provider);
   let token = parseToken(req.cookies.get(cookieName)?.value);
   if (!token) return NextResponse.json({ error: "not_connected" }, { status: 401 });
 
   let refreshed = false;
-  if (token.expires_at < Date.now() + 60_000 && token.refresh_token) {
+  const config = resolvedConfig(params.provider, req);
+  if (token.expires_at < Date.now() + 60_000 && token.refresh_token && config) {
     try {
       token = await refreshToken(config, token.refresh_token);
       refreshed = true;
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest, { params }: { params: { provider: st
     );
   }
 
-  const res = NextResponse.json({ provider: params.provider, label: config.label, days, count: days.length });
+  const res = NextResponse.json({ provider: params.provider, label: spec.label, days, count: days.length });
   if (refreshed) {
     const secure = new URL(req.url).protocol === "https:";
     res.cookies.set(cookieName, serializeToken(token), {

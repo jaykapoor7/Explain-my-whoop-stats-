@@ -1,37 +1,32 @@
 import "server-only";
+import type { NextRequest } from "next/server";
 
 /**
- * Server-only OAuth provider configuration. Client id/secret come from
- * environment variables and never reach the browser. Redirect URIs are
- * derived from the request origin so the same code works on localhost and
- * any deployed domain.
+ * Provider specs plus per-request credential resolution. Credentials can come
+ * from environment variables OR from an in-app cookie the user sets on the
+ * Connections page — so no Vercel env vars / redeploys are required.
  */
 
-export interface OAuthConfig {
+export interface ProviderSpec {
   id: string;
   label: string;
   authUrl: string;
   tokenUrl: string;
   scope: string;
-  /** how client credentials are presented at the token endpoint */
-  tokenAuth: "body" | "basic";
   usePkce: boolean;
-  clientId?: string;
-  clientSecret?: string;
+  /** OAuth requires a client secret (WHOOP/Oura). Fitbit uses a public PKCE client. */
+  secretRequired: boolean;
 }
 
-export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
+export const SPECS: Record<string, ProviderSpec> = {
   whoop: {
     id: "whoop",
     label: "WHOOP",
     authUrl: "https://api.prod.whoop.com/oauth/oauth2/auth",
     tokenUrl: "https://api.prod.whoop.com/oauth/oauth2/token",
-    // "offline" yields a refresh token so we can re-sync without re-auth.
     scope: "offline read:recovery read:sleep read:workout read:cycles read:profile",
-    tokenAuth: "body",
     usePkce: false,
-    clientId: process.env.WHOOP_CLIENT_ID,
-    clientSecret: process.env.WHOOP_CLIENT_SECRET,
+    secretRequired: true,
   },
   oura: {
     id: "oura",
@@ -39,10 +34,8 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
     authUrl: "https://cloud.ouraring.com/oauth/authorize",
     tokenUrl: "https://api.ouraring.com/oauth/token",
     scope: "daily heartrate workout personal session",
-    tokenAuth: "body",
     usePkce: false,
-    clientId: process.env.OURA_CLIENT_ID,
-    clientSecret: process.env.OURA_CLIENT_SECRET,
+    secretRequired: true,
   },
   fitbit: {
     id: "fitbit",
@@ -50,22 +43,65 @@ export const OAUTH_CONFIG: Record<string, OAuthConfig> = {
     authUrl: "https://www.fitbit.com/oauth2/authorize",
     tokenUrl: "https://api.fitbit.com/oauth2/token",
     scope: "heartrate sleep activity profile",
-    // Fitbit confidential clients authenticate the token call with Basic auth
-    // and additionally require PKCE.
-    tokenAuth: "basic",
     usePkce: true,
-    clientId: process.env.FITBIT_CLIENT_ID,
-    clientSecret: process.env.FITBIT_CLIENT_SECRET,
+    secretRequired: false,
   },
 };
 
-export function getOAuthConfig(provider: string): OAuthConfig | undefined {
-  return OAUTH_CONFIG[provider];
+export interface Creds {
+  clientId: string;
+  clientSecret?: string;
 }
 
-export function isConfigured(provider: string): boolean {
-  const c = OAUTH_CONFIG[provider];
-  return !!(c && c.clientId && c.clientSecret);
+export interface ResolvedConfig extends ProviderSpec, Creds {}
+
+const ENV = (id: string) => id.toUpperCase();
+
+export function envCreds(id: string): Creds | null {
+  const clientId = process.env[`${ENV(id)}_CLIENT_ID`];
+  const clientSecret = process.env[`${ENV(id)}_CLIENT_SECRET`];
+  return clientId ? { clientId, clientSecret } : null;
+}
+
+export const credCookieName = (id: string) => `rc_cred_${id}`;
+
+export function serializeCreds(c: Creds): string {
+  return Buffer.from(JSON.stringify(c)).toString("base64");
+}
+
+export function parseCreds(raw: string | undefined): Creds | null {
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as Creds;
+    return c.clientId ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Credentials from env first, then the in-app cookie. */
+export function resolveCreds(id: string, req: NextRequest): Creds | null {
+  return envCreds(id) ?? parseCreds(req.cookies.get(credCookieName(id))?.value);
+}
+
+export function resolvedConfig(id: string, req: NextRequest): ResolvedConfig | null {
+  const spec = SPECS[id];
+  if (!spec) return null;
+  const creds = resolveCreds(id, req);
+  if (!creds) return null;
+  return { ...spec, ...creds };
+}
+
+/** True when the provider has everything it needs to run its OAuth flow. */
+export function oauthReady(id: string, req: NextRequest): boolean {
+  const spec = SPECS[id];
+  const creds = resolveCreds(id, req);
+  if (!spec || !creds) return false;
+  return spec.secretRequired ? !!creds.clientSecret : true;
+}
+
+export function getSpec(id: string): ProviderSpec | undefined {
+  return SPECS[id];
 }
 
 /** Absolute callback URL for a provider, derived from the incoming request. */
