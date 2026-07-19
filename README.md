@@ -12,6 +12,12 @@ natural-language answers, coaching and experiments — all computed locally from
 
 ## Features
 
+- **Live device connections** — connect **WHOOP, Oura or Fitbit** via OAuth and auto-sync every
+  visit, no file exports. Serverless routes handle the OAuth handshake (PKCE + CSRF state), hold
+  tokens in httpOnly cookies, and normalize each provider's API into the shared day-record model;
+  synced data is stored only in the browser. A no-setup **simulated sync** demonstrates the whole
+  connect → sync → dashboard flow. Apple Health / Bevel / Garmin remain export-based (a web app
+  can't reach them directly) and route to the uploader.
 - **Calendar Intelligence** — connect Google/Apple Calendar via .ics export (parsed locally).
   Events are auto-classified (meetings, flights, social, workouts, study) and materialized into
   per-day features: meeting count/minutes, first-meeting time, back-to-back blocks, evening
@@ -45,8 +51,29 @@ persisted only to `localStorage` on the user's device; there is no server upload
 and a one-click "delete everything." Uploaded health and calendar data is never used to train
 AI models.
 
+## Live connections setup (WHOOP / Oura / Fitbit)
+
+Live sync works on any deployment once you register a developer app per provider and add its
+credentials as environment variables. For each provider:
+
+1. Create an app in its developer console (WHOOP: `developer.whoop.com`, Oura:
+   `cloud.ouraring.com/oauth/applications`, Fitbit: `dev.fitbit.com/apps`).
+2. Set the redirect/callback URL to `https://<your-domain>/api/oauth/<provider>/callback`.
+3. Add env vars in Vercel (Project → Settings → Environment Variables) and redeploy:
+   - `WHOOP_CLIENT_ID` / `WHOOP_CLIENT_SECRET`
+   - `OURA_CLIENT_ID` / `OURA_CLIENT_SECRET`
+   - `FITBIT_CLIENT_ID` / `FITBIT_CLIENT_SECRET`
+   - optional `APP_URL` to pin the redirect base (otherwise derived from the request origin)
+
+Without credentials, each provider card shows an in-app setup guide, and the **simulated sync**
+still works with zero configuration. OAuth secrets are read only in server-side route handlers
+(`src/app/api/oauth/*`, `src/app/api/sync/*`) and never shipped to the browser.
+
 ## Extending
 
+- **Live providers** live in `src/lib/connections/` — client-safe metadata in `registry.ts`,
+  server OAuth config in `server/config.ts`, and one `server/<provider>.ts` mapper per API that
+  returns `DayRecord[]`. Add a provider by extending those three.
 - **Data providers** live in `src/lib/parsers/` — implement `Provider`
   (`detect(file) → confidence`, `parse(files) → DayRecord[]`) and register it in `index.ts`.
 - **Calendar** lives in `src/lib/calendar/` — `ics.ts` (RFC 5545 parsing + basic RRULE

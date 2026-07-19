@@ -5,11 +5,19 @@ import { persist, createJSONStorage } from "zustand/middleware";
 import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment } from "./types";
 import { generateDemoData } from "./demo-data";
 import { generateDemoCalendar } from "./calendar/demo-calendar";
+import { mergeDays } from "./merge";
 
 export interface CalendarMeta {
   source: string; // "Google Calendar", "Apple Calendar", "Demo calendar", ...
   fileNames: string[];
   importedAt: string;
+}
+
+export interface SyncedSource {
+  provider: string; // "whoop" | "oura" | "fitbit" | "demo"
+  label: string; // "WHOOP", "Oura", ...
+  lastSync: string; // ISO
+  dayCount: number; // days contributed on the last sync
 }
 
 /**
@@ -22,12 +30,14 @@ interface AppState {
   meta: DatasetMeta | null;
   calendarEvents: CalendarEvent[];
   calendarMeta: CalendarMeta | null;
+  syncedSources: SyncedSource[];
   experiments: Experiment[];
   chat: ChatMessage[];
   hydrated: boolean;
 
   loadDemo: () => void;
   setData: (days: DayRecord[], meta: DatasetMeta) => void;
+  mergeSynced: (days: DayRecord[], provider: string, label: string) => number;
   setCalendar: (events: CalendarEvent[], meta: CalendarMeta) => void;
   clearCalendar: () => void;
   clearAll: () => void;
@@ -45,6 +55,7 @@ export const useApp = create<AppState>()(
       meta: null,
       calendarEvents: [],
       calendarMeta: null,
+      syncedSources: [],
       experiments: [],
       chat: [],
       hydrated: false,
@@ -67,10 +78,41 @@ export const useApp = create<AppState>()(
         });
       },
       setData: (days, meta) => set({ days, meta }),
+      mergeSynced: (incoming, provider, label) => {
+        let added = 0;
+        set((s) => {
+          const merged = mergeDays(s.days, incoming);
+          added = merged.length - s.days.length;
+          const others = s.syncedSources.filter((x) => x.provider !== provider);
+          const meta: DatasetMeta =
+            s.meta ?? { source: label, fileNames: [], importedAt: new Date().toISOString() };
+          const sources = meta.source
+            .split(" + ")
+            .filter((x) => x && x !== "No data");
+          if (!sources.includes(label)) sources.push(label);
+          return {
+            days: merged,
+            meta: { ...meta, source: sources.join(" + ") },
+            syncedSources: [
+              ...others,
+              { provider, label, lastSync: new Date().toISOString(), dayCount: incoming.length },
+            ],
+          };
+        });
+        return added;
+      },
       setCalendar: (calendarEvents, calendarMeta) => set({ calendarEvents, calendarMeta }),
       clearCalendar: () => set({ calendarEvents: [], calendarMeta: null }),
       clearAll: () =>
-        set({ days: [], meta: null, calendarEvents: [], calendarMeta: null, experiments: [], chat: [] }),
+        set({
+          days: [],
+          meta: null,
+          calendarEvents: [],
+          calendarMeta: null,
+          syncedSources: [],
+          experiments: [],
+          chat: [],
+        }),
       addExperiment: (exp) => set((s) => ({ experiments: [...s.experiments, exp] })),
       removeExperiment: (id) => set((s) => ({ experiments: s.experiments.filter((e) => e.id !== id) })),
       addChatMessage: (msg) => set((s) => ({ chat: [...s.chat, msg] })),
@@ -85,6 +127,7 @@ export const useApp = create<AppState>()(
         meta: s.meta,
         calendarEvents: s.calendarEvents,
         calendarMeta: s.calendarMeta,
+        syncedSources: s.syncedSources,
         experiments: s.experiments,
         chat: s.chat,
       }),

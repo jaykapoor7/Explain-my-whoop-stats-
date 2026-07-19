@@ -1,6 +1,6 @@
 "use client";
 
-import { Cpu, Database, ShieldCheck, Trash2, UserCheck } from "lucide-react";
+import { Cpu, Database, Link2, ShieldCheck, Trash2, UserCheck } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { Button, Card, FadeIn } from "@/components/ui";
 
@@ -9,6 +9,11 @@ const PRINCIPLES = [
     icon: Cpu,
     title: "Local processing",
     body: "Your health exports and calendar files are parsed and analyzed entirely in your browser. The statistics engine, insight generation and chat answers all run on-device — there is no server-side processing of your health or schedule data.",
+  },
+  {
+    icon: Link2,
+    title: "Connected accounts stay minimal",
+    body: "When you connect a wearable (WHOOP, Oura, Fitbit), its access token lives in a secure httpOnly cookie your browser never exposes to scripts. Each sync fetches your data through a serverless function that normalizes and returns it without storing it — the result is saved only in this browser, and you can disconnect any time.",
   },
   {
     icon: Database,

@@ -2,8 +2,9 @@
 
 import { useCallback, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { CalendarDays, CheckCircle2, FileUp, Loader2, Lock, ShieldCheck, Trash2 } from "lucide-react";
+import { CalendarDays, CheckCircle2, FileUp, Loader2, Lock, Plug, ShieldCheck, Trash2 } from "lucide-react";
 import { Button, Card, FadeIn } from "@/components/ui";
 import { importFiles } from "@/lib/parsers";
 import { parseIcs } from "@/lib/calendar/ics";
@@ -187,6 +188,12 @@ export default function UploadPage() {
         <p className="mt-1 text-sm text-base-400">
           CSV, JSON, ZIP exports and Apple Health XML. Everything is parsed locally in your browser.
         </p>
+        <Link
+          href="/connections"
+          className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/[0.08] px-3.5 py-1.5 text-xs font-medium text-accent-soft transition hover:bg-accent/[0.14]"
+        >
+          <Plug size={13} /> Prefer auto-sync? Connect WHOOP, Oura or Fitbit →
+        </Link>
       </FadeIn>
 
       <FadeIn delay={0.08}>

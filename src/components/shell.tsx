@@ -17,6 +17,7 @@ import {
   Waves,
   Lock,
   Menu,
+  Plug,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -31,6 +32,12 @@ const NAV = [
   { href: "/timeline", label: "Timeline", icon: CalendarDays, color: "#4d9fff" },
   { href: "/experiments", label: "Experiments", icon: Beaker, color: "#a78bfa" },
   { href: "/report", label: "Health Report", icon: FileText, color: "#fb8a67" },
+];
+
+const SECONDARY_NAV = [
+  { href: "/connections", label: "Connections", icon: Plug },
+  { href: "/upload", label: "Upload data", icon: Upload },
+  { href: "/privacy", label: "Privacy", icon: Lock },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -67,20 +74,22 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
         );
       })}
       <div className="mt-auto space-y-0.5 pt-6">
-        <Link
-          href="/upload"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-base-400 transition-colors hover:bg-white/[0.04] hover:text-base-100"
-        >
-          <Upload size={16} strokeWidth={1.8} /> Upload data
-        </Link>
-        <Link
-          href="/privacy"
-          onClick={onNavigate}
-          className="flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-base-400 transition-colors hover:bg-white/[0.04] hover:text-base-100"
-        >
-          <Lock size={16} strokeWidth={1.8} /> Privacy
-        </Link>
+        {SECONDARY_NAV.map(({ href, label, icon: Icon }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              onClick={onNavigate}
+              className={cn(
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors",
+                active ? "bg-white/[0.06] text-base-100" : "text-base-400 hover:bg-white/[0.04] hover:text-base-100"
+              )}
+            >
+              <Icon size={16} strokeWidth={1.8} /> {label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
