@@ -14,6 +14,7 @@ import {
   MessageCircle,
   Sparkles,
   Upload,
+  UtensilsCrossed,
   Waves,
   Lock,
   Menu,
@@ -25,13 +26,14 @@ import { AnimatePresence, motion } from "framer-motion";
 
 const NAV = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "#7c6bff" },
+  { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#34d399" },
   { href: "/insights", label: "AI Discoveries", icon: Sparkles, color: "#2dd4ee" },
   { href: "/correlations", label: "Correlations", icon: BarChart3, color: "#fb7bb8" },
-  { href: "/chat", label: "Ask Your Data", icon: MessageCircle, color: "#34d399" },
-  { href: "/coach", label: "AI Coach", icon: Activity, color: "#fbbf24" },
+  { href: "/chat", label: "Ask Your Data", icon: MessageCircle, color: "#fbbf24" },
+  { href: "/coach", label: "AI Coach", icon: Activity, color: "#fb8a67" },
   { href: "/timeline", label: "Timeline", icon: CalendarDays, color: "#4d9fff" },
   { href: "/experiments", label: "Experiments", icon: Beaker, color: "#a78bfa" },
-  { href: "/report", label: "Health Report", icon: FileText, color: "#fb8a67" },
+  { href: "/report", label: "Health Report", icon: FileText, color: "#fb7bb8" },
 ];
 
 const SECONDARY_NAV = [

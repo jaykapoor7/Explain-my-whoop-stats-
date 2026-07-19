@@ -23,13 +23,16 @@ export function RequireData({ children }: { children: React.ReactNode }) {
   if (!days.length) {
     return (
       <EmptyState
-        title="No health data yet"
-        body="Upload an export from WHOOP, Apple Health, Fitbit, Garmin, Oura or any CSV — or explore with six months of realistic demo data."
+        title="Let's get your data in"
+        body="Connect a wearable to auto-sync, upload an export, or explore with six months of realistic demo data first."
         cta={
-          <div className="flex gap-3">
-            <Button onClick={loadDemo}>Load demo data</Button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <LinkButton href="/connections">Connect a device</LinkButton>
+            <Button variant="ghost" onClick={loadDemo}>
+              Try demo data
+            </Button>
             <LinkButton href="/upload" variant="ghost">
-              Upload your data
+              Upload a file
             </LinkButton>
           </div>
         }

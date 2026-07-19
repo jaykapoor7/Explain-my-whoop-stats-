@@ -73,6 +73,8 @@ export interface DayRecord {
   stress?: number; // 1-10
   mood?: number; // 1-10
   proteinG?: number;
+  carbsG?: number;
+  fatG?: number;
   calorieIntake?: number;
   screenTimeMin?: number;
   travel?: boolean;
@@ -112,6 +114,8 @@ export type MetricKey =
   | "stress"
   | "mood"
   | "proteinG"
+  | "carbsG"
+  | "fatG"
   | "calorieIntake"
   | "screenTimeMin"
   | "meetingCount"
@@ -149,6 +153,8 @@ export const METRICS: Record<MetricKey, MetricMeta> = {
   stress: { key: "stress", label: "Stress", shortLabel: "Stress", unit: "/10", color: "#fb8a67", higherIsBetter: false, decimals: 1 },
   mood: { key: "mood", label: "Mood", shortLabel: "Mood", unit: "/10", color: "#34d399", higherIsBetter: true, decimals: 1 },
   proteinG: { key: "proteinG", label: "Protein intake", shortLabel: "Protein", unit: "g", color: "#4d9fff", higherIsBetter: true, decimals: 0 },
+  carbsG: { key: "carbsG", label: "Carb intake", shortLabel: "Carbs", unit: "g", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
+  fatG: { key: "fatG", label: "Fat intake", shortLabel: "Fat", unit: "g", color: "#fb8a67", higherIsBetter: null, decimals: 0 },
   calorieIntake: { key: "calorieIntake", label: "Calorie intake", shortLabel: "Intake", unit: "kcal", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
   screenTimeMin: { key: "screenTimeMin", label: "Screen time", shortLabel: "Screen", unit: "min", color: "#8b91c7", higherIsBetter: false, decimals: 0 },
   meetingCount: { key: "meetingCount", label: "Meetings per day", shortLabel: "Meetings", unit: "", color: "#fbbf24", higherIsBetter: null, decimals: 0 },
@@ -210,4 +216,44 @@ export interface DatasetMeta {
   source: string; // "Demo", "WHOOP", "Fitbit", ...
   fileNames: string[];
   importedAt: string;
+}
+
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+
+export const MEALS: { id: MealType; label: string; emoji: string }[] = [
+  { id: "breakfast", label: "Breakfast", emoji: "🌅" },
+  { id: "lunch", label: "Lunch", emoji: "🥗" },
+  { id: "dinner", label: "Dinner", emoji: "🍽️" },
+  { id: "snack", label: "Snacks", emoji: "🍎" },
+];
+
+/** A logged food. cal/protein/carbs/fat are PER SERVING; scale by `servings`. */
+export interface FoodEntry {
+  id: string;
+  date: string; // YYYY-MM-DD
+  meal: MealType;
+  name: string;
+  servingLabel: string; // e.g. "1 cup", "100 g", "1 scoop"
+  servings: number;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+export interface NutritionGoals {
+  calories: number;
+  protein: number; // grams
+  carbs: number; // grams
+  fat: number; // grams
+}
+
+export interface FoodItem {
+  name: string;
+  category: string;
+  servingLabel: string;
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
 }

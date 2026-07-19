@@ -2,10 +2,11 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment } from "./types";
+import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment, FoodEntry, NutritionGoals } from "./types";
 import { generateDemoData } from "./demo-data";
 import { generateDemoCalendar } from "./calendar/demo-calendar";
 import { mergeDays } from "./merge";
+import { DEFAULT_GOALS } from "./nutrition/nutrition";
 
 export interface CalendarMeta {
   source: string; // "Google Calendar", "Apple Calendar", "Demo calendar", ...
@@ -31,6 +32,8 @@ interface AppState {
   calendarEvents: CalendarEvent[];
   calendarMeta: CalendarMeta | null;
   syncedSources: SyncedSource[];
+  foodLog: FoodEntry[];
+  nutritionGoals: NutritionGoals;
   experiments: Experiment[];
   chat: ChatMessage[];
   hydrated: boolean;
@@ -40,6 +43,10 @@ interface AppState {
   mergeSynced: (days: DayRecord[], provider: string, label: string) => number;
   setCalendar: (events: CalendarEvent[], meta: CalendarMeta) => void;
   clearCalendar: () => void;
+  addFood: (entry: FoodEntry) => void;
+  updateFoodServings: (id: string, servings: number) => void;
+  removeFood: (id: string) => void;
+  setNutritionGoals: (goals: NutritionGoals) => void;
   clearAll: () => void;
   addExperiment: (exp: Experiment) => void;
   removeExperiment: (id: string) => void;
@@ -56,6 +63,8 @@ export const useApp = create<AppState>()(
       calendarEvents: [],
       calendarMeta: null,
       syncedSources: [],
+      foodLog: [],
+      nutritionGoals: DEFAULT_GOALS,
       experiments: [],
       chat: [],
       hydrated: false,
@@ -103,6 +112,13 @@ export const useApp = create<AppState>()(
       },
       setCalendar: (calendarEvents, calendarMeta) => set({ calendarEvents, calendarMeta }),
       clearCalendar: () => set({ calendarEvents: [], calendarMeta: null }),
+      addFood: (entry) => set((s) => ({ foodLog: [...s.foodLog, entry] })),
+      updateFoodServings: (id, servings) =>
+        set((s) => ({
+          foodLog: s.foodLog.map((e) => (e.id === id ? { ...e, servings: Math.max(0.25, servings) } : e)),
+        })),
+      removeFood: (id) => set((s) => ({ foodLog: s.foodLog.filter((e) => e.id !== id) })),
+      setNutritionGoals: (nutritionGoals) => set({ nutritionGoals }),
       clearAll: () =>
         set({
           days: [],
@@ -110,6 +126,7 @@ export const useApp = create<AppState>()(
           calendarEvents: [],
           calendarMeta: null,
           syncedSources: [],
+          foodLog: [],
           experiments: [],
           chat: [],
         }),
@@ -128,6 +145,8 @@ export const useApp = create<AppState>()(
         calendarEvents: s.calendarEvents,
         calendarMeta: s.calendarMeta,
         syncedSources: s.syncedSources,
+        foodLog: s.foodLog,
+        nutritionGoals: s.nutritionGoals,
         experiments: s.experiments,
         chat: s.chat,
       }),
