@@ -248,6 +248,12 @@ export interface NutritionGoals {
   fat: number; // grams
 }
 
+export interface HealthGoals {
+  recovery: number; // target %
+  sleepHours: number; // target hours/night
+  steps: number; // target steps/day
+}
+
 export interface FoodItem {
   name: string;
   category: string;

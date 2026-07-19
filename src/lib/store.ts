@@ -2,11 +2,13 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment, FoodEntry, NutritionGoals } from "./types";
+import { CalendarEvent, ChatMessage, DatasetMeta, DayRecord, Experiment, FoodEntry, HealthGoals, NutritionGoals } from "./types";
 import { generateDemoData } from "./demo-data";
 import { generateDemoCalendar } from "./calendar/demo-calendar";
 import { mergeDays } from "./merge";
 import { DEFAULT_GOALS } from "./nutrition/nutrition";
+
+export const DEFAULT_HEALTH_GOALS: HealthGoals = { recovery: 60, sleepHours: 8, steps: 10000 };
 
 export interface CalendarMeta {
   source: string; // "Google Calendar", "Apple Calendar", "Demo calendar", ...
@@ -34,6 +36,7 @@ interface AppState {
   syncedSources: SyncedSource[];
   foodLog: FoodEntry[];
   nutritionGoals: NutritionGoals;
+  healthGoals: HealthGoals;
   experiments: Experiment[];
   chat: ChatMessage[];
   hydrated: boolean;
@@ -47,6 +50,7 @@ interface AppState {
   updateFoodServings: (id: string, servings: number) => void;
   removeFood: (id: string) => void;
   setNutritionGoals: (goals: NutritionGoals) => void;
+  setHealthGoals: (goals: HealthGoals) => void;
   clearAll: () => void;
   addExperiment: (exp: Experiment) => void;
   removeExperiment: (id: string) => void;
@@ -65,6 +69,7 @@ export const useApp = create<AppState>()(
       syncedSources: [],
       foodLog: [],
       nutritionGoals: DEFAULT_GOALS,
+      healthGoals: DEFAULT_HEALTH_GOALS,
       experiments: [],
       chat: [],
       hydrated: false,
@@ -119,6 +124,7 @@ export const useApp = create<AppState>()(
         })),
       removeFood: (id) => set((s) => ({ foodLog: s.foodLog.filter((e) => e.id !== id) })),
       setNutritionGoals: (nutritionGoals) => set({ nutritionGoals }),
+      setHealthGoals: (healthGoals) => set({ healthGoals }),
       clearAll: () =>
         set({
           days: [],
@@ -147,6 +153,7 @@ export const useApp = create<AppState>()(
         syncedSources: s.syncedSources,
         foodLog: s.foodLog,
         nutritionGoals: s.nutritionGoals,
+        healthGoals: s.healthGoals,
         experiments: s.experiments,
         chat: s.chat,
       }),

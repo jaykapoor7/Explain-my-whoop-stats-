@@ -11,13 +11,11 @@ const HeroOrb = dynamic(() => import("@/components/hero-orb"), {
 import {
   ArrowRight,
   BarChart3,
-  Beaker,
-  CalendarClock,
-  CalendarDays,
   Lock,
-  MessageCircle,
   Sparkles,
+  Target,
   Upload,
+  UtensilsCrossed,
   Waves,
 } from "lucide-react";
 import { LinkButton, FadeIn } from "@/components/ui";
@@ -32,46 +30,32 @@ const FEATURES: {
   example: string;
 }[] = [
   {
-    icon: CalendarDays,
-    color: "#2dd4ee",
-    title: "Calendar Intelligence",
-    body: "Connect Google Calendar or Apple Calendar and the engine cross-references meetings, flights, social evenings and study blocks with HRV, recovery and sleep — the life context your wearable can't see.",
-    example: "“You recover significantly better when your first meeting starts after 10 AM.”",
-  },
-  {
     icon: Sparkles,
     color: "#7c6bff",
-    title: "AI Discovery Engine",
-    body: "Continuously scans months of data for statistically meaningful relationships — no prompting required — and explains each one in plain English with evidence, confidence and a suggested experiment.",
-    example: "“Your HRV averages 9 ms lower on days with more than five meetings.”",
-  },
-  {
-    icon: MessageCircle,
-    color: "#34d399",
-    title: "Conversational Analytics",
-    body: "Talk to your own physiology. Every answer is computed from your data and your calendar — with the reasoning shown, uncertainty acknowledged, and causation never overstated.",
-    example: "“What usually happens after I travel?”",
+    title: "Understand your data",
+    body: "The engine scans your history for the patterns that actually matter and explains them in plain English — no dashboards to decode, just what's happening and why.",
+    example: "“Your HRV is higher after nights with 7+ hours of sleep.”",
   },
   {
     icon: BarChart3,
-    color: "#fb7bb8",
-    title: "Correlation Explorer",
-    body: "Interactive scatter plots, trend lines and honest statistics for any pair of variables — sleep vs HRV, meeting load vs recovery, alcohol vs sleep efficiency.",
-    example: "Meetings per day ↔ HRV, r = −0.41",
+    color: "#2dd4ee",
+    title: "Explore correlations",
+    body: "Pick any two things — sleep vs HRV, protein vs recovery, alcohol vs sleep — and see how they move together, with an honest read on strength and causation.",
+    example: "Sleep duration ↔ next-morning HRV, r = 0.54",
   },
   {
-    icon: Beaker,
+    icon: UtensilsCrossed,
+    color: "#34d399",
+    title: "Track nutrition",
+    body: "Log food in seconds with a built-in database, hit your calorie and macro goals, and watch what you eat flow straight into the analysis.",
+    example: "1,780 kcal left · 37 / 160 g protein",
+  },
+  {
+    icon: Target,
     color: "#fbbf24",
-    title: "Experiment Mode",
-    body: "Cut caffeine, block early meetings, walk after dinner — then let the data speak. Before/after analysis with effect sizes, clearly separating correlation from causation.",
-    example: "“Two dry weeks: HRV +6 ms, an effect unlikely to be chance.”",
-  },
-  {
-    icon: CalendarClock,
-    color: "#4d9fff",
-    title: "Unified Timeline",
-    body: "Your schedule and your biology on one axis: scroll any day and see the meetings, the workout, the late dinner — and what your body did about it.",
-    example: "Thursday: 7 meetings, flight at 6 PM → HRV −12 ms Friday morning.",
+    title: "Set your goals",
+    body: "One place for the targets that matter — calories, protein, sleep, recovery, steps — with your progress measured against them automatically.",
+    example: "Sleep 7.8 / 8 h · Recovery 62 / 60% ✓",
   },
 ];
 
@@ -203,7 +187,7 @@ export default function LandingPage() {
             connecting your metrics to their context — schedule, travel, training, habits.
           </p>
         </FadeIn>
-        <div className="mt-14 grid gap-4 [perspective:1200px] sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-14 grid gap-4 [perspective:1200px] sm:grid-cols-2">
           {FEATURES.map((f, i) => (
             <FadeIn key={f.title} delay={i * 0.06}>
               <motion.div

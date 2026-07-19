@@ -9,10 +9,12 @@ import {
   BarChart3,
   Beaker,
   CalendarDays,
+  ChevronDown,
   FileText,
-  LayoutDashboard,
   MessageCircle,
+  MoreHorizontal,
   Sparkles,
+  Target,
   Upload,
   UtensilsCrossed,
   Waves,
@@ -24,26 +26,33 @@ import {
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
+// The four things the product is about.
 const NAV = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, color: "#7c6bff" },
+  { href: "/dashboard", label: "Understand", icon: Sparkles, color: "#7c6bff" },
+  { href: "/correlations", label: "Correlations", icon: BarChart3, color: "#2dd4ee" },
   { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#34d399" },
-  { href: "/insights", label: "AI Discoveries", icon: Sparkles, color: "#2dd4ee" },
-  { href: "/correlations", label: "Correlations", icon: BarChart3, color: "#fb7bb8" },
-  { href: "/chat", label: "Ask Your Data", icon: MessageCircle, color: "#fbbf24" },
-  { href: "/coach", label: "AI Coach", icon: Activity, color: "#fb8a67" },
-  { href: "/timeline", label: "Timeline", icon: CalendarDays, color: "#4d9fff" },
-  { href: "/experiments", label: "Experiments", icon: Beaker, color: "#a78bfa" },
-  { href: "/report", label: "Health Report", icon: FileText, color: "#fb7bb8" },
+  { href: "/goals", label: "Goals", icon: Target, color: "#fbbf24" },
+];
+
+// Deeper tools, tucked behind a "More" disclosure to keep the app calm.
+const MORE_NAV = [
+  { href: "/chat", label: "Ask your data", icon: MessageCircle },
+  { href: "/coach", label: "AI Coach", icon: Activity },
+  { href: "/timeline", label: "Timeline", icon: CalendarDays },
+  { href: "/experiments", label: "Experiments", icon: Beaker },
+  { href: "/report", label: "Health report", icon: FileText },
 ];
 
 const SECONDARY_NAV = [
-  { href: "/connections", label: "Connections", icon: Plug },
+  { href: "/connections", label: "Connect a device", icon: Plug },
   { href: "/upload", label: "Upload data", icon: Upload },
   { href: "/privacy", label: "Privacy", icon: Lock },
 ];
 
 function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
+  const moreActive = MORE_NAV.some((n) => pathname.startsWith(n.href));
+  const [moreOpen, setMoreOpen] = useState(moreActive);
   return (
     <nav className="flex flex-1 flex-col gap-0.5">
       {NAV.map(({ href, label, icon: Icon, color }) => {
@@ -54,7 +63,7 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
             href={href}
             onClick={onNavigate}
             className={cn(
-              "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+              "group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-colors",
               active ? "text-white" : "text-base-400 hover:text-base-100 hover:bg-white/[0.05]"
             )}
           >
@@ -66,15 +75,55 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
               />
             )}
             <span
-              className="relative z-10 flex h-6 w-6 items-center justify-center rounded-md transition-transform group-hover:scale-110"
-              style={{ background: `${color}26`, color: active ? color : undefined }}
+              className="relative z-10 flex h-7 w-7 items-center justify-center rounded-lg transition-transform group-hover:scale-110"
+              style={{ background: `${color}26` }}
             >
-              <Icon size={14} strokeWidth={2} style={{ color }} />
+              <Icon size={15} strokeWidth={2} style={{ color }} />
             </span>
             <span className="relative z-10 font-medium">{label}</span>
           </Link>
         );
       })}
+
+      {/* More tools (collapsed) */}
+      <button
+        onClick={() => setMoreOpen((v) => !v)}
+        className="mt-1 flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium text-base-400 transition-colors hover:bg-white/[0.04] hover:text-base-100"
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-white/[0.05]">
+          <MoreHorizontal size={15} />
+        </span>
+        More tools
+        <ChevronDown size={14} className={cn("ml-auto transition-transform", moreOpen && "rotate-180")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {moreOpen && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden pl-3"
+          >
+            {MORE_NAV.map(({ href, label, icon: Icon }) => {
+              const active = pathname.startsWith(href);
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  onClick={onNavigate}
+                  className={cn(
+                    "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-colors",
+                    active ? "text-base-100" : "text-base-400 hover:bg-white/[0.04] hover:text-base-100"
+                  )}
+                >
+                  <Icon size={15} strokeWidth={1.8} /> {label}
+                </Link>
+              );
+            })}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className="mt-auto space-y-0.5 pt-6">
         {SECONDARY_NAV.map(({ href, label, icon: Icon }) => {
           const active = pathname.startsWith(href);

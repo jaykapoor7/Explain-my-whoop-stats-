@@ -3,18 +3,21 @@
 import { Suspense, useEffect, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { ArrowRight, Moon, Sparkles, UtensilsCrossed } from "lucide-react";
 import { useApp } from "@/lib/store";
 import { useHealthData } from "@/lib/use-data";
 import { RequireData } from "@/components/require-data";
-import { Badge, Card, CardTitle, FadeIn, RingGauge, SectionHeading, StatTile } from "@/components/ui";
-import { CompareBars, DistributionChart, SleepStagesChart, TrendChart, ZonesChart } from "@/components/charts";
-import { DayRecord, METRICS, MetricKey } from "@/lib/types";
+import { Badge, Card, CardTitle, FadeIn, RingGauge } from "@/components/ui";
+import { TrendChart } from "@/components/charts";
+import { DayRecord, MetricKey } from "@/lib/types";
 import { fmt, mean, rollingMean } from "@/lib/stats";
-import { formatDate, hourLabel, recoveryColor } from "@/lib/utils";
 import { generateInsights } from "@/lib/insights";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { sumEntries, todayKey } from "@/lib/nutrition/nutrition";
+import { formatDate, recoveryColor } from "@/lib/utils";
 
 const val = (d: DayRecord, k: MetricKey) => d[k] as number | undefined;
+const series = (days: DayRecord[], k: MetricKey) =>
+  days.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
 
 function trendData(days: DayRecord[], k: MetricKey) {
   const values = days.map((d) => val(d, k));
@@ -22,15 +25,7 @@ function trendData(days: DayRecord[], k: MetricKey) {
   return days.map((d, i) => ({ date: d.date, value: values[i] ?? null, avg: avg[i] }));
 }
 
-function deltaVsPrior(days: DayRecord[], k: MetricKey, window = 30): { delta: string; good: boolean | null } {
-  const cur = days.slice(-window).map((d) => val(d, k)).filter((v): v is number => v !== undefined);
-  const prev = days.slice(-window * 2, -window).map((d) => val(d, k)).filter((v): v is number => v !== undefined);
-  if (cur.length < 5 || prev.length < 5) return { delta: "", good: null };
-  const diff = mean(cur) - mean(prev);
-  const meta = METRICS[k];
-  const good = meta.higherIsBetter === null ? null : meta.higherIsBetter === diff > 0;
-  return { delta: `${diff >= 0 ? "+" : ""}${fmt(diff, meta.decimals)}${meta.unit}`, good };
-}
+const CONF_TONE = { high: "good", moderate: "warning", exploratory: "neutral" } as const;
 
 function DemoLoader() {
   const params = useSearchParams();
@@ -43,443 +38,133 @@ function DemoLoader() {
   return null;
 }
 
-function Dashboard() {
-  const { days, hasCalendar } = useHealthData();
-  const last90 = useMemo(() => days.slice(-90), [days]);
-  const insights = useMemo(() => generateInsights(days).slice(0, 2), [days]);
-
-  const recoveries = last90.map((d) => d.recovery).filter((v): v is number => v !== undefined);
-  const sorted = [...last90].filter((d) => d.recovery !== undefined).sort((a, b) => b.recovery! - a.recovery!);
-  const best = sorted.slice(0, 5);
-  const worst = sorted.slice(-5).reverse();
-
-  const sleepAvg = mean(last90.map((d) => d.sleepHours).filter((v): v is number => v !== undefined));
-  const debtNow = [...days].reverse().find((d) => d.sleepDebtHours !== undefined)?.sleepDebtHours;
-  const effAvg = mean(last90.map((d) => d.sleepEfficiency).filter((v): v is number => v !== undefined));
-  const consAvg = mean(last90.map((d) => d.sleepConsistency).filter((v): v is number => v !== undefined));
-  const bedtimes = last90.map((d) => d.bedtimeHour).filter((v): v is number => v !== undefined);
-  const wakes = last90.map((d) => d.wakeHour).filter((v): v is number => v !== undefined);
-
-  const workouts = last90.flatMap((d) => d.workouts ?? []);
-  const zoneTotals = [0, 0, 0, 0, 0];
-  for (const w of workouts) w.zones?.forEach((m, i) => (zoneTotals[i] += m));
-  const sportCounts = workouts.reduce<Record<string, number>>((acc, w) => {
-    acc[w.sport] = (acc[w.sport] ?? 0) + 1;
-    return acc;
-  }, {});
-  const topSports = Object.entries(sportCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
-  const strainAvg = mean(last90.map((d) => d.strain).filter((v): v is number => v !== undefined));
-  const load7 = mean(days.slice(-7).map((d) => d.strain).filter((v): v is number => v !== undefined));
-  const load28 = mean(days.slice(-28).map((d) => d.strain).filter((v): v is number => v !== undefined));
-  const acr = isFinite(load7) && isFinite(load28) && load28 > 0 ? load7 / load28 : NaN;
-
-  const lifestyleKeys: MetricKey[] = ["alcoholDrinks", "caffeineMg", "stress", "mood", "proteinG", "screenTimeMin"];
-  const lifestyleAvailable = lifestyleKeys.filter((k) => last90.some((d) => val(d, k) !== undefined));
+function Understand() {
+  const { days } = useHealthData();
+  const foodLog = useApp((s) => s.foodLog);
+  const nutritionGoals = useApp((s) => s.nutritionGoals);
+  const insights = useMemo(() => generateInsights(days).slice(0, 3), [days]);
 
   const today = days[days.length - 1];
+  const last30 = days.slice(-30);
+  const caloriesToday = Math.round(sumEntries(foodLog.filter((e) => e.date === todayKey())).calories);
+
+  const recAvg = mean(series(last30, "recovery"));
+  const sleepLast = [...days].reverse().find((d) => d.sleepHours !== undefined)?.sleepHours;
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-base-400">
-            Last {last90.length} days · most recent: {formatDate(today.date, { weekday: "long", month: "long", day: "numeric" })}
-          </p>
-        </div>
-        <div className="flex flex-wrap gap-2 text-xs text-base-400">
-          {(
-            [
-              ["recovery", "Recovery"],
-              ["sleep", "Sleep"],
-              ["heart", "Heart"],
-              ["activity", "Activity"],
-              ["lifestyle", "Lifestyle"],
-              ["worklife", "Work & Life"],
-            ] as const
-          ).map(([id, label]) => (
-            <a key={id} href={`#${id}`} className="rounded-full border border-white/10 px-3 py-1.5 transition hover:bg-white/[0.05] hover:text-white">
-              {label}
-            </a>
-          ))}
-        </div>
-      </div>
+      <FadeIn>
+        <h1 className="text-2xl font-semibold tracking-tight">Understand your data</h1>
+        <p className="mt-1 text-sm text-base-400">
+          The short version of what your body is doing — and why. {formatDate(today.date, { weekday: "long", month: "long", day: "numeric" })}.
+        </p>
+      </FadeIn>
 
-      {/* Top insights strip */}
-      {insights.length > 0 && (
-        <FadeIn className="mt-6">
-          <div className="grid gap-3 md:grid-cols-2">
-            {insights.map((ins) => (
-              <Link key={ins.id} href="/insights" className="group">
-                <div className="card flex h-full items-start gap-3 border-accent/15 bg-accent/[0.05] p-4 transition hover:border-accent/30">
-                  <Sparkles size={16} className="mt-0.5 shrink-0 text-accent-soft" />
-                  <div className="flex-1">
-                    <p className="text-sm font-medium leading-snug">{ins.headline}</p>
-                    <p className="mt-1 text-xs text-base-400 capitalize">{ins.confidence} confidence · tap to explore</p>
-                  </div>
-                  <ArrowRight size={14} className="mt-1 text-base-400 transition group-hover:translate-x-0.5 group-hover:text-white" />
-                </div>
-              </Link>
-            ))}
-          </div>
-        </FadeIn>
-      )}
-
-      {/* ============ RECOVERY ============ */}
-      <SectionHeading id="recovery" title="Recovery" subtitle="How ready your body is to take on strain" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="gradient-ring card-hover flex items-center gap-4 rounded-2xl p-5 shadow-card">
-          <RingGauge
-            value={today.recovery ?? 0}
-            size={104}
-            display={today.recovery !== undefined ? String(today.recovery) : "–"}
-            color={today.recovery === undefined ? undefined : recoveryColor(today.recovery)}
-          />
-          <div>
-            <div className="text-xs font-medium uppercase tracking-wider text-base-400">Today</div>
-            <div className="mt-1 text-sm font-semibold" style={{ color: recoveryColor(today.recovery) }}>
-              {today.recovery !== undefined
-                ? today.recovery >= 67
-                  ? "Green — go hard"
-                  : today.recovery >= 34
-                    ? "Yellow — moderate"
-                    : "Red — recover"
-                : "No score yet"}
-            </div>
-            <div className="mt-0.5 text-xs text-base-400">recovery score</div>
-          </div>
-        </div>
-        <StatTile label="90-day average" value={fmt(mean(recoveries), 0)} unit="%" accent="#34d399" {...deltaLabel(days, "recovery")} />
-        <StatTile label="Green days" value={String(recoveries.filter((r) => r >= 67).length)} accent="#34d399" sub={`of ${recoveries.length} scored days`} />
-        <StatTile label="Red days" value={String(recoveries.filter((r) => r < 34).length)} accent="#fb7185" sub={`of ${recoveries.length} scored days`} />
-      </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardTitle>Recovery trend · 90 days</CardTitle>
-          <div className="mt-4">
-            <TrendChart data={trendData(last90, "recovery")} metric="recovery" />
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Distribution</CardTitle>
-          <div className="mt-4">
-            <DistributionChart values={recoveries} metric="recovery" />
-          </div>
-        </Card>
-      </div>
-      <div className="mt-3 grid gap-3 md:grid-cols-2">
-        <Card>
-          <CardTitle>Best recovery days</CardTitle>
-          <DayList days={best} />
-        </Card>
-        <Card>
-          <CardTitle>Worst recovery days</CardTitle>
-          <DayList days={worst} />
-        </Card>
-      </div>
-
-      {/* ============ SLEEP ============ */}
-      <SectionHeading id="sleep" title="Sleep" subtitle="Duration, quality, structure and timing" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Avg sleep" value={fmt(sleepAvg, 1)} unit="h/night" {...deltaLabel(days, "sleepHours")} />
-        <StatTile label="Sleep debt" value={fmt(debtNow, 1)} unit="h" sub={debtNow !== undefined && debtNow > 2 ? "Building — prioritize early nights" : "Under control"} />
-        <StatTile label="Efficiency" value={fmt(effAvg, 0)} unit="%" {...deltaLabel(days, "sleepEfficiency")} />
-        <StatTile label="Consistency" value={isFinite(consAvg) ? fmt(consAvg, 0) : "–"} unit="%" sub="Same-time-every-night score" />
-      </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardTitle>Sleep stages · last 30 nights</CardTitle>
-          <div className="mt-4">
-            <SleepStagesChart
-              data={days.slice(-30).map((d) => ({ date: d.date, deep: d.deepHours, rem: d.remHours, light: d.lightHours, awake: d.awakeHours }))}
+      {/* Today, at a glance — just three things */}
+      <FadeIn className="mt-6">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Card className="flex items-center gap-4">
+            <RingGauge
+              value={today.recovery ?? 0}
+              size={92}
+              display={today.recovery !== undefined ? String(today.recovery) : "–"}
+              color={today.recovery === undefined ? undefined : recoveryColor(today.recovery)}
             />
-          </div>
-          <div className="mt-3 flex flex-wrap gap-4 text-xs text-base-400">
-            {[
-              ["Deep", "#3b82f6"],
-              ["REM", "#a78bfa"],
-              ["Light", "#7cc4ff"],
-              ["Awake", "#4a5090"],
-            ].map(([label, color]) => (
-              <span key={label} className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-sm" style={{ background: color }} /> {label}
-              </span>
-            ))}
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Sleep timing</CardTitle>
-          <div className="mt-4 space-y-4">
             <div>
-              <div className="text-xs text-base-400">Typical bedtime</div>
-              <div className="mt-0.5 text-2xl font-semibold tabular">{bedtimes.length ? hourLabel(mean(bedtimes)) : "–"}</div>
-            </div>
-            <div>
-              <div className="text-xs text-base-400">Typical wake time</div>
-              <div className="mt-0.5 text-2xl font-semibold tabular">{wakes.length ? hourLabel(mean(wakes)) : "–"}</div>
-            </div>
-            <div>
-              <div className="text-xs text-base-400">Bedtime spread (90d)</div>
-              <div className="mt-0.5 text-2xl font-semibold tabular">
-                {bedtimes.length ? `±${fmt((Math.max(...bedtimes) - Math.min(...bedtimes)) / 2, 1)}h` : "–"}
+              <div className="text-xs font-medium uppercase tracking-wider text-base-400">Recovery</div>
+              <div className="mt-0.5 text-sm font-semibold" style={{ color: recoveryColor(today.recovery) }}>
+                {today.recovery === undefined ? "No score" : today.recovery >= 67 ? "Ready to push" : today.recovery >= 34 ? "Take it steady" : "Prioritize rest"}
               </div>
-              <p className="mt-1 text-xs leading-relaxed text-base-400">A tighter window generally improves efficiency and consistency scores.</p>
+              <div className="mt-0.5 text-xs text-base-400">30-day avg {fmt(recAvg, 0)}%</div>
             </div>
-          </div>
-        </Card>
-      </div>
-      <Card className="mt-3">
-        <CardTitle>Sleep duration trend</CardTitle>
-        <div className="mt-4">
-          <TrendChart data={trendData(last90, "sleepHours")} metric="sleepHours" height={190} />
-        </div>
-      </Card>
+          </Card>
 
-      {/* ============ HEART ============ */}
-      <SectionHeading id="heart" title="Heart" subtitle="Autonomic recovery and cardiovascular strain" />
-      <div className="grid gap-3 sm:grid-cols-3">
-        <StatTile label="HRV (90d avg)" value={fmt(mean(last90.map((d) => d.hrv).filter((v): v is number => v !== undefined)), 0)} unit="ms" {...deltaLabel(days, "hrv")} />
-        <StatTile label="Resting HR (90d avg)" value={fmt(mean(last90.map((d) => d.rhr).filter((v): v is number => v !== undefined)), 0)} unit="bpm" {...deltaLabel(days, "rhr")} />
-        <StatTile label="Peak HR (90d)" value={fmt(Math.max(...last90.map((d) => d.maxHr ?? 0)), 0)} unit="bpm" sub="Highest recorded" />
-      </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        <Card>
-          <CardTitle>HRV trend</CardTitle>
-          <div className="mt-4">
-            <TrendChart data={trendData(last90, "hrv")} metric="hrv" height={200} />
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Resting heart rate trend</CardTitle>
-          <div className="mt-4">
-            <TrendChart data={trendData(last90, "rhr")} metric="rhr" height={200} />
-          </div>
-        </Card>
-      </div>
-      {zoneTotals.some((z) => z > 0) && (
-        <Card className="mt-3">
-          <CardTitle>Heart rate zones · total workout minutes (90d)</CardTitle>
-          <div className="mt-4 max-w-xl">
-            <ZonesChart zones={zoneTotals} />
-          </div>
-        </Card>
-      )}
-
-      {/* ============ ACTIVITY ============ */}
-      <SectionHeading id="activity" title="Activity" subtitle="Strain, movement and training load" />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Avg day strain" value={fmt(strainAvg, 1)} {...deltaLabel(days, "strain")} />
-        <StatTile label="Avg steps" value={fmt(mean(last90.map((d) => d.steps).filter((v): v is number => v !== undefined)), 0)} {...deltaLabel(days, "steps")} />
-        <StatTile label="Avg calories burned" value={fmt(mean(last90.map((d) => d.calories).filter((v): v is number => v !== undefined)), 0)} unit="kcal" />
-        <StatTile
-          label="Load ratio (7d : 28d)"
-          value={isFinite(acr) ? fmt(acr, 2) : "–"}
-          sub={isFinite(acr) ? (acr > 1.3 ? "Ramping fast — injury-risk zone" : acr < 0.8 ? "Deloading" : "Balanced load") : undefined}
-        />
-      </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardTitle>Strain trend · 90 days</CardTitle>
-          <div className="mt-4">
-            <TrendChart data={trendData(last90, "strain")} metric="strain" height={200} />
-          </div>
-        </Card>
-        <Card>
-          <CardTitle>Workouts (90d)</CardTitle>
-          <div className="mt-3 space-y-2.5">
-            <div className="flex items-baseline justify-between">
-              <span className="text-3xl font-semibold">{workouts.length}</span>
-              <span className="text-xs text-base-400">{fmt(workouts.length / (last90.length / 7), 1)} per week</span>
+          <Card className="flex flex-col justify-center">
+            <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-base-400">
+              <Moon size={13} /> Last night&apos;s sleep
             </div>
-            {topSports.map(([sport, count]) => (
-              <div key={sport} className="flex items-center gap-3">
-                <span className="w-24 truncate text-xs text-base-300">{sport}</span>
-                <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
-                  <div className="h-full rounded-full bg-series-orange" style={{ width: `${(count / topSports[0][1]) * 100}%` }} />
-                </div>
-                <span className="w-6 text-right text-xs tabular text-base-400">{count}</span>
+            <div className="mt-1 text-3xl font-semibold tabular">
+              {sleepLast !== undefined ? fmt(sleepLast, 1) : "–"}
+              <span className="text-base text-base-400"> h</span>
+            </div>
+            <div className="mt-0.5 text-xs text-base-400">
+              {today.sleepEfficiency !== undefined ? `${today.sleepEfficiency}% efficiency` : " "}
+            </div>
+          </Card>
+
+          <Link href="/nutrition" className="group">
+            <Card className="card-hover flex h-full flex-col justify-center">
+              <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider text-base-400">
+                <UtensilsCrossed size={13} /> Calories today
               </div>
-            ))}
-          </div>
-        </Card>
-      </div>
-
-      {/* ============ LIFESTYLE ============ */}
-      {lifestyleAvailable.length > 0 && (
-        <>
-          <SectionHeading id="lifestyle" title="Lifestyle" subtitle="Logged behaviors that move the needle" />
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {lifestyleAvailable.map((k) => {
-              const meta = METRICS[k];
-              const vals = last90.map((d) => val(d, k)).filter((v): v is number => v !== undefined);
-              return (
-                <StatTile
-                  key={k}
-                  label={meta.label}
-                  value={fmt(mean(vals), meta.decimals)}
-                  unit={meta.unit}
-                  sub={`${vals.length} days logged`}
-                  {...deltaLabel(days, k)}
-                />
-              );
-            })}
-          </div>
-          {last90.some((d) => d.alcoholDrinks !== undefined) && (
-            <Card className="mt-3">
-              <CardTitle>Recovery by weekday</CardTitle>
-              <div className="mt-4 max-w-2xl">
-                <CompareBars
-                  groups={weekdayGroups(last90)}
-                  metric="recovery"
-                  height={190}
-                />
+              <div className="mt-1 text-3xl font-semibold tabular">
+                {caloriesToday.toLocaleString()}
+                <span className="text-base text-base-400"> / {nutritionGoals.calories.toLocaleString()}</span>
+              </div>
+              <div className="mt-0.5 flex items-center gap-1 text-xs text-accent-soft">
+                Log food <ArrowRight size={11} className="transition group-hover:translate-x-0.5" />
               </div>
             </Card>
-          )}
-        </>
-      )}
-
-      {/* ============ WORK & LIFE ============ */}
-      <SectionHeading
-        id="worklife"
-        title="Work & Life"
-        subtitle="Your calendar, cross-referenced with your physiology"
-      />
-      {hasCalendar ? (
-        <WorkLifeSection days={days} last90={last90} />
-      ) : (
-        <Card className="flex flex-col items-start justify-between gap-4 border-accent/20 bg-accent/[0.05] p-6 sm:flex-row sm:items-center">
-          <div>
-            <p className="font-medium">Connect your calendar to see what your schedule does to your body.</p>
-            <p className="mt-1 text-sm text-base-400">
-              Meeting load vs HRV · early meetings vs recovery · evening events vs sleep · travel signatures.
-              Parsed locally from an .ics export — nothing is uploaded.
-            </p>
-          </div>
-          <Link
-            href="/upload#calendar"
-            className="inline-flex h-10 shrink-0 items-center rounded-full bg-accent px-5 text-sm font-medium text-white transition hover:bg-accent-soft"
-          >
-            Connect calendar
           </Link>
-        </Card>
-      )}
-    </div>
-  );
-}
+        </div>
+      </FadeIn>
 
-function WorkLifeSection({ days, last90 }: { days: DayRecord[]; last90: DayRecord[] }) {
-  const workdays = last90.filter((d) => d.workday && d.meetingCount !== undefined);
-  const meetingsAvg = mean(workdays.map((d) => d.meetingCount!));
-  const meetingMinAvg = mean(workdays.map((d) => d.meetingMinutes ?? 0));
-  const officeDays = workdays.filter((d) => d.officeDay === true).length;
-  const locatedDays = workdays.filter((d) => d.officeDay !== undefined).length;
-
-  const heavy = last90.filter((d) => (d.meetingCount ?? 0) >= 5);
-  const light = last90.filter((d) => d.workday && (d.meetingCount ?? 99) <= 2);
-  const heavyHrv = heavy.map((d) => d.hrv).filter((v): v is number => v !== undefined);
-  const lightHrv = light.map((d) => d.hrv).filter((v): v is number => v !== undefined);
-
-  const early = last90.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour < 9);
-  const late = last90.filter((d) => d.firstMeetingHour !== undefined && d.firstMeetingHour >= 10);
-  const earlyRec = early.map((d) => d.recovery).filter((v): v is number => v !== undefined);
-  const lateRec = late.map((d) => d.recovery).filter((v): v is number => v !== undefined);
-
-  return (
-    <>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Meetings per workday" value={fmt(meetingsAvg, 1)} sub={`${fmt(meetingMinAvg, 0)} min/day average`} />
-        <StatTile
-          label="Heavy days (5+ mtgs)"
-          value={String(heavy.length)}
-          sub={`of ${workdays.length} workdays (90d)`}
-        />
-        <StatTile
-          label="Office vs home"
-          value={locatedDays ? `${Math.round((officeDays / locatedDays) * 100)}%` : "–"}
-          sub="share of located workdays in office"
-        />
-        <StatTile
-          label="Evening events"
-          value={String(last90.filter((d) => d.hasEveningEvent).length)}
-          sub="days with events past 8 PM"
-        />
-      </div>
-      <div className="mt-3 grid gap-3 lg:grid-cols-2">
-        {heavyHrv.length >= 4 && lightHrv.length >= 4 && (
-          <Card>
-            <CardTitle>HRV · heavy vs light meeting days</CardTitle>
-            <div className="mt-4">
-              <CompareBars
-                metric="hrv"
-                height={190}
-                groups={[
-                  { label: "5+ meetings", value: mean(heavyHrv), n: heavyHrv.length },
-                  { label: "≤2 meetings", value: mean(lightHrv), n: lightHrv.length },
-                ]}
-              />
-            </div>
+      {/* What's going on — plain-English insights */}
+      <FadeIn className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold tracking-tight">
+            <Sparkles size={17} className="text-vivid-cyan" /> What&apos;s going on
+          </h2>
+          <Link href="/correlations" className="text-sm font-medium text-accent-soft hover:underline">
+            Explore correlations →
+          </Link>
+        </div>
+        {insights.length ? (
+          <div className="space-y-2.5">
+            {insights.map((ins) => (
+              <Card key={ins.id} className="flex items-start gap-3 p-4">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/12 text-accent-soft">
+                  <Sparkles size={15} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium leading-snug">{ins.headline}</p>
+                  <p className="mt-1 text-xs text-base-400">{ins.evidence[0]}</p>
+                </div>
+                <Badge tone={CONF_TONE[ins.confidence]} className="shrink-0 capitalize">
+                  {ins.confidence}
+                </Badge>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card className="text-sm text-base-400">
+            Keep logging — once there&apos;s a couple of weeks of data, the meaningful patterns show up here automatically.
           </Card>
         )}
-        {earlyRec.length >= 4 && lateRec.length >= 4 && (
+      </FadeIn>
+
+      {/* Two trends that matter */}
+      <FadeIn className="mt-8">
+        <div className="grid gap-3 lg:grid-cols-2">
           <Card>
-            <CardTitle>Recovery · by first meeting time</CardTitle>
+            <CardTitle>Recovery · last 30 days</CardTitle>
             <div className="mt-4">
-              <CompareBars
-                metric="recovery"
-                height={190}
-                groups={[
-                  { label: "First mtg before 9 AM", value: mean(earlyRec), n: earlyRec.length },
-                  { label: "First mtg after 10 AM", value: mean(lateRec), n: lateRec.length },
-                ]}
-              />
+              <TrendChart data={trendData(last30, "recovery")} metric="recovery" height={190} />
             </div>
           </Card>
-        )}
-      </div>
-      <p className="mt-3 text-xs text-base-400">
-        Full statistical treatment of these patterns — with confidence levels and suggested experiments — lives in{" "}
-        <Link href="/insights" className="text-accent-soft hover:underline">
-          AI Discoveries
-        </Link>
-        .
+          <Card>
+            <CardTitle>Sleep · last 30 days</CardTitle>
+            <div className="mt-4">
+              <TrendChart data={trendData(last30, "sleepHours")} metric="sleepHours" height={190} />
+            </div>
+          </Card>
+        </div>
+      </FadeIn>
+
+      <p className="mt-8 text-center text-xs text-base-400">
+        Want more depth? <Link href="/correlations" className="text-accent-soft hover:underline">Correlations</Link>,{" "}
+        <Link href="/goals" className="text-accent-soft hover:underline">Goals</Link>, and the deeper tools live in the sidebar.
       </p>
-    </>
-  );
-}
-
-function deltaLabel(days: DayRecord[], k: MetricKey) {
-  const { delta, good } = deltaVsPrior(days, k);
-  return delta ? { delta: `${delta} / 30d`, deltaGood: good } : {};
-}
-
-function weekdayGroups(days: DayRecord[]) {
-  const names = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const byDow: number[][] = [[], [], [], [], [], [], []];
-  for (const d of days) if (d.recovery !== undefined) byDow[new Date(d.date + "T12:00:00").getDay()].push(d.recovery);
-  return [1, 2, 3, 4, 5, 6, 0].map((i) => ({ label: names[i], value: byDow[i].length ? mean(byDow[i]) : 0, n: byDow[i].length }));
-}
-
-function DayList({ days }: { days: DayRecord[] }) {
-  return (
-    <div className="mt-3 space-y-1.5">
-      {days.map((d) => (
-        <Link
-          key={d.date}
-          href={`/timeline?date=${d.date}`}
-          className="flex items-center justify-between rounded-lg px-2 py-1.5 text-sm transition hover:bg-white/[0.04]"
-        >
-          <span className="flex items-center gap-2.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: recoveryColor(d.recovery) }} />
-            <span className="text-base-200">{formatDate(d.date, { weekday: "short", month: "short", day: "numeric" })}</span>
-          </span>
-          <span className="flex items-center gap-3 tabular text-xs text-base-400">
-            <span>{d.sleepHours !== undefined ? `${fmt(d.sleepHours, 1)}h sleep` : ""}</span>
-            <span className="font-semibold text-white">{d.recovery}%</span>
-          </span>
-        </Link>
-      ))}
     </div>
   );
 }
@@ -491,7 +176,7 @@ export default function DashboardPage() {
         <DemoLoader />
       </Suspense>
       <RequireData>
-        <Dashboard />
+        <Understand />
       </RequireData>
     </>
   );
