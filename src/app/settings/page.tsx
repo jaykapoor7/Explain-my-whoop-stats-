@@ -51,7 +51,7 @@ export default function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Data source" sub="Fitbit Web API — OAuth with PKCE, tokens in a secure cookie, data stored only on this device">
+      <Section title="Data source" sub="Google Health API (successor to the Fitbit Web API) — Google OAuth 2.0, tokens in a secure cookie, data stored only on this device">
         <FitbitCard autoSyncOnConnected />
       </Section>
 

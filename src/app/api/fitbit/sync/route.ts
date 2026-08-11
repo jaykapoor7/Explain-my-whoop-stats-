@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientId, COOKIES, decodeToken, encodeToken, refreshToken, syncFitbit } from "@/lib/fitbit/server";
+import { COOKIES, creds, decodeToken, encodeToken, refreshToken, syncHealth } from "@/lib/fitbit/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -10,10 +10,10 @@ export async function GET(req: NextRequest) {
 
   let refreshed = false;
   if (token.expires_at < Date.now()) {
-    const id = clientId(req);
-    if (!id) return NextResponse.json({ error: "not_configured" }, { status: 401 });
+    const c = creds(req);
+    if (!c) return NextResponse.json({ error: "not_configured" }, { status: 401 });
     try {
-      token = await refreshToken(id, token.refresh_token);
+      token = await refreshToken(c, token.refresh_token);
       refreshed = true;
     } catch {
       return NextResponse.json({ error: "refresh_failed" }, { status: 401 });
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const days = await syncFitbit(token.access_token, 30);
+    const days = await syncHealth(token.access_token, 30);
     const res = NextResponse.json({ days, count: days.length, syncedAt: new Date().toISOString() });
     if (refreshed) {
       res.cookies.set(COOKIES.token, encodeToken(token), {

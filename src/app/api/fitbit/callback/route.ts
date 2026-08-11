@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientId, COOKIES, encodeToken, exchangeCode, redirectUri } from "@/lib/fitbit/server";
+import { COOKIES, creds, encodeToken, exchangeCode, redirectUri } from "@/lib/fitbit/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -9,17 +9,17 @@ export async function GET(req: NextRequest) {
   const origin = url.origin;
   const fail = (reason: string) => NextResponse.redirect(new URL(`/settings?fitbit=error&reason=${reason}`, origin));
 
-  const id = clientId(req);
+  const c = creds(req);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const verifier = req.cookies.get(COOKIES.verifier)?.value;
   if (url.searchParams.get("error")) return fail("denied");
-  if (!id || !code || !state || !verifier) return fail("missing");
+  if (!c || !code || !state || !verifier) return fail("missing");
   if (state !== req.cookies.get(COOKIES.state)?.value) return fail("state");
 
   let token;
   try {
-    token = await exchangeCode(id, code, redirectUri(origin), verifier);
+    token = await exchangeCode(c, code, redirectUri(origin), verifier);
   } catch {
     return fail("exchange");
   }

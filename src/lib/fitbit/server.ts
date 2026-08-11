@@ -4,29 +4,47 @@ import type { NextRequest } from "next/server";
 import { Activity, ActivityConfidence, DailySummary, SleepSession } from "../types";
 
 /**
- * Fitbit Web API integration (covers Fitbit Air — the device syncs to the
- * Fitbit app, and its data is exposed via this API). OAuth 2.0 public client
- * with PKCE, so only a Client ID is required — no secret, no server storage.
- * Tokens live in httpOnly cookies; synced data is returned to the browser and
- * stored locally. Nothing is persisted server-side.
+ * Google Health API integration — the successor to the legacy Fitbit Web API
+ * (legacy endpoints deprecate September 2026). Covers Fitbit Air data.
+ *
+ * Doc-verified specifics:
+ * - App registration: Google Cloud console, enable the Google Health API,
+ *   OAuth consent screen with googlehealth.* scopes (all classified
+ *   RESTRICTED — production requires Google's review; Testing mode with
+ *   test users works before verification).
+ * - OAuth 2.0: standard Google endpoints. Authorization:
+ *   https://accounts.google.com/o/oauth2/v2/auth with response_type=code,
+ *   access_type=offline (+ prompt=consent to guarantee a refresh token).
+ *   Token exchange/refresh: https://oauth2.googleapis.com/token (web
+ *   application clients authenticate with client_id + client_secret).
+ * - Data API: https://health.googleapis.com/v4/users/me/dataTypes/{type}/
+ *   dataPoints:{list|rollUp|dailyRollUp|reconcile}. Rollup ranges capped at
+ *   14 days for heart-rate/total-calories/active-minutes/
+ *   calories-in-heart-rate-zone, 90 days otherwise.
+ *
+ * Tokens live in httpOnly cookies; synced data is returned to the browser
+ * and stored locally. Nothing is persisted server-side.
  */
 
 export const COOKIES = {
-  client: "hos_fb_client",
-  token: "hos_fb_token",
-  state: "hos_fb_state",
-  verifier: "hos_fb_verifier",
+  client: "hos_gh_client",
+  token: "hos_gh_token",
+  state: "hos_gh_state",
+  verifier: "hos_gh_verifier",
 };
+
+export interface ClientCreds {
+  id: string;
+  secret?: string;
+}
 
 export interface TokenSet {
   access_token: string;
   refresh_token: string;
   expires_at: number; // epoch ms
-  user_id?: string;
 }
 
 const b64url = (b: Buffer) => b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-
 export const randomToken = (n = 32) => b64url(crypto.randomBytes(n));
 
 export function pkcePair() {
@@ -35,53 +53,82 @@ export function pkcePair() {
   return { verifier, challenge };
 }
 
-export const SCOPES = "activity heartrate sleep weight profile";
+/** Read scopes for activity/sleep + weight (googlehealth.* — all Restricted). */
+export const SCOPES = [
+  "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
+  "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
+  "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
+].join(" ");
 
-export function clientId(req: NextRequest): string | null {
-  return process.env.FITBIT_CLIENT_ID ?? req.cookies.get(COOKIES.client)?.value ?? null;
+export const encodeCreds = (c: ClientCreds) => Buffer.from(JSON.stringify(c)).toString("base64");
+function decodeCreds(raw?: string): ClientCreds | null {
+  if (!raw) return null;
+  try {
+    const c = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as ClientCreds;
+    return c.id ? c : null;
+  } catch {
+    return null;
+  }
+}
+
+export function creds(req: NextRequest): ClientCreds | null {
+  if (process.env.GOOGLE_CLIENT_ID) {
+    return { id: process.env.GOOGLE_CLIENT_ID, secret: process.env.GOOGLE_CLIENT_SECRET };
+  }
+  return decodeCreds(req.cookies.get(COOKIES.client)?.value);
 }
 
 export function redirectUri(origin: string): string {
   return `${(process.env.APP_URL ?? origin).replace(/\/$/, "")}/api/fitbit/callback`;
 }
 
-export function authorizeUrl(id: string, redirect: string, state: string, challenge: string): string {
+export function authorizeUrl(clientId: string, redirect: string, state: string, challenge: string): string {
   const p = new URLSearchParams({
     response_type: "code",
-    client_id: id,
-    scope: SCOPES,
+    client_id: clientId,
     redirect_uri: redirect,
+    scope: SCOPES,
     state,
+    access_type: "offline",
+    prompt: "consent", // guarantees a refresh_token on this grant
     code_challenge: challenge,
     code_challenge_method: "S256",
   });
-  return `https://www.fitbit.com/oauth2/authorize?${p}`;
+  return `https://accounts.google.com/o/oauth2/v2/auth?${p}`;
 }
 
-async function tokenRequest(body: URLSearchParams): Promise<TokenSet> {
-  const res = await fetch("https://api.fitbit.com/oauth2/token", {
+async function tokenRequest(body: URLSearchParams, previousRefresh?: string): Promise<TokenSet> {
+  const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body,
   });
-  if (!res.ok) throw new Error(`Fitbit token endpoint ${res.status}: ${(await res.text()).slice(0, 200)}`);
-  const j = (await res.json()) as { access_token: string; refresh_token: string; expires_in: number; user_id?: string };
+  if (!res.ok) throw new Error(`Google token endpoint ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  const j = (await res.json()) as { access_token: string; refresh_token?: string; expires_in: number };
   return {
     access_token: j.access_token,
-    refresh_token: j.refresh_token,
+    // Google only returns refresh_token on the initial consent grant.
+    refresh_token: j.refresh_token ?? previousRefresh ?? "",
     expires_at: Date.now() + (j.expires_in - 60) * 1000,
-    user_id: j.user_id,
   };
 }
 
-export function exchangeCode(id: string, code: string, redirect: string, verifier: string): Promise<TokenSet> {
-  return tokenRequest(
-    new URLSearchParams({ client_id: id, grant_type: "authorization_code", code, redirect_uri: redirect, code_verifier: verifier })
-  );
+export function exchangeCode(c: ClientCreds, code: string, redirect: string, verifier: string): Promise<TokenSet> {
+  const body = new URLSearchParams({
+    grant_type: "authorization_code",
+    code,
+    client_id: c.id,
+    redirect_uri: redirect,
+    code_verifier: verifier,
+  });
+  if (c.secret) body.set("client_secret", c.secret);
+  return tokenRequest(body);
 }
 
-export function refreshToken(id: string, refresh: string): Promise<TokenSet> {
-  return tokenRequest(new URLSearchParams({ client_id: id, grant_type: "refresh_token", refresh_token: refresh }));
+export function refreshToken(c: ClientCreds, refresh: string): Promise<TokenSet> {
+  const body = new URLSearchParams({ grant_type: "refresh_token", refresh_token: refresh, client_id: c.id });
+  if (c.secret) body.set("client_secret", c.secret);
+  return tokenRequest(body, refresh);
 }
 
 export const encodeToken = (t: TokenSet) => Buffer.from(JSON.stringify(t)).toString("base64");
@@ -89,20 +136,109 @@ export function decodeToken(raw?: string): TokenSet | null {
   if (!raw) return null;
   try {
     const t = JSON.parse(Buffer.from(raw, "base64").toString("utf8")) as TokenSet;
-    return t.access_token && t.refresh_token ? t : null;
+    return t.access_token ? t : null;
   } catch {
     return null;
   }
 }
 
-// ---------------- data fetch + mapping ----------------
+// ---------------- Google Health API data fetch + mapping ----------------
 
-const API = "https://api.fitbit.com";
+const BASE = "https://health.googleapis.com/v4/users/me";
 
-async function get<T>(path: string, token: string): Promise<T | null> {
-  const res = await fetch(`${API}${path}`, { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+type Json = Record<string, unknown>;
+
+async function api(path: string, token: string, body?: Json): Promise<Json | null> {
+  const res = await fetch(`${BASE}${path}`, {
+    method: body ? "POST" : "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: "application/json",
+      ...(body ? { "Content-Type": "application/json" } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+    cache: "no-store",
+  });
   if (!res.ok) return null;
-  return (await res.json()) as T;
+  return (await res.json()) as Json;
+}
+
+/** GET list of raw data points for a type, filtered to [startIso, endIso] physical time. */
+async function listPoints(type: string, token: string, startIso: string, endIso: string): Promise<Json[]> {
+  const filter = encodeURIComponent(
+    `${camel(type)}.sample_time.physical_time >= "${startIso}" AND ${camel(type)}.sample_time.physical_time < "${endIso}"`
+  );
+  const out: Json[] = [];
+  let pageToken = "";
+  for (let page = 0; page < 6; page++) {
+    const qs = `?filter=${filter}&pageSize=500${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`;
+    const j = await api(`/dataTypes/${type}/dataPoints${qs}`, token);
+    if (!j) {
+      // Some deployments reject the filter grammar — fall back to unfiltered page.
+      if (page === 0) {
+        const plain = await api(`/dataTypes/${type}/dataPoints?pageSize=500`, token);
+        return (plain?.dataPoints as Json[]) ?? [];
+      }
+      break;
+    }
+    out.push(...(((j.dataPoints as Json[]) ?? [])));
+    pageToken = (j.nextPageToken as string) ?? "";
+    if (!pageToken) break;
+  }
+  return out;
+}
+
+/** POST dailyRollUp for a type across [startDate, endDate] (civil dates). */
+async function dailyRollUp(type: string, token: string, startDate: string, endDate: string): Promise<Json[]> {
+  const j = await api(`/dataTypes/${type}/dataPoints:dailyRollUp`, token, {
+    startDate,
+    endDate,
+    windowSizeDays: 1,
+  });
+  return ((j?.dataPoints as Json[]) ?? (j?.rollupDataPoints as Json[]) ?? []) as Json[];
+}
+
+const camel = (t: string) => t.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
+
+// --- tolerant field extraction (exact per-type payload fields are not all
+// --- publicly documented; probe the documented/likely shapes, skip on miss)
+
+function num(v: unknown): number | undefined {
+  if (typeof v === "number" && isFinite(v)) return v;
+  if (typeof v === "string") {
+    const n = parseFloat(v);
+    if (isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+function pick(obj: Json | undefined, ...keys: string[]): unknown {
+  if (!obj) return undefined;
+  for (const k of keys) {
+    if (obj[k] !== undefined) return obj[k];
+    // nested one level (e.g. { value: { bpm: 62 } } or typed wrapper)
+    for (const v of Object.values(obj)) {
+      if (v && typeof v === "object" && (v as Json)[k] !== undefined) return (v as Json)[k];
+    }
+  }
+  return undefined;
+}
+
+function pointDate(p: Json): string | undefined {
+  const cand =
+    pick(p, "date", "civilDate", "startDate") ??
+    pick(p, "startTime", "physicalTime", "sampleTime", "time", "endTime");
+  if (typeof cand === "string") {
+    const m = cand.match(/^\d{4}-\d{2}-\d{2}/);
+    if (m) return m[0];
+  }
+  if (cand && typeof cand === "object") {
+    const y = num((cand as Json).year);
+    const mo = num((cand as Json).month);
+    const d = num((cand as Json).day);
+    if (y && mo && d) return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+  }
+  return undefined;
 }
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -112,12 +248,15 @@ const hourOf = (iso: string) => {
   return m ? parseInt(m[1], 10) + parseInt(m[2], 10) / 60 : 23;
 };
 
-/** Pull the last `daysBack` days and map into the app's DailySummary model. ~7 API calls. */
-export async function syncFitbit(token: string, daysBack = 30): Promise<DailySummary[]> {
+/** Pull the last `daysBack` days from the Google Health API into DailySummary[]. */
+export async function syncHealth(token: string, daysBack = 30): Promise<DailySummary[]> {
   const end = new Date();
   const start = new Date(end.getTime() - (daysBack - 1) * 864e5);
-  const s = ymd(start);
-  const e = ymd(end);
+  const startDate = ymd(start);
+  const endDate = ymd(end);
+  const startIso = `${startDate}T00:00:00Z`;
+  const endIso = new Date(end.getTime() + 864e5).toISOString();
+
   const byDate = new Map<string, Partial<DailySummary>>();
   const day = (date: string) => {
     let d = byDate.get(date);
@@ -128,106 +267,128 @@ export async function syncFitbit(token: string, daysBack = 30): Promise<DailySum
     return d;
   };
 
-  // Sleep (range endpoint, v1.2)
-  const sleep = await get<{ sleep?: FbSleep[] }>(`/1.2/user/-/sleep/date/${s}/${e}.json`, token);
-  for (const rec of sleep?.sleep ?? []) {
-    if (rec.isMainSleep === false) continue;
-    const sum = rec.levels?.summary ?? {};
-    const stage = (k: string) => sum[k]?.minutes ?? 0;
-    const classic = stage("asleep") > 0; // classic logs lack stages
-    const asleepMin = rec.minutesAsleep ?? 0;
+  // Daily physiological summaries (list of per-day points)
+  for (const p of await listPoints("daily-resting-heart-rate", token, startIso, endIso)) {
+    const date = pointDate(p);
+    const bpm = num(pick(p, "restingHeartRate", "bpm", "value", "beatsPerMinute"));
+    if (date && bpm) day(date).rhr = { date, bpm: Math.round(bpm) };
+  }
+  for (const p of await listPoints("daily-heart-rate-variability", token, startIso, endIso)) {
+    const date = pointDate(p);
+    const rmssd = num(pick(p, "rmssd", "dailyRmssd", "value", "rmssdMillis"));
+    if (date && rmssd) day(date).hrv = { date, rmssdMs: Math.round(rmssd) };
+  }
+
+  // Steps + calories via dailyRollUp (steps ≤90d; total-calories ≤14d → chunk)
+  for (const p of await dailyRollUp("steps", token, startDate, endDate)) {
+    const date = pointDate(p);
+    const steps = num(pick(p, "countSum", "steps", "sum", "value"));
+    if (date && steps !== undefined) day(date).steps = Math.round(steps);
+  }
+  for (let chunkStart = new Date(start); chunkStart <= end; chunkStart = new Date(chunkStart.getTime() + 14 * 864e5)) {
+    const chunkEnd = new Date(Math.min(end.getTime(), chunkStart.getTime() + 13 * 864e5));
+    for (const p of await dailyRollUp("total-calories", token, ymd(chunkStart), ymd(chunkEnd))) {
+      const date = pointDate(p);
+      const kcal = num(pick(p, "energySum", "caloriesSum", "kilocalories", "sum", "value", "countSum"));
+      if (date && kcal !== undefined) {
+        const d = day(date);
+        d.restingCalories = Math.round(kcal * 0.72);
+        d.activeCalories = Math.round(kcal) - d.restingCalories;
+      }
+    }
+  }
+
+  // Sleep sessions
+  for (const p of await listPoints("sleep", token, startIso, endIso)) {
+    const startTime = (pick(p, "startTime", "physicalStartTime", "bedtime") as string) ?? "";
+    const endTime = (pick(p, "endTime", "physicalEndTime", "wakeTime") as string) ?? "";
+    const date = (endTime || startTime).slice(0, 10) || pointDate(p);
+    if (!date) continue;
+    const stageMin = (names: string[]) => {
+      const v = num(pick(p, ...names));
+      return v !== undefined ? Math.round(v) : 0;
+    };
+    const deep = stageMin(["deepSleepMinutes", "minutesDeep", "deep"]);
+    const rem = stageMin(["remSleepMinutes", "minutesRem", "rem"]);
+    const light = stageMin(["lightSleepMinutes", "minutesLight", "light"]);
+    const awake = stageMin(["awakeMinutes", "minutesAwake", "wake", "awake"]);
+    let asleepMin = num(pick(p, "minutesAsleep", "totalSleepMinutes", "asleepMinutes")) ?? deep + rem + light;
+    if (!asleepMin && startTime && endTime) {
+      asleepMin = Math.max(0, Math.round((Date.parse(endTime) - Date.parse(startTime)) / 60000) - awake);
+    }
+    if (!asleepMin) continue;
+    const inBedMin = num(pick(p, "timeInBedMinutes", "minutesInBed")) ?? asleepMin + awake;
+    const existing = byDate.get(date)?.sleep;
+    if (existing && existing.asleepMin >= asleepMin) continue; // keep main sleep
     const session: SleepSession = {
-      date: rec.dateOfSleep,
-      bedtime: rec.startTime ?? `${rec.dateOfSleep}T23:00:00`,
-      wake: rec.endTime ?? `${rec.dateOfSleep}T07:00:00`,
-      inBedMin: rec.timeInBed ?? asleepMin,
-      asleepMin,
-      efficiencyPct: rec.efficiency ?? 0,
-      stages: classic
-        ? { awake: stage("awake") + stage("restless"), light: asleepMin, deep: 0, rem: 0 }
-        : { awake: stage("wake"), light: stage("light"), deep: stage("deep"), rem: stage("rem") },
-      awakenings: classic ? (sum["awake"]?.count ?? 0) : (sum["wake"]?.count ?? 0),
-      sleepHrBpm: 0, // filled from RHR below (approximation; intraday HR needs special access)
-      overnightHrvMs: 0, // filled from HRV below (Fitbit HRV is measured during sleep)
-      consistencyPct: 0, // computed after all days are known
+      date,
+      bedtime: startTime || `${date}T23:30:00`,
+      wake: endTime || `${date}T07:00:00`,
+      inBedMin: Math.round(inBedMin),
+      asleepMin: Math.round(asleepMin),
+      efficiencyPct: Math.round(num(pick(p, "efficiency", "efficiencyPct")) ?? clamp((asleepMin / Math.max(1, inBedMin)) * 100, 40, 99)),
+      stages: { awake, light: light || Math.max(0, Math.round(asleepMin) - deep - rem), deep, rem },
+      awakenings: Math.round(num(pick(p, "awakeningsCount", "awakenings", "wakeCount")) ?? 0),
+      sleepHrBpm: 0,
+      overnightHrvMs: 0,
+      consistencyPct: 0,
       debtMin: 0,
       needMin: 480,
     };
-    day(rec.dateOfSleep).sleep = session;
+    day(date).sleep = session;
   }
 
-  // HRV (daily rmssd; ≤30d per request)
-  const hrv = await get<{ hrv?: { dateTime: string; value?: { dailyRmssd?: number } }[] }>(`/1/user/-/hrv/date/${s}/${e}.json`, token);
-  for (const r of hrv?.hrv ?? []) {
-    if (r.value?.dailyRmssd != null) day(r.dateTime).hrv = { date: r.dateTime, rmssdMs: Math.round(r.value.dailyRmssd) };
-  }
-
-  // Resting HR
-  const heart = await get<{ "activities-heart"?: { dateTime: string; value?: { restingHeartRate?: number } }[] }>(
-    `/1/user/-/activities/heart/date/${s}/${e}.json`,
-    token
-  );
-  for (const r of heart?.["activities-heart"] ?? []) {
-    if (r.value?.restingHeartRate != null) day(r.dateTime).rhr = { date: r.dateTime, bpm: r.value.restingHeartRate };
-  }
-
-  // Steps + calories
-  const steps = await get<{ "activities-steps"?: { dateTime: string; value: string }[] }>(`/1/user/-/activities/steps/date/${s}/${e}.json`, token);
-  for (const r of steps?.["activities-steps"] ?? []) day(r.dateTime).steps = parseInt(r.value, 10) || 0;
-  const cals = await get<{ "activities-calories"?: { dateTime: string; value: string }[] }>(`/1/user/-/activities/calories/date/${s}/${e}.json`, token);
-  for (const r of cals?.["activities-calories"] ?? []) {
-    const total = parseInt(r.value, 10) || 0;
-    const d = day(r.dateTime);
-    d.restingCalories = Math.round(total * 0.72); // split refined below when workouts known
-    d.activeCalories = total - d.restingCalories;
-  }
-
-  // Workouts
-  const acts = await get<{ activities?: FbActivity[] }>(
-    `/1/user/-/activities/list.json?afterDate=${s}&sort=asc&offset=0&limit=100`,
-    token
-  );
-  for (const a of acts?.activities ?? []) {
-    const date = (a.startTime ?? "").slice(0, 10);
-    if (!date || date < s) continue;
-    const durMin = Math.round((a.duration ?? 0) / 60000);
-    const zonesRaw = a.heartRateZones ?? [];
-    const zmin = (n: string) => zonesRaw.find((z) => z.name === n)?.minutes ?? 0;
-    const zones = [zmin("Out of Range"), zmin("Fat Burn"), zmin("Cardio"), zmin("Peak"), 0];
-    // Placeholder load model: HR-zone-weighted minutes (final algorithm designed separately).
-    const load = clamp(zmin("Fat Burn") * 0.05 + zmin("Cardio") * 0.13 + zmin("Peak") * 0.22 + zmin("Out of Range") * 0.02 + durMin * 0.015, 0.3, 19);
-    const confidence: ActivityConfidence =
-      a.logType === "auto_detected" && durMin < 15 ? "low" : a.logType === "auto_detected" ? "medium" : "high";
-    const act: Activity = {
-      id: `fb-${a.logId}`,
+  // Workouts / exercise sessions
+  for (const p of await listPoints("exercise", token, startIso, endIso)) {
+    const startTime = (pick(p, "startTime", "physicalStartTime") as string) ?? "";
+    const date = startTime.slice(0, 10) || pointDate(p);
+    if (!date) continue;
+    let durMin = num(pick(p, "durationMinutes", "activeDurationMinutes"));
+    if (durMin === undefined) {
+      const endTime = (pick(p, "endTime", "physicalEndTime") as string) ?? "";
+      const durMs = num(pick(p, "durationMillis", "duration"));
+      durMin = durMs !== undefined ? durMs / 60000 : endTime && startTime ? (Date.parse(endTime) - Date.parse(startTime)) / 60000 : 0;
+    }
+    durMin = Math.round(durMin);
+    if (durMin <= 0) continue;
+    const name = (pick(p, "exerciseType", "activityName", "activityType", "name", "type") as string) ?? "Workout";
+    const auto = ((pick(p, "logType", "source", "detectionMethod") as string) ?? "").toLowerCase().includes("auto");
+    const confidence: ActivityConfidence = auto && durMin < 15 ? "low" : auto ? "medium" : "high";
+    const avgHr = Math.round(num(pick(p, "averageHeartRate", "avgHeartRate", "meanHeartRate")) ?? 0);
+    const kcal = Math.round(num(pick(p, "calories", "energyExpended", "kilocalories")) ?? 0);
+    const load = clamp(durMin * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
+    const acts = (day(date).activities ??= []);
+    acts.push({
+      id: `gh-${pick(p, "dataPointId", "id", "logId") ?? `${date}-${acts.length}`}`,
       date,
-      type: durMin < 15 && a.logType === "auto_detected" ? "Unrecognized elevated HR" : (a.activityName ?? "Workout"),
-      start: a.startTime ?? `${date}T12:00:00`,
+      type: auto && durMin < 15 ? "Unrecognized elevated HR" : humanize(String(name)),
+      start: startTime || `${date}T12:00:00`,
       durationMin: durMin,
-      avgHr: a.averageHeartRate ?? 0,
-      maxHr: 0,
-      calories: a.calories ?? 0,
-      zones,
+      avgHr,
+      maxHr: Math.round(num(pick(p, "maxHeartRate", "peakHeartRate")) ?? 0),
+      calories: kcal,
+      zones: [0, 0, 0, 0, 0],
       load: Math.round(load * 10) / 10,
       confidence,
-    };
-    const d = day(date);
-    d.activities = [...(d.activities ?? []), act];
+    } satisfies Activity);
   }
 
-  // Weight (optional)
-  const weight = await get<{ weight?: { date: string; weight: number }[] }>(`/1/user/-/body/log/weight/date/${s}/${e}.json`, token);
-  for (const r of weight?.weight ?? []) day(r.date).weightKg = r.weight;
+  // Weight
+  for (const p of await listPoints("weight", token, startIso, endIso)) {
+    const date = pointDate(p);
+    const kg = num(pick(p, "weightKg", "kilograms", "weight", "value"));
+    if (date && kg) day(date).weightKg = Math.round(kg * 10) / 10;
+  }
 
-  // Assemble complete days; fill derived sleep fields.
+  // Assemble; derive sleep debt/consistency across the window.
   const dates = [...byDate.keys()].sort();
   const out: DailySummary[] = [];
   let debt = 0;
   const bedHours: number[] = [];
   for (const date of dates) {
     const p = byDate.get(date)!;
-    if (!p.sleep && !p.rhr && !p.hrv && !p.steps) continue; // nothing useful
-    const sleepSession: SleepSession =
+    if (!p.sleep && !p.rhr && !p.hrv && p.steps === undefined) continue;
+    const sleep: SleepSession =
       p.sleep ??
       ({
         date,
@@ -244,24 +405,23 @@ export async function syncFitbit(token: string, daysBack = 30): Promise<DailySum
         debtMin: 0,
         needMin: 480,
       } satisfies SleepSession);
-    const rhrBpm = p.rhr?.bpm ?? 0;
-    sleepSession.sleepHrBpm = sleepSession.sleepHrBpm || rhrBpm;
-    sleepSession.overnightHrvMs = p.hrv?.rmssdMs ?? 0;
+    sleep.sleepHrBpm = sleep.sleepHrBpm || (p.rhr?.bpm ?? 0);
+    sleep.overnightHrvMs = p.hrv?.rmssdMs ?? 0;
     if (p.sleep) {
-      debt = clamp(debt + (sleepSession.needMin - sleepSession.asleepMin) * 0.5, 0, 400);
-      let bh = hourOf(sleepSession.bedtime);
+      debt = clamp(debt + (sleep.needMin - sleep.asleepMin) * 0.5, 0, 400);
+      let bh = hourOf(sleep.bedtime);
       if (bh < 12) bh += 24;
       bedHours.push(bh);
       const mean = bedHours.reduce((a, b) => a + b, 0) / bedHours.length;
-      sleepSession.consistencyPct = Math.round(clamp(95 - Math.abs(bh - mean) * 8, 40, 98));
+      sleep.consistencyPct = Math.round(clamp(95 - Math.abs(bh - mean) * 8, 40, 98));
     }
-    sleepSession.debtMin = Math.round(debt);
+    sleep.debtMin = Math.round(debt);
 
     out.push({
       date,
       hrv: p.hrv ?? { date, rmssdMs: 0 },
       rhr: p.rhr ?? { date, bpm: 0 },
-      sleep: sleepSession,
+      sleep,
       activities: p.activities ?? [],
       steps: p.steps ?? 0,
       activeCalories: p.activeCalories ?? 0,
@@ -274,24 +434,10 @@ export async function syncFitbit(token: string, daysBack = 30): Promise<DailySum
   return out;
 }
 
-interface FbSleep {
-  dateOfSleep: string;
-  isMainSleep?: boolean;
-  startTime?: string;
-  endTime?: string;
-  minutesAsleep?: number;
-  timeInBed?: number;
-  efficiency?: number;
-  levels?: { summary?: Record<string, { minutes?: number; count?: number }> };
-}
-
-interface FbActivity {
-  logId: number;
-  activityName?: string;
-  startTime?: string;
-  duration?: number;
-  averageHeartRate?: number;
-  calories?: number;
-  logType?: string;
-  heartRateZones?: { name: string; minutes?: number }[];
+function humanize(s: string): string {
+  return s
+    .replace(/[_-]+/g, " ")
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
 }

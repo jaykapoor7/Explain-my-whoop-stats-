@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { clientId, COOKIES, decodeToken } from "@/lib/fitbit/server";
+import { COOKIES, creds, decodeToken } from "@/lib/fitbit/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export function GET(req: NextRequest) {
   return NextResponse.json({
-    configured: !!clientId(req),
+    configured: !!creds(req),
     connected: !!decodeToken(req.cookies.get(COOKIES.token)?.value),
-    envConfigured: !!process.env.FITBIT_CLIENT_ID,
+    envConfigured: !!process.env.GOOGLE_CLIENT_ID,
   });
 }

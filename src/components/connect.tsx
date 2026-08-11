@@ -45,16 +45,17 @@ export function useFitbit() {
     }
   }, [setWearableDays]);
 
-  const saveClientId = useCallback(async (id: string) => {
+  const saveCreds = useCallback(async (id: string, secret: string) => {
     setBusy("save");
     const r = await fetch("/api/fitbit/config", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId: id }),
+      body: JSON.stringify({ clientId: id, clientSecret: secret }),
     }).catch(() => null);
     setBusy(null);
     if (!r?.ok) {
-      setMessage({ kind: "err", text: "That doesn't look like a valid Client ID." });
+      const j = (await r?.json().catch(() => null)) as { message?: string } | null;
+      setMessage({ kind: "err", text: j?.message ?? "Couldn't save those credentials." });
       return false;
     }
     window.location.href = "/api/fitbit/connect";
@@ -66,15 +67,16 @@ export function useFitbit() {
     refresh();
   }, [refresh]);
 
-  return { status, busy, message, sync, saveClientId, disconnect, refresh, setMessage };
+  return { status, busy, message, sync, saveCreds, disconnect, refresh, setMessage };
 }
 
 /** Full connect card: setup steps, Client ID entry, connect + sync actions. */
 export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnected?: boolean }) {
-  const { status, busy, message, sync, saveClientId, disconnect } = useFitbit();
+  const { status, busy, message, sync, saveCreds, disconnect } = useFitbit();
   const lastSync = useApp((s) => s.lastSync);
   const connectedData = useApp((s) => s.wearableDays.length > 0);
   const [clientId, setClientId] = useState("");
+  const [clientSecret, setClientSecret] = useState("");
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
@@ -107,8 +109,8 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink-400">
-            Sleep, HRV, resting HR, workouts, steps and calories from your Fitbit account — synced on demand, stored
-            only in this browser.
+            Sleep, HRV, resting HR, workouts, steps, calories and weight via the Google Health API (the successor to
+            the Fitbit Web API) — synced on demand, stored only in this browser.
           </p>
 
           {status && !status.connected && (
@@ -116,11 +118,14 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
               {!status.envConfigured && (
                 <>
                   <p className="text-xs leading-relaxed text-ink-300">
-                    One-time setup (~2 min): create a free app at{" "}
-                    <a href="https://dev.fitbit.com/apps/new" target="_blank" rel="noreferrer" className="text-nutrition hover:underline">
-                      dev.fitbit.com/apps/new
-                    </a>{" "}
-                    — OAuth 2.0 Application Type <span className="font-semibold text-ink-100">Client</span>, Redirect URL:
+                    One-time setup in{" "}
+                    <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="text-nutrition hover:underline">
+                      Google Cloud console
+                    </a>
+                    : create a project, enable the <span className="font-semibold text-ink-100">Google Health API</span>,
+                    configure the OAuth consent screen (add yourself as a test user), then create an{" "}
+                    <span className="font-semibold text-ink-100">OAuth client ID → Web application</span> with this
+                    redirect URI:
                   </p>
                   <div className="mt-2 flex items-center gap-2 rounded-lg bg-ink-900 px-2.5 py-1.5">
                     <code className="min-w-0 flex-1 truncate text-[11px] text-ink-200">{redirect}</code>
@@ -128,21 +133,36 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                       <Copy size={12} />
                     </button>
                   </div>
-                  <div className="mt-2.5 flex gap-2">
+                  <div className="mt-2.5 grid gap-2">
                     <input
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
-                      placeholder="Paste Client ID (e.g. 23ABCD)"
-                      className="h-9 min-w-0 flex-1 rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                      placeholder="Client ID (…apps.googleusercontent.com)"
+                      className="h-9 w-full rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
                     />
-                    <button
-                      onClick={() => saveClientId(clientId)}
-                      disabled={!clientId.trim() || busy !== null}
-                      className="flex shrink-0 items-center gap-1.5 rounded-full bg-recovery px-4 text-xs font-semibold text-ink-950 disabled:opacity-40"
-                    >
-                      {busy === "save" ? <Loader2 size={13} className="animate-spin" /> : <Plug size={13} />} Connect
-                    </button>
+                    <div className="flex gap-2">
+                      <input
+                        value={clientSecret}
+                        onChange={(e) => setClientSecret(e.target.value)}
+                        placeholder="Client secret (GOCSPX-…)"
+                        type="password"
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                      />
+                      <button
+                        onClick={() => saveCreds(clientId, clientSecret)}
+                        disabled={!clientId.trim() || !clientSecret.trim() || busy !== null}
+                        className="flex shrink-0 items-center gap-1.5 rounded-full bg-recovery px-4 text-xs font-semibold text-ink-950 disabled:opacity-40"
+                      >
+                        {busy === "save" ? <Loader2 size={13} className="animate-spin" /> : <Plug size={13} />} Connect
+                      </button>
+                    </div>
                   </div>
+                  <p className="mt-2 text-[10px] leading-relaxed text-ink-500">
+                    Scopes requested: googlehealth.activity_and_fitness.readonly · googlehealth.sleep.readonly ·
+                    googlehealth.health_metrics_and_measurements.readonly. These are Restricted scopes — while your
+                    consent screen is in Testing, only added test users can connect; public use requires Google&apos;s
+                    verification review.
+                  </p>
                 </>
               )}
               {status.envConfigured && (
@@ -150,7 +170,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                   onClick={() => (window.location.href = "/api/fitbit/connect")}
                   className="flex items-center gap-1.5 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-ink-950"
                 >
-                  <Plug size={13} /> Connect Fitbit
+                  <Plug size={13} /> Connect with Google
                 </button>
               )}
             </div>
