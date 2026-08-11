@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Card, PageHeader, Section, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
-import { useOverlay } from "@/lib/data/store";
-import { cn, fmtDate, fmtNum, relativeDay } from "@/lib/format";
+import { useApp } from "@/lib/data/store";
+import { addDays, cn, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { JournalEntry, JournalRatings } from "@/lib/types";
 
 const RATING_KEYS: { key: keyof JournalRatings; label: string }[] = [
@@ -23,19 +23,20 @@ const QUICK_TAGS = [
 
 export default function JournalPage() {
   const data = useHealth();
-  const saveJournal = useOverlay((s) => s.saveJournal);
+  const saveJournal = useApp((s) => s.saveJournal);
+  const journalMap = useApp((s) => s.journal);
   const [draftNote, setDraftNote] = useState<string | null>(null);
 
-  const entry = data.hydrated ? data.today.day.journal : undefined;
+  const entry = data.todayJournal;
 
   const draft = useMemo<JournalEntry>(
     () =>
       entry ?? {
-        date: data.hydrated ? data.today.day.date : "",
+        date: todayISO(),
         ratings: { mood: 5, stress: 5, energy: 5, focus: 5, sleepQuality: 5 },
         tags: [],
       },
-    [entry, data.hydrated, data.today?.day.date]
+    [entry]
   );
 
   if (!data.hydrated) return <SkeletonPage />;
@@ -58,7 +59,7 @@ export default function JournalPage() {
     <div className="animate-fadeUp">
       <PageHeader title="Journal" sub="Log the life around the data — it becomes your personal experiment system." />
 
-      <Section title={relativeDay(data.today.day.date)} sub="Rate the day and tag what happened">
+      <Section title={relativeDay(todayISO())} sub="Rate the day and tag what happened">
         <Card>
           <div className="space-y-4">
             {RATING_KEYS.map(({ key, label }) => (
@@ -136,16 +137,14 @@ export default function JournalPage() {
 
       <Section title="Recent entries">
         <div className="space-y-2.5">
-          {data.days
-            .slice(-7)
-            .reverse()
-            .map((s) => {
-              const j = s.day.journal;
+          {Array.from({ length: 7 }, (_, i) => addDays(todayISO(), -i))
+            .map((date) => {
+              const j = journalMap[date];
               if (!j) return null;
               return (
-                <Card key={s.day.date} className="p-4">
+                <Card key={date} className="p-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-[13px] font-semibold text-ink-100">{relativeDay(s.day.date)}</span>
+                    <span className="text-[13px] font-semibold text-ink-100">{relativeDay(date)}</span>
                     <span className="tabular text-xs text-ink-400">
                       mood {j.ratings.mood} · stress {j.ratings.stress} · energy {j.ratings.energy}
                     </span>
@@ -170,7 +169,7 @@ export default function JournalPage() {
       <div className="mt-6">
         <Why summary="How does the journal power insights?">
           Every tag becomes a variable the pattern engine can compare against your physiology — e.g. HRV, recovery and
-          sleep on days after you smoked vs days you didn&apos;t, always with the sample size shown ({fmtDate(data.days[0].day.date)} onwards).
+          sleep on days after you smoked vs days you didn&apos;t, always with the sample size shown.
           Associations are reported observationally and never as proof of cause.
         </Why>
       </div>

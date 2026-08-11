@@ -1,4 +1,4 @@
-import { NutritionFood } from "../types";
+import { NutritionFood } from "./types";
 
 /** Small built-in food database (per serving). Architecture is API-ready:
  *  a future FoodProvider can replace this list with search/barcode results. */

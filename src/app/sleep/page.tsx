@@ -26,9 +26,9 @@ export default function SleepPage() {
       baselineLabel={(s) => `You typically sleep ${s.baseline}h a night over the last two weeks.`}
       algoNote="Duration vs your personal need, efficiency, deep + REM share, timing consistency and awakenings each contribute signed points. Weights are placeholders until the final sleep model is designed."
       extras={(data) => {
-        const s = data.today.day.sleep;
-        const rec = data.today.recovery;
-        const en = data.today.energy;
+        const s = data.today!.day.sleep;
+        const rec = data.today!.recovery;
+        const en = data.today!.energy;
         const sleepPtsRec = rec.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
         const sleepPtsEn = en.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
         return (

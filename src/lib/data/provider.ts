@@ -1,32 +1,26 @@
-import { Dataset } from "../types";
-import { generateDataset } from "../mock/generate";
+import { DailySummary } from "../types";
 
 /**
- * Data source abstraction. V1 ships only the mock provider; a future
- * GoogleHealthProvider (Fitbit Air via Health Connect / Google Health APIs)
- * implements the same interface without touching UI or scoring code.
- * Later still: AppleHealthProvider, GarminProvider, WhoopProvider, OuraProvider.
+ * Data source abstraction. The live implementation is the Fitbit Web API
+ * (server routes under /api/fitbit/*, mapper in src/lib/fitbit/server.ts):
+ * OAuth 2.0 PKCE public client — Client ID only, tokens in httpOnly cookies,
+ * synced days returned to the browser and stored locally.
+ *
+ * Future providers (Apple Health, Garmin, WHOOP, Oura) implement the same
+ * shape: fetch → map into DailySummary[] → merge into local state. No UI or
+ * scoring code changes required.
  */
-export interface HealthDataProvider {
-  id: string;
-  label: string;
-  getDataset(): Promise<Dataset>;
+export interface WearableSyncResult {
+  days: DailySummary[];
+  count: number;
+  syncedAt: string;
 }
 
-export class MockHealthDataProvider implements HealthDataProvider {
-  id = "mock";
-  label = "Sample data (deterministic mock)";
-  private cache: Dataset | null = null;
-
-  async getDataset(): Promise<Dataset> {
-    if (!this.cache) this.cache = generateDataset();
-    return this.cache;
+export async function syncWearable(): Promise<WearableSyncResult> {
+  const res = await fetch("/api/fitbit/sync", { cache: "no-store" });
+  if (!res.ok) {
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(j.error ?? `sync_${res.status}`);
   }
-}
-
-/** Synchronous access for client components; same deterministic dataset. */
-let syncCache: Dataset | null = null;
-export function getMockDataset(): Dataset {
-  if (!syncCache) syncCache = generateDataset();
-  return syncCache;
+  return (await res.json()) as WearableSyncResult;
 }

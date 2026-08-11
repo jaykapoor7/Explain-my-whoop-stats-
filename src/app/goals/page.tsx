@@ -3,7 +3,7 @@
 import { Check } from "lucide-react";
 import { Card, PageHeader, ProgressBar, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
-import { useOverlay } from "@/lib/data/store";
+import { useApp } from "@/lib/data/store";
 import { fmtDuration, fmtNum } from "@/lib/format";
 import { Goal } from "@/lib/types";
 import { ScoredDay } from "@/lib/scoring/engine";
@@ -13,18 +13,18 @@ const GOAL_COLOR: Record<string, string> = {
   steps: "#8ee06a", training: "#ff7a5c", academic: "#9fb6ff",
 };
 
-function currentValue(goal: Goal, t: ScoredDay, week: ScoredDay[], weeklyStudyH: number): { value: number; caption: string } {
+function currentValue(goal: Goal, t: ScoredDay | undefined, tot: { kcal: number; protein: number }, week: ScoredDay[], weeklyStudyH: number): { value: number; caption: string } {
   switch (goal.kind) {
     case "weight":
-      return { value: t.day.weightKg ?? 0, caption: "current weight" };
+      return { value: t?.day.weightKg ?? 0, caption: t?.day.weightKg ? "current weight" : "no data yet" };
     case "calories":
-      return { value: t.nutrition.kcal, caption: "eaten today" };
+      return { value: tot.kcal, caption: "eaten today" };
     case "protein":
-      return { value: t.nutrition.protein, caption: "today" };
+      return { value: tot.protein, caption: "today" };
     case "sleep":
-      return { value: t.day.sleep.asleepMin, caption: "last night" };
+      return { value: t?.day.sleep.asleepMin ?? 0, caption: t ? "last night" : "no data yet" };
     case "steps":
-      return { value: t.day.steps, caption: "today" };
+      return { value: t?.day.steps ?? 0, caption: t ? "today" : "no data yet" };
     case "training": {
       const sessions = week.filter((s) => s.day.activities.some((a) => a.confidence !== "low" && a.type !== "Walking")).length;
       return { value: sessions, caption: "sessions this week" };
@@ -46,7 +46,7 @@ function display(goal: Goal, v: number): string {
 
 export default function GoalsPage() {
   const data = useHealth();
-  const setGoalTarget = useOverlay((s) => s.setGoalTarget);
+  const setGoalTarget = useApp((s) => s.setGoalTarget);
   if (!data.hydrated) return <SkeletonPage />;
 
   const t = data.today;
@@ -56,7 +56,7 @@ export default function GoalsPage() {
       (week.reduce((sum, s) => sum + (s.day.journal?.tags.find((x) => x.label === "Studying")?.durationMin ?? 0), 0) / 60) * 10
     ) / 10;
 
-  const hit = data.goals.filter((g) => met(g, currentValue(g, t, week, weeklyStudyH).value)).length;
+  const hit = data.goals.filter((g) => met(g, currentValue(g, t, data.todayTotals, week, weeklyStudyH).value)).length;
 
   return (
     <div className="animate-fadeUp">
@@ -64,7 +64,7 @@ export default function GoalsPage() {
 
       <div className="mt-5 space-y-3">
         {data.goals.map((g) => {
-          const { value, caption } = currentValue(g, t, week, weeklyStudyH);
+          const { value, caption } = currentValue(g, t, data.todayTotals, week, weeklyStudyH);
           const ok = met(g, value);
           const color = GOAL_COLOR[g.kind] ?? "#8b93a1";
           return (

@@ -6,6 +6,7 @@ import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Activity,
+  MessageCircle,
   BatteryCharging,
   CalendarDays,
   Flame,
@@ -32,6 +33,7 @@ const NAV = [
   { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#5cc8ff" },
   { href: "/medication", label: "Medication", icon: Pill, color: "#e089d2" },
   { href: "/journal", label: "Journal", icon: NotebookPen, color: "#c9b98a" },
+  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#7ce7c4" },
   { href: "/trends", label: "Trends", icon: LineChart, color: "#7dd3fc" },
   { href: "/planner", label: "Planner", icon: CalendarDays, color: "#9fb6ff" },
   { href: "/goals", label: "Goals", icon: Target, color: "#8ee06a" },
@@ -39,7 +41,7 @@ const NAV = [
 ];
 
 // Bottom tab bar shows the daily-driver five; the rest live behind "More".
-const MOBILE_PRIMARY = ["/today", "/energy", "/sleep", "/nutrition"];
+const MOBILE_PRIMARY = ["/today", "/assistant", "/sleep", "/nutrition"];
 
 function DesktopNav() {
   const pathname = usePathname();

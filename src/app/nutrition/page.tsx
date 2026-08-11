@@ -6,9 +6,9 @@ import { Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { Card, EmptyState, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { MiniBars } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
-import { useOverlay } from "@/lib/data/store";
-import { FOOD_DB } from "@/lib/mock/foods";
-import { DOMAIN_COLOR, cn, fmtDate, fmtNum } from "@/lib/format";
+import { useApp } from "@/lib/data/store";
+import { FOOD_DB } from "@/lib/foods";
+import { DOMAIN_COLOR, addDays, cn, fmtDate, fmtNum, todayISO } from "@/lib/format";
 import { Meal, MealKind, NutritionFood } from "@/lib/types";
 
 const MEAL_LABEL: Record<MealKind, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snacks" };
@@ -31,7 +31,7 @@ function MacroRow({ label, value, goal, unit = "g", color }: { label: string; va
 }
 
 function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
-  const addMeal = useOverlay((s) => s.addMeal);
+  const addMeal = useApp((s) => s.addMeal);
   const [q, setQ] = useState("");
   const [kind, setKind] = useState<MealKind>("snack");
   const [servings, setServings] = useState(1);
@@ -164,25 +164,34 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
 
 export default function NutritionPage() {
   const data = useHealth();
-  const removeAddedMeal = useOverlay((s) => s.removeAddedMeal);
-  const addedMeals = useOverlay((s) => s.addedMeals);
+  const removeMeal = useApp((s) => s.removeMeal);
+  const allMeals = useApp((s) => s.meals);
   const [adding, setAdding] = useState(false);
   const [range, setRange] = useState<"day" | "week" | "month">("day");
 
   if (!data.hydrated) return <SkeletonPage />;
 
   const t = data.today;
+  const tot = data.todayTotals;
   const kcalGoal = data.goals.find((g) => g.kind === "calories")?.target ?? 2400;
   const proteinGoal = data.goals.find((g) => g.kind === "protein")?.target ?? 150;
   const carbsGoal = 280;
   const fatGoal = 80;
-  const burn = t.day.activeCalories + t.day.restingCalories;
-  const remaining = kcalGoal - t.nutrition.kcal;
-  const addedIds = new Set(addedMeals.map((m) => m.id));
+  const burn = t ? t.day.activeCalories + t.day.restingCalories : 0;
+  const remaining = kcalGoal - tot.kcal;
+  
 
-  const rangeDays = range === "day" ? 1 : range === "week" ? 7 : 30;
-  const rangeData = data.days.slice(-Math.max(rangeDays, 7)).map((s) => ({ label: fmtDate(s.day.date), value: s.nutrition.kcal }));
-  const adherent = data.days.slice(-rangeDays).filter((s) => s.nutrition.protein >= proteinGoal && s.nutrition.kcal <= kcalGoal * 1.05).length;
+  const rangeDays = range === "day" ? 7 : range === "week" ? 7 : 30;
+  const byDate = new Map<string, number>();
+  for (const m of allMeals) {
+    const kc = m.items.reduce((a, i) => a + i.food.kcal * i.servings, 0);
+    byDate.set(m.date, (byDate.get(m.date) ?? 0) + kc);
+  }
+  const rangeData = Array.from({ length: rangeDays }, (_, i) => addDays(todayISO(), -(rangeDays - 1 - i))).map((d) => ({
+    label: fmtDate(d),
+    value: Math.round(byDate.get(d) ?? 0),
+  }));
+  const adherent = rangeData.filter((r) => r.value > 0 && r.value <= kcalGoal * 1.05).length;
 
   return (
     <div className="animate-fadeUp">
@@ -197,7 +206,7 @@ export default function NutritionPage() {
       />
 
       <div className="mt-5">
-        <AnimatePresence>{adding && <AddFood date={t.day.date} onClose={() => setAdding(false)} />}</AnimatePresence>
+        <AnimatePresence>{adding && <AddFood date={todayISO()} onClose={() => setAdding(false)} />}</AnimatePresence>
       </div>
 
       <Card>
@@ -207,35 +216,35 @@ export default function NutritionPage() {
             <span className="ml-1.5 text-sm text-ink-400">kcal {remaining >= 0 ? "remaining" : "over"}</span>
           </div>
           <span className="tabular text-xs text-ink-400">
-            {fmtNum(t.nutrition.kcal)} eaten · {fmtNum(burn)} burned
+            {fmtNum(tot.kcal)} eaten · {fmtNum(burn)} burned
           </span>
         </div>
         <div className="mt-3">
-          <ProgressBar value={t.nutrition.kcal} max={kcalGoal} color={DOMAIN_COLOR.nutrition} invertOver />
+          <ProgressBar value={tot.kcal} max={kcalGoal} color={DOMAIN_COLOR.nutrition} invertOver />
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <MacroRow label="Protein" value={t.nutrition.protein} goal={proteinGoal} color="#5cc8ff" />
-          <MacroRow label="Carbs" value={t.nutrition.carbs} goal={carbsGoal} color="#f6b83b" />
-          <MacroRow label="Fat" value={t.nutrition.fat} goal={fatGoal} color="#ff9f7a" />
-          <MacroRow label="Fiber" value={t.nutrition.fiber} goal={30} color="#8ee06a" />
+          <MacroRow label="Protein" value={tot.protein} goal={proteinGoal} color="#5cc8ff" />
+          <MacroRow label="Carbs" value={tot.carbs} goal={carbsGoal} color="#f6b83b" />
+          <MacroRow label="Fat" value={tot.fat} goal={fatGoal} color="#ff9f7a" />
+          <MacroRow label="Fiber" value={tot.fiber} goal={30} color="#8ee06a" />
         </div>
         <div className="mt-3 text-[11px] text-ink-500">
-          Sugar {t.nutrition.sugar}g · Sodium {fmtNum(t.nutrition.sodium)}mg
+          Sugar {tot.sugar}g · Sodium {fmtNum(tot.sodium)}mg
         </div>
         <Why summary="Intake vs expenditure today">
-          You&apos;ve eaten {fmtNum(t.nutrition.kcal)} kcal against roughly {fmtNum(burn)} kcal burned (resting + activity),
-          a net of {fmtNum(t.nutrition.kcal - burn)} kcal. Your calorie goal is {fmtNum(kcalGoal)} and your protein
+          You&apos;ve eaten {fmtNum(tot.kcal)} kcal against roughly {burn ? `${fmtNum(burn)} kcal burned` : "connect Fitbit for burn"} (resting + activity),
+          a net of {fmtNum(tot.kcal - burn)} kcal. Your calorie goal is {fmtNum(kcalGoal)} and your protein
           target is {proteinGoal}g — designed around your current weight goal.
         </Why>
       </Card>
 
       <Section title="Today's meals">
-        {t.day.meals.length ? (
+        {data.todayMeals.length ? (
           <div className="space-y-3">
             {(Object.keys(MEAL_LABEL) as MealKind[]).map((kind) => {
-              const meals = t.day.meals.filter((m) => m.kind === kind);
-              if (!meals.length) return null;
-              const kcal = meals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.kcal * i.servings, 0), 0);
+              const kindMeals = data.todayMeals.filter((m) => m.kind === kind);
+              if (!kindMeals.length) return null;
+              const kcal = kindMeals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.kcal * i.servings, 0), 0);
               return (
                 <Card key={kind} className="p-4">
                   <div className="flex items-baseline justify-between">
@@ -243,7 +252,7 @@ export default function NutritionPage() {
                     <span className="tabular text-xs text-ink-400">{fmtNum(kcal)} kcal</span>
                   </div>
                   <div className="mt-2 space-y-1.5">
-                    {meals.flatMap((m) =>
+                    {kindMeals.flatMap((m) =>
                       m.items.map((it, idx) => (
                         <div key={`${m.id}-${idx}`} className="flex items-center gap-2 text-sm">
                           <span className="text-ink-100">{it.food.name}</span>
@@ -254,8 +263,8 @@ export default function NutritionPage() {
                           <span className="tabular ml-auto text-xs text-ink-400">
                             {Math.round(it.food.kcal * it.servings)} kcal · {Math.round(it.food.protein * it.servings)}P
                           </span>
-                          {addedIds.has(m.id) && (
-                            <button onClick={() => removeAddedMeal(m.id)} className="text-ink-500 hover:text-bad" aria-label="Remove">
+                          {(
+                            <button onClick={() => removeMeal(m.id)} className="text-ink-500 hover:text-bad" aria-label="Remove">
                               <Trash2 size={13} />
                             </button>
                           )}
@@ -274,7 +283,7 @@ export default function NutritionPage() {
 
       <Section
         title="Progress"
-        sub={`${adherent} of the last ${rangeDays === 1 ? 7 : rangeDays} days hit protein within your calorie cap`}
+        sub={`${adherent} logged day${adherent === 1 ? "" : "s"} within your calorie cap in the last ${rangeDays}`}
         action={
           <div className="flex overflow-hidden rounded-lg border border-white/[0.08] text-xs">
             {(["day", "week", "month"] as const).map((r) => (
@@ -286,7 +295,7 @@ export default function NutritionPage() {
         }
       >
         <Card>
-          <MiniBars data={rangeData.slice(range === "month" ? -30 : -7)} color={DOMAIN_COLOR.nutrition} unit=" kcal" name="Intake" />
+          <MiniBars data={rangeData} color={DOMAIN_COLOR.nutrition} unit=" kcal" name="Intake" />
         </Card>
       </Section>
 

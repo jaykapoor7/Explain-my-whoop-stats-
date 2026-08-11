@@ -1,12 +1,13 @@
 "use client";
 
-import { Plug, RotateCcw, ShieldCheck } from "lucide-react";
+import { RotateCcw, ShieldCheck } from "lucide-react";
+import { FitbitCard } from "@/components/connect";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
-import { useOverlay } from "@/lib/data/store";
+import { useApp } from "@/lib/data/store";
 import { cn } from "@/lib/format";
 
 export default function SettingsPage() {
-  const { settings, setSettings, resetAll, hydrated } = useOverlay();
+  const { settings, setSettings, resetAll, hydrated } = useApp();
   if (!hydrated) return <SkeletonPage />;
 
   return (
@@ -50,22 +51,8 @@ export default function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Data source">
-        <Card className="flex items-start gap-3 p-4">
-          <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/[0.06] text-ink-200">
-            <Plug size={16} />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-ink-100">Sample data (deterministic mock)</p>
-            <p className="mt-1 text-xs leading-relaxed text-ink-400">
-              You&apos;re viewing 90 days of realistic generated data. The app is built on a{" "}
-              <code className="rounded bg-white/[0.07] px-1 py-0.5 text-[10px]">HealthDataProvider</code> interface — a{" "}
-              <code className="rounded bg-white/[0.07] px-1 py-0.5 text-[10px]">GoogleHealthProvider</code> for your
-              Fitbit Air plugs in here without touching any screen or score code. Apple Health, Garmin, WHOOP and Oura
-              can follow the same interface.
-            </p>
-          </div>
-        </Card>
+      <Section title="Data source" sub="Fitbit Web API — OAuth with PKCE, tokens in a secure cookie, data stored only on this device">
+        <FitbitCard autoSyncOnConnected />
       </Section>
 
       <Section title="Privacy">
@@ -86,7 +73,7 @@ export default function SettingsPage() {
         <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
             <p className="text-sm font-semibold text-ink-100">Reset local data</p>
-            <p className="mt-0.5 text-xs text-ink-400">Clears your logs and edits on this device. The sample dataset regenerates.</p>
+            <p className="mt-0.5 text-xs text-ink-400">Clears synced wearable data, logs and preferences from this device.</p>
           </div>
           <button
             onClick={() => {
@@ -100,7 +87,7 @@ export default function SettingsPage() {
       </Section>
 
       <p className="mt-8 text-center text-[11px] text-ink-500">
-        Health OS · open source · not a medical device. Scores are placeholders until the final models are designed.
+        Health OS · open source · not a medical device. Scores use placeholder models until the final algorithms are designed.
       </p>
     </div>
   );

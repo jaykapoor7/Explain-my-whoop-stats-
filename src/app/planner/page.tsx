@@ -5,7 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Check, Plus, Trash2, X } from "lucide-react";
 import { Card, PageHeader, SkeletonPage, StatusPill } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
-import { useOverlay } from "@/lib/data/store";
+import { useApp } from "@/lib/data/store";
 import { addDays, cn, fmtDate, fmtTime, relativeDay, todayISO } from "@/lib/format";
 import { TaskKind, TaskPriority } from "@/lib/types";
 
@@ -15,7 +15,7 @@ const KIND_COLOR: Record<TaskKind, string> = {
 };
 
 function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
-  const addTask = useOverlay((s) => s.addTask);
+  const addTask = useApp((s) => s.addTask);
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<TaskKind>("task");
   const [start, setStart] = useState("");
@@ -63,20 +63,22 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
 
 export default function PlannerPage() {
   const data = useHealth();
-  const { toggleTask, removeAddedTask, addedTasks } = useOverlay();
+  const { toggleTask, removeTask, tasks } = useApp();
   const [view, setView] = useState<"day" | "week" | "month">("week");
   const [anchor, setAnchor] = useState(todayISO());
   const [adding, setAdding] = useState(false);
 
   const daysInView = view === "day" ? 1 : view === "week" ? 7 : 30;
   const dates = useMemo(() => Array.from({ length: daysInView }, (_, i) => addDays(anchor, i)), [anchor, daysInView]);
-  const addedIds = useMemo(() => new Set(addedTasks.map((t) => t.id)), [addedTasks]);
+  const addedIds = useMemo(() => new Set(tasks.map((t) => t.id)), [tasks]);
 
   if (!data.hydrated) return <SkeletonPage />;
 
-  const rec = data.today.recovery.score;
+  const rec = data.today?.recovery.score;
   const suggestion =
-    rec >= 67
+    rec === undefined
+      ? "Connect your Fitbit and the planner will suggest scheduling around your recovery."
+      : rec >= 67
       ? "Recovery is high today — a good day for your hardest study block or training."
       : rec >= 34
         ? "Moderate recovery — normal workload is fine; keep the hardest block before evening."
@@ -104,7 +106,7 @@ export default function PlannerPage() {
       />
 
       <Card className="mt-5 flex items-start gap-3 border-recovery/20 p-4">
-        <StatusPill text={`Recovery ${rec}%`} color="#38d39f" />
+        <StatusPill text={rec === undefined ? "No data" : `Recovery ${rec}%`} color="#38d39f" />
         <p className="text-xs leading-relaxed text-ink-300">{suggestion}</p>
       </Card>
 
@@ -150,7 +152,7 @@ export default function PlannerPage() {
                         </div>
                       </div>
                       {addedIds.has(t.id) && (
-                        <button onClick={() => removeAddedTask(t.id)} className="text-ink-500 hover:text-bad" aria-label="Delete">
+                        <button onClick={() => removeTask(t.id)} className="text-ink-500 hover:text-bad" aria-label="Delete">
                           <Trash2 size={14} />
                         </button>
                       )}

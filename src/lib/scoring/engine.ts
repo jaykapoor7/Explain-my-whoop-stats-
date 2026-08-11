@@ -15,7 +15,7 @@ export interface ScoredDay {
   nutrition: NutritionTotals;
 }
 
-export function nutritionTotals(day: DailySummary): NutritionTotals {
+export function nutritionTotals(day: Pick<DailySummary, "meals">): NutritionTotals {
   const t: NutritionTotals = { kcal: 0, protein: 0, carbs: 0, fat: 0, fiber: 0, sugar: 0, sodium: 0 };
   for (const meal of day.meals) {
     for (const item of meal.items) {

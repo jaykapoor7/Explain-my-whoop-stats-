@@ -1,74 +1,101 @@
 "use client";
 
 import { useMemo } from "react";
-import { Dataset, Goal, PlannerTask } from "../types";
-import { getMockDataset } from "./provider";
-import { applyGoalTargets, useOverlay } from "./store";
-import { computeScoredDays, ScoredDay } from "../scoring/engine";
+import { Goal, JournalEntry, Medication, MedicationEvent, Meal, NutritionTotals, PlannerTask } from "../types";
+import { applyGoalTargets, DEFAULT_GOALS, useApp } from "./store";
+import { computeScoredDays, nutritionTotals, ScoredDay } from "../scoring/engine";
 import { generateInsights, Insight } from "../insights/insights";
+import { todayISO } from "../format";
 
 /**
- * The single read path for every page: deterministic mock dataset + user
- * overlays -> scored days -> insights. Memoized so score computation runs
- * once per overlay change.
+ * Single read path: synced wearable days + the user's own logs merged into
+ * scored days. With no wearable data yet, logging pages still work standalone.
  */
+
+export function deriveMedEvents(meds: Medication[], date: string, overrides: Record<string, { status: MedicationEvent["status"]; takenAt?: string }>): MedicationEvent[] {
+  const out: MedicationEvent[] = [];
+  for (const med of meds) {
+    if (med.startDate > date || (med.endDate && med.endDate < date)) continue;
+    const times = med.frequency === "as-needed" ? [] : med.times.length ? med.times : ["08:00"];
+    for (const time of times) {
+      const id = `${date}-${med.id}-${time}`;
+      const o = overrides[id];
+      out.push({ id, medicationId: med.id, date, scheduled: time, status: o?.status ?? "pending", takenAt: o?.takenAt });
+    }
+    // as-needed doses only exist when logged
+    if (med.frequency === "as-needed") {
+      const id = `${date}-${med.id}-prn`;
+      const o = overrides[id];
+      if (o) out.push({ id, medicationId: med.id, date, scheduled: "", status: o.status, takenAt: o.takenAt });
+    }
+  }
+  return out;
+}
+
 export interface HealthData {
-  dataset: Dataset;
   days: ScoredDay[];
-  today: ScoredDay;
-  yesterday?: ScoredDay;
+  today?: ScoredDay;
+  connected: boolean; // has any wearable data
+  lastSync: string | null;
   insights: Insight[];
   goals: Goal[];
   tasks: PlannerTask[];
+  medications: Medication[];
+  todayMeals: Meal[];
+  todayTotals: NutritionTotals;
+  todayMedEvents: MedicationEvent[];
+  todayJournal?: JournalEntry;
   hydrated: boolean;
 }
 
 export function useHealth(): HealthData {
-  const overlay = useOverlay();
+  const s = useApp();
+  const tISO = todayISO();
 
-  const merged = useMemo<Dataset>(() => {
-    const base = getMockDataset();
-    const days = base.days.map((d) => {
-      const activities = d.activities.map((a) => {
-        const res = overlay.activityResolutions[a.id];
-        const type = overlay.activityTypeEdits[a.id];
-        return res || type ? { ...a, resolved: res ?? a.resolved, type: type ?? a.type } : a;
-      });
-      const extraMeals = overlay.addedMeals.filter((m) => m.date === d.date);
-      const medicationEvents = d.medicationEvents.map((e) => {
-        const o = overlay.medOverrides[e.id];
-        return o ? { ...e, status: o.status, takenAt: o.takenAt ?? e.takenAt } : e;
-      });
-      const journal = overlay.journalOverrides[d.date] ?? d.journal;
-      return {
-        ...d,
-        activities,
-        meals: extraMeals.length ? [...d.meals, ...extraMeals] : d.meals,
-        medicationEvents,
-        journal,
-      };
-    });
-    return { ...base, days };
-  }, [overlay.activityResolutions, overlay.activityTypeEdits, overlay.addedMeals, overlay.medOverrides, overlay.journalOverrides]);
+  const days = useMemo<ScoredDay[]>(() => {
+    if (!s.wearableDays.length) return [];
+    const merged = s.wearableDays.map((d) => ({
+      ...d,
+      activities: d.activities.map((a) => {
+        const res = s.activityResolutions[a.id];
+        const type = s.activityTypeEdits[a.id];
+        return res || type ? { ...a, resolved: res, type: type ?? a.type } : a;
+      }),
+      meals: s.meals.filter((m) => m.date === d.date),
+      medicationEvents: deriveMedEvents(s.medications, d.date, s.medOverrides),
+      journal: s.journal[d.date],
+    }));
+    return computeScoredDays(merged);
+  }, [s.wearableDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
 
-  const days = useMemo(() => computeScoredDays(merged.days), [merged]);
   const insights = useMemo(() => generateInsights(days), [days]);
+  const goals = useMemo(() => applyGoalTargets(DEFAULT_GOALS, s.goalTargets), [s.goalTargets]);
+  const tasks = useMemo(
+    () => s.tasks.map((t) => (s.taskDone[t.id] !== undefined ? { ...t, done: s.taskDone[t.id] } : t)),
+    [s.tasks, s.taskDone]
+  );
 
-  const tasks = useMemo<PlannerTask[]>(() => {
-    const all = [...merged.planner, ...overlay.addedTasks];
-    return all.map((t) => (overlay.taskDone[t.id] !== undefined ? { ...t, done: overlay.taskDone[t.id] } : t));
-  }, [merged, overlay.addedTasks, overlay.taskDone]);
+  const todayMeals = useMemo(() => s.meals.filter((m) => m.date === tISO), [s.meals, tISO]);
+  const todayTotals = useMemo(
+    () => nutritionTotals({ meals: todayMeals } as Parameters<typeof nutritionTotals>[0]),
+    [todayMeals]
+  );
+  const todayMedEvents = useMemo(() => deriveMedEvents(s.medications, tISO, s.medOverrides), [s.medications, s.medOverrides, tISO]);
 
-  const goals = useMemo(() => applyGoalTargets(merged.goals, overlay.goalTargets), [merged, overlay.goalTargets]);
-
+  const last = days[days.length - 1];
   return {
-    dataset: merged,
     days,
-    today: days[days.length - 1],
-    yesterday: days[days.length - 2],
+    today: last,
+    connected: s.wearableDays.length > 0,
+    lastSync: s.lastSync,
     insights,
     goals,
     tasks,
-    hydrated: overlay.hydrated,
+    medications: s.medications,
+    todayMeals,
+    todayTotals,
+    todayMedEvents,
+    todayJournal: s.journal[tISO],
+    hydrated: s.hydrated,
   };
 }

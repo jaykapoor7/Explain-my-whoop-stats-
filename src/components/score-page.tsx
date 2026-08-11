@@ -3,6 +3,7 @@
 import { ReactNode, useState } from "react";
 import { Card, ContributorLedger, Delta, PageHeader, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { TrendArea } from "@/components/charts";
+import { ConnectGate } from "@/components/connect";
 import { useHealth } from "@/lib/data/use-health";
 import { ScoredDay } from "@/lib/scoring/engine";
 import { ScoreResult } from "@/lib/types";
@@ -35,6 +36,14 @@ export function ScorePage({
   const [range, setRange] = useState<7 | 30>(7);
 
   if (!data.hydrated) return <SkeletonPage />;
+  if (!data.today) {
+    return (
+      <div className="animate-fadeUp">
+        <PageHeader title={title} sub={question} />
+        <ConnectGate title={title} />
+      </div>
+    );
+  }
 
   const score = pick(data.today);
   const trend = data.days.slice(-range).map((s) => ({ date: s.day.date, value: pick(s).score }));

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
+import { ConnectGate } from "@/components/connect";
 import { TrendArea } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { correlate } from "@/lib/insights/insights";
@@ -49,6 +50,13 @@ export default function TrendsPage() {
   );
 
   if (!data.hydrated) return <SkeletonPage />;
+  if (!data.days.length)
+    return (
+      <div className="animate-fadeUp">
+        <PageHeader title="Trends & Insights" sub="What is changing — and what appears to affect you." />
+        <ConnectGate title="Trends" />
+      </div>
+    );
 
   const window = data.days.slice(-range);
   const prev = data.days.slice(-range * 2, -range);

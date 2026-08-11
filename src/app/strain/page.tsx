@@ -4,13 +4,13 @@ import { useState } from "react";
 import { ScorePage } from "@/components/score-page";
 import { Card, ConfidenceBadge, EmptyState, Section } from "@/components/ui";
 import { ZoneBars } from "@/components/charts";
-import { useOverlay } from "@/lib/data/store";
+import { useApp } from "@/lib/data/store";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
 import { Flame } from "lucide-react";
 
 function ActivityRow({ a }: { a: Activity }) {
-  const resolveActivity = useOverlay((s) => s.resolveActivity);
+  const resolveActivity = useApp((s) => s.resolveActivity);
   const [editing, setEditing] = useState(false);
   const [newType, setNewType] = useState("Football");
   const needsReview = a.confidence === "low" && !a.resolved;
@@ -95,7 +95,7 @@ export default function StrainPage() {
       baselineLabel={(s) => `Your typical daily strain is ${s.baseline} over the last two weeks (0–21 scale).`}
       algoNote="Strain sums each counted activity's load plus a small term for daily movement. Unrecognized short HR spikes are excluded unless you confirm them. The load model is a placeholder until the final strain algorithm is designed."
       extras={(data) => {
-        const acts = data.today.day.activities;
+        const acts = data.today!.day.activities;
         return (
           <Section title="Activity breakdown" sub="Per-activity load — low-confidence blocks need your review">
             {acts.length ? (

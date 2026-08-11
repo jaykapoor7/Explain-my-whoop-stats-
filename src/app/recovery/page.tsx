@@ -16,7 +16,7 @@ export default function RecoveryPage() {
       baselineLabel={(s) => `Your 14-day typical recovery is ${s.baseline}%.`}
       algoNote="Inputs: overnight HRV vs your baseline, resting heart rate vs baseline, last night's sleep score and consistency, and yesterday's strain. Weights are placeholders until the final recovery model is designed."
       extras={(data) => {
-        const t = data.today;
+        const t = data.today!;
         const hrvTrend = data.days.slice(-30).map((s) => ({ date: s.day.date, value: s.day.hrv.rmssdMs }));
         const rhrTrend = data.days.slice(-30).map((s) => ({ date: s.day.date, value: s.day.rhr.bpm }));
         return (
