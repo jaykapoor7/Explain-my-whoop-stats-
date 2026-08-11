@@ -1,32 +1,27 @@
 import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { Shell } from "@/components/shell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: {
-    default: "Recovery Intelligence — Understand your body, not just your metrics",
-    template: "%s · Recovery Intelligence",
-  },
+  title: { default: "Health OS", template: "%s · Health OS" },
   description:
-    "Upload your wearable data and let AI uncover patterns, answer questions, explain trends, and reveal insights hidden inside months of health data.",
+    "An open-source personal Health OS: scores, explanations, and personal patterns from your wearable, nutrition, medication, journal and planner.",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0e1136",
+  themeColor: "#08090c",
+  width: "device-width",
+  initialScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="dark">
-      <body className={`${inter.variable} font-sans min-h-screen text-white`}>
-        <div className="aurora" aria-hidden>
-          <span />
-          <span />
-          <span />
-        </div>
-        {children}
+      <body className={`${inter.variable} font-sans`}>
+        <Shell>{children}</Shell>
       </body>
     </html>
   );

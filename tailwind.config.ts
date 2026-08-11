@@ -1,105 +1,57 @@
 import type { Config } from "tailwindcss";
 
+/**
+ * Health OS design tokens. Calm, premium, dark-first. A near-black canvas with
+ * layered surfaces and one semantic accent per health domain.
+ */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],
   darkMode: "class",
   theme: {
     extend: {
       colors: {
-        // Luminous indigo scale — page chrome and text inks
-        base: {
-          950: "#0d1030",
-          900: "#121540",
-          850: "#181c4d",
-          800: "#1e2358",
-          750: "#252b66",
-          700: "#2e3573",
-          600: "#3d4487",
-          400: "#8b91c7",
-          300: "#a9aeda",
-          200: "#c9cdef",
-          100: "#e4e6fa",
-          50: "#f4f5ff",
+        ink: {
+          950: "#08090c",
+          900: "#0c0e12",
+          875: "#101319",
+          850: "#14171e",
+          800: "#181c24",
+          750: "#1e232c",
+          700: "#262c37",
+          600: "#333a47",
+          500: "#4a5361",
+          400: "#6b7482",
+          300: "#8b93a1",
+          200: "#aeb5c1",
+          100: "#d5d9e0",
+          50: "#eef0f4",
         },
-        accent: {
-          DEFAULT: "#7c6bff",
-          soft: "#a29bff",
-          deep: "#5946e8",
-        },
-        vivid: {
-          violet: "#7c6bff",
-          cyan: "#2dd4ee",
-          pink: "#fb7bb8",
-          lime: "#a3e635",
-          amber: "#fbbf24",
-          coral: "#fb8a67",
-        },
-        series: {
-          blue: "#4d9fff",
-          green: "#34d399",
-          magenta: "#f472b6",
-          yellow: "#fbbf24",
-          aqua: "#2dd4ee",
-          orange: "#fb8a67",
-          violet: "#a78bfa",
-          red: "#fb7185",
-        },
-        status: {
-          good: "#34d399",
-          warning: "#fbbf24",
-          serious: "#fb8a67",
-          critical: "#fb7185",
-        },
+        // Domain accents
+        energy: { DEFAULT: "#f6b83b", soft: "#fbd07a", dim: "#7a5c1c" },
+        recovery: { DEFAULT: "#38d39f", soft: "#7ce7c4", dim: "#1a6a52" },
+        sleep: { DEFAULT: "#8b8cff", soft: "#b6b7ff", dim: "#45466f" },
+        strain: { DEFAULT: "#ff7a5c", soft: "#ffb09b", dim: "#7a3626" },
+        nutrition: { DEFAULT: "#5cc8ff", soft: "#a3e0ff", dim: "#24576f" },
+        // Status
+        good: "#38d39f",
+        warn: "#f6b83b",
+        bad: "#ff6b6b",
       },
       fontFamily: {
-        sans: [
-          "var(--font-sans)",
-          "system-ui",
-          "-apple-system",
-          "Segoe UI",
-          "sans-serif",
-        ],
+        sans: ["var(--font-sans)", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
       },
-      borderRadius: {
-        xl2: "1.25rem",
-      },
+      borderRadius: { xl2: "1.25rem" },
       boxShadow: {
-        glow: "0 0 70px -12px rgba(124, 107, 255, 0.55)",
-        "glow-cyan": "0 0 60px -14px rgba(45, 212, 238, 0.5)",
-        "glow-pink": "0 0 60px -14px rgba(251, 123, 184, 0.45)",
-        card: "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 12px 32px -16px rgba(6, 8, 40, 0.8)",
-        lift: "0 1px 0 0 rgba(255,255,255,0.08) inset, 0 20px 44px -18px rgba(124, 107, 255, 0.35)",
-      },
-      animation: {
-        "fade-in": "fadeIn 0.5s ease forwards",
-        "gradient-x": "gradientX 6s ease infinite",
-        "spin-slow": "spin 14s linear infinite",
-        float: "float 7s ease-in-out infinite",
-        "float-late": "float 9s ease-in-out 1.5s infinite",
-        marquee: "marquee 28s linear infinite",
-        "pulse-glow": "pulseGlow 3.2s ease-in-out infinite",
+        card: "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 10px 30px -18px rgba(0,0,0,0.7)",
+        lift: "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 18px 44px -22px rgba(0,0,0,0.8)",
       },
       keyframes: {
-        fadeIn: {
-          from: { opacity: "0", transform: "translateY(8px)" },
-          to: { opacity: "1", transform: "translateY(0)" },
-        },
-        gradientX: {
-          "0%, 100%": { backgroundPosition: "0% 50%" },
-          "50%": { backgroundPosition: "100% 50%" },
-        },
-        float: {
-          "0%, 100%": { transform: "translateY(0px)" },
-          "50%": { transform: "translateY(-14px)" },
-        },
-        marquee: {
-          from: { transform: "translateX(0)" },
-          to: { transform: "translateX(-50%)" },
-        },
-        pulseGlow: {
-          "0%, 100%": { opacity: "0.65", transform: "scale(1)" },
-          "50%": { opacity: "1", transform: "scale(1.05)" },
-        },
+        fadeUp: { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
+        shimmer: { "100%": { transform: "translateX(100%)" } },
+      },
+      animation: {
+        fadeUp: "fadeUp 0.5s cubic-bezier(0.21,0.47,0.32,0.98) forwards",
+        shimmer: "shimmer 1.5s infinite",
       },
     },
   },

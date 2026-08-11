@@ -1,11 +1,10 @@
 "use client";
 
-import { cn } from "@/lib/utils";
-import { motion, useInView, useSpring } from "framer-motion";
-import Link from "next/link";
-import { ReactNode, useEffect, useRef } from "react";
-
-/* Minimal shadcn-style primitives, tuned for the dark-first aesthetic. */
+import { ReactNode, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ChevronDown, HelpCircle } from "lucide-react";
+import { cn, signed } from "@/lib/format";
+import { Contributor } from "@/lib/types";
 
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
@@ -15,303 +14,204 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
   );
 }
 
-export function CardTitle({ className, children }: { className?: string; children: ReactNode }) {
-  return <h3 className={cn("text-sm font-medium text-base-200", className)}>{children}</h3>;
-}
-
-export function SectionHeading({ title, subtitle, id }: { title: string; subtitle?: string; id?: string }) {
+export function Section({ title, sub, action, children, className }: { title: string; sub?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <div id={id} className="mb-4 mt-10 scroll-mt-24 first:mt-0">
-      <div className="flex items-center gap-2.5">
-        <span className="h-5 w-1 rounded-full bg-gradient-to-b from-vivid-violet via-vivid-cyan to-vivid-pink" />
-        <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+    <section className={cn("mt-8", className)}>
+      <div className="mb-3 flex items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold tracking-tight text-ink-50">{title}</h2>
+          {sub && <p className="mt-0.5 text-xs text-ink-400">{sub}</p>}
+        </div>
+        {action}
       </div>
-      {subtitle && <p className="ml-[14px] mt-0.5 text-sm text-base-400">{subtitle}</p>}
-    </div>
-  );
-}
-
-const buttonStyles = {
-  primary: "btn-gradient text-white shadow-glow",
-  accent: "bg-accent text-white hover:bg-accent-soft shadow-glow",
-  ghost: "bg-transparent text-base-200 hover:bg-white/[0.08] border border-white/15",
-  subtle: "bg-white/[0.08] text-base-100 hover:bg-white/[0.12]",
-  danger: "bg-status-critical/15 text-[#ffa2b0] hover:bg-status-critical/25 border border-status-critical/30",
-} as const;
-
-export function Button({
-  variant = "primary",
-  size = "md",
-  className,
-  children,
-  ...props
-}: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: keyof typeof buttonStyles;
-  size?: "sm" | "md" | "lg";
-}) {
-  return (
-    <button
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-200 disabled:opacity-40 disabled:pointer-events-none active:scale-[0.98]",
-        size === "sm" && "h-8 px-3.5 text-xs",
-        size === "md" && "h-10 px-5 text-sm",
-        size === "lg" && "h-12 px-7 text-[15px]",
-        buttonStyles[variant],
-        className
-      )}
-      {...props}
-    >
       {children}
-    </button>
+    </section>
   );
 }
 
-export function LinkButton({
-  href,
-  variant = "primary",
-  size = "md",
-  className,
-  children,
-}: {
-  href: string;
-  variant?: keyof typeof buttonStyles;
-  size?: "sm" | "md" | "lg";
-  className?: string;
-  children: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-full font-medium transition-all duration-200 active:scale-[0.98]",
-        size === "sm" && "h-8 px-3.5 text-xs",
-        size === "md" && "h-10 px-5 text-sm",
-        size === "lg" && "h-12 px-7 text-[15px]",
-        buttonStyles[variant],
-        className
-      )}
-    >
-      {children}
-    </Link>
-  );
-}
-
-export function Badge({
-  tone = "neutral",
-  className,
-  children,
-}: {
-  tone?: "neutral" | "good" | "warning" | "critical" | "accent";
-  className?: string;
-  children: ReactNode;
-}) {
-  const tones = {
-    neutral: "bg-white/[0.09] text-base-200",
-    good: "bg-status-good/15 text-[#6ee7b7]",
-    warning: "bg-status-warning/15 text-[#fcd34d]",
-    critical: "bg-status-critical/15 text-[#ffa2b0]",
-    accent: "bg-accent/20 text-accent-soft",
-  };
-  return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-medium tracking-wide", tones[tone], className)}>
-      {children}
-    </span>
-  );
-}
-
-/** Animated number that springs from 0 when scrolled into view. Handles "1,234"-style strings. */
-export function CountUp({ value, className }: { value: string; className?: string }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-30px" });
-  const numeric = parseFloat(value.replace(/,/g, ""));
-  const isNumeric = isFinite(numeric) && /^[\d,.\-]+$/.test(value.trim());
-  const decimals = isNumeric && value.includes(".") ? value.split(".")[1].length : 0;
-  const useGrouping = value.includes(",");
-  const spring = useSpring(0, { stiffness: 65, damping: 18 });
-
-  useEffect(() => {
-    if (inView && isNumeric) spring.set(numeric);
-  }, [inView, isNumeric, numeric, spring]);
-
-  useEffect(() => {
-    if (!isNumeric) return;
-    return spring.on("change", (v) => {
-      if (ref.current)
-        ref.current.textContent = v.toLocaleString("en-US", {
-          minimumFractionDigits: decimals,
-          maximumFractionDigits: decimals,
-          useGrouping,
-        });
-    });
-  }, [spring, decimals, isNumeric, useGrouping]);
-
-  if (!isNumeric) return <span className={className}>{value}</span>;
-  return (
-    <span ref={ref} className={cn("tabular", className)}>
-      0
-    </span>
-  );
-}
-
-export function StatTile({
-  label,
-  value,
-  unit,
-  delta,
-  deltaGood,
-  sub,
-  className,
-  accent = "#7c6bff",
-}: {
-  label: string;
-  value: string;
-  unit?: string;
-  delta?: string;
-  deltaGood?: boolean | null;
-  sub?: string;
-  className?: string;
-  accent?: string;
-}) {
-  return (
-    <Card className={cn("card-hover relative flex flex-col gap-1 overflow-hidden", className)}>
-      <span
-        className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full opacity-25 blur-2xl"
-        style={{ background: accent }}
-      />
-      <span className="text-xs font-medium uppercase tracking-wider text-base-400">{label}</span>
-      <div className="flex items-baseline gap-1.5">
-        <CountUp value={value} className="text-3xl font-semibold tracking-tight" />
-        {unit && <span className="text-sm text-base-400">{unit}</span>}
-        {delta && (
-          <span
-            className={cn(
-              "ml-auto text-xs font-medium tabular",
-              deltaGood === true && "text-[#6ee7b7]",
-              deltaGood === false && "text-[#ffa2b0]",
-              deltaGood == null && "text-base-400"
-            )}
-          >
-            {delta}
-          </span>
-        )}
-      </div>
-      {sub && <span className="text-xs text-base-400">{sub}</span>}
-    </Card>
-  );
-}
-
-/** Animated circular gauge with a vivid gradient stroke. */
-export function RingGauge({
-  value,
-  max = 100,
-  size = 132,
-  label,
-  display,
+/** Big score ring with arc fill; the visual anchor of every score page. */
+export function ScoreRing({
+  score,
+  scale = 100,
   color,
+  size = 148,
+  label,
+  sublabel,
 }: {
-  value: number;
-  max?: number;
+  score: number;
+  scale?: number;
+  color: string;
   size?: number;
   label?: string;
-  display?: string;
-  color?: string;
+  sublabel?: string;
 }) {
-  const stroke = 10;
+  const stroke = size >= 120 ? 11 : 8;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
-  const frac = Math.max(0, Math.min(1, value / max));
-  const gradId = `ring-grad-${(color ?? "default").replace(/[^a-z0-9]/gi, "")}`;
+  const frac = Math.max(0.015, Math.min(1, score / scale));
   return (
-    <div className="relative" style={{ width: size, height: size }}>
+    <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <defs>
-          <linearGradient id={gradId} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color ?? "#7c6bff"} />
-            <stop offset="55%" stopColor={color ?? "#2dd4ee"} />
-            <stop offset="100%" stopColor={color ?? "#34d399"} />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={`url(#${gradId})`}
+          stroke={color}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
-          whileInView={{ strokeDashoffset: c * (1 - frac) }}
-          viewport={{ once: true }}
-          transition={{ duration: 1.4, ease: [0.22, 0.61, 0.36, 1] }}
+          animate={{ strokeDashoffset: c * (1 - frac) }}
+          transition={{ duration: 1.1, ease: [0.22, 0.61, 0.36, 1] }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <CountUp value={display ?? String(Math.round(value))} className="text-3xl font-bold tracking-tight" />
-        {label && <span className="mt-0.5 text-[10px] font-medium uppercase tracking-widest text-base-400">{label}</span>}
+        <span className="tabular font-bold tracking-tight text-ink-50" style={{ fontSize: size / 3.4 }}>
+          {scale === 21 ? score.toFixed(1) : Math.round(score)}
+        </span>
+        {label && <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-400">{label}</span>}
+        {sublabel && <span className="mt-0.5 text-[10px] text-ink-500">{sublabel}</span>}
       </div>
     </div>
   );
 }
 
-export function FadeIn({
-  children,
-  delay = 0,
-  className,
-}: {
-  children: ReactNode;
-  delay?: number;
-  className?: string;
-}) {
+export function Delta({ value, decimals = 0, invert = false, suffix = "" }: { value: number; decimals?: number; invert?: boolean; suffix?: string }) {
+  if (!isFinite(value) || Math.abs(value) < 0.05)
+    return <span className="tabular text-xs text-ink-400">±0{suffix}</span>;
+  const good = invert ? value < 0 : value > 0;
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 14 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.55, delay, ease: [0.21, 0.47, 0.32, 0.98] }}
-      className={className}
-    >
-      {children}
-    </motion.div>
+    <span className={cn("tabular text-xs font-medium", good ? "text-good" : "text-bad")}>
+      {signed(value, decimals)}
+      {suffix}
+    </span>
   );
 }
 
-/** Tiny markdown renderer for chat/coach copy (bold, italics, lists, line breaks). */
-export function MiniMarkdown({ text, className }: { text: string; className?: string }) {
-  const html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
-    .replace(/\*(.+?)\*/g, "<em>$1</em>")
-    .split(/\n{2,}/)
-    .map((block) => {
-      const lines = block.split("\n");
-      if (lines.every((l) => l.trim().startsWith("- "))) {
-        return `<ul>${lines.map((l) => `<li>${l.trim().slice(2)}</li>`).join("")}</ul>`;
-      }
-      return `<p>${block.replace(/\n/g, "<br/>")}</p>`;
-    })
-    .join("");
-  return <div className={cn("markdown text-sm leading-relaxed text-base-200", className)} dangerouslySetInnerHTML={{ __html: html }} />;
+export function StatusPill({ text, color }: { text: string; color: string }) {
+  return (
+    <span
+      className="rounded-full px-2.5 py-1 text-[11px] font-semibold"
+      style={{ background: `${color}1f`, color }}
+    >
+      {text}
+    </span>
+  );
 }
 
-export function EmptyState({ title, body, cta }: { title: string; body: string; cta?: ReactNode }) {
+/** The "What affected you" ledger — signed contributor rows. */
+export function ContributorLedger({ contributors, unit = "" }: { contributors: Contributor[]; unit?: string }) {
+  if (!contributors.length)
+    return <p className="text-sm text-ink-400">Nothing moved this score meaningfully today.</p>;
+  const max = Math.max(...contributors.map((c) => Math.abs(c.points)), 1);
   return (
-    <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 text-center">
+    <div className="space-y-1">
+      {contributors.map((c, i) => (
+        <div key={`${c.label}-${i}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.03]">
+          <span className={cn("w-4 text-center text-sm", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
+            {c.points > 0 ? "↑" : c.points < 0 ? "↓" : "·"}
+          </span>
+          <div className="min-w-0 flex-1">
+            <span className="text-sm text-ink-100">{c.label}</span>
+            {c.detail && <span className="ml-2 hidden text-xs text-ink-400 sm:inline">{c.detail}</span>}
+          </div>
+          <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.06] sm:block">
+            <div
+              className={cn("h-full rounded-full", c.points >= 0 ? "bg-good" : "bg-bad")}
+              style={{ width: `${(Math.abs(c.points) / max) * 100}%`, opacity: 0.8 }}
+            />
+          </div>
+          <span className={cn("tabular w-12 text-right text-sm font-semibold", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
+            {signed(c.points)}
+            {unit}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Expandable "Why?" explainer. */
+export function Why({ summary, children }: { summary: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+      <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left">
+        <HelpCircle size={14} className="shrink-0 text-ink-400" />
+        <span className="flex-1 text-sm text-ink-200">{summary}</span>
+        <ChevronDown size={14} className={cn("shrink-0 text-ink-400 transition-transform", open && "rotate-180")} />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && children && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="overflow-hidden"
+          >
+            <div className="border-t border-white/[0.05] px-3.5 py-3 text-sm leading-relaxed text-ink-300">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export function ProgressBar({ value, max, color, invertOver = false }: { value: number; max: number; color: string; invertOver?: boolean }) {
+  const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
+  const over = value > max;
+  return (
+    <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
       <motion.div
-        animate={{ y: [0, -10, 0] }}
-        transition={{ repeat: Infinity, duration: 3, ease: "easeInOut" }}
-        className="gradient-ring flex h-16 w-16 items-center justify-center rounded-2xl text-3xl shadow-glow"
-      >
-        📈
-      </motion.div>
+        className="h-full rounded-full"
+        style={{ background: over && invertOver ? "#ff6b6b" : color }}
+        initial={{ width: 0 }}
+        animate={{ width: `${pct}%` }}
+        transition={{ duration: 0.6, ease: "easeOut" }}
+      />
+    </div>
+  );
+}
+
+export function ConfidenceBadge({ level }: { level: "high" | "medium" | "low" }) {
+  const map = {
+    high: { c: "#38d39f", t: "High confidence" },
+    medium: { c: "#f6b83b", t: "Medium confidence" },
+    low: { c: "#ff6b6b", t: "Low confidence" },
+  } as const;
+  return <StatusPill text={map[level].t} color={map[level].c} />;
+}
+
+export function EmptyState({ title, body, icon }: { title: string; body: string; icon?: ReactNode }) {
+  return (
+    <div className="card flex flex-col items-center gap-2 px-6 py-10 text-center">
+      {icon && <div className="mb-1 text-ink-400">{icon}</div>}
+      <h3 className="text-sm font-semibold text-ink-100">{title}</h3>
+      <p className="max-w-sm text-xs leading-relaxed text-ink-400">{body}</p>
+    </div>
+  );
+}
+
+export function PageHeader({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="mt-1 max-w-sm text-sm text-base-400">{body}</p>
+        <h1 className="text-xl font-bold tracking-tight text-ink-50">{title}</h1>
+        {sub && <p className="mt-1 text-sm text-ink-400">{sub}</p>}
       </div>
-      {cta}
+      {right}
+    </div>
+  );
+}
+
+export function SkeletonPage() {
+  return (
+    <div className="space-y-4">
+      <div className="skeleton h-8 w-48 rounded-lg" />
+      <div className="skeleton h-44 rounded-2xl" />
+      <div className="skeleton h-64 rounded-2xl" />
     </div>
   );
 }
