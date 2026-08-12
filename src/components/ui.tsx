@@ -1,10 +1,38 @@
 "use client";
 
-import { ReactNode, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { ReactNode, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useInView } from "framer-motion";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { cn, signed } from "@/lib/format";
 import { Contributor } from "@/lib/types";
+
+/** Animated number that counts up from 0 to `value` once, on mount. */
+function CountUp({ value, decimals = 0, className, style }: { value: number; decimals?: number; className?: string; style?: React.CSSProperties }) {
+  const [display, setDisplay] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, amount: 0.3 });
+  useEffect(() => {
+    if (!inView) return;
+    const reduce = typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) return setDisplay(value);
+    let raf = 0;
+    const start = performance.now();
+    const dur = 950;
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / dur);
+      const eased = 1 - Math.pow(1 - p, 3);
+      setDisplay(value * eased);
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [inView, value]);
+  return (
+    <span ref={ref} className={className} style={style}>
+      {display.toFixed(decimals)}
+    </span>
+  );
+}
 
 export function Card({ className, children, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (
@@ -16,16 +44,22 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
 
 export function Section({ title, sub, action, children, className }: { title: string; sub?: string; action?: ReactNode; children: ReactNode; className?: string }) {
   return (
-    <section className={cn("mt-8", className)}>
+    <motion.section
+      className={cn("mt-8", className)}
+      initial={{ opacity: 0, y: 16 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
+    >
       <div className="mb-3 flex items-end justify-between gap-3">
         <div>
-          <h2 className="text-[15px] font-semibold tracking-tight text-ink-50">{title}</h2>
+          <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink-50">{title}</h2>
           {sub && <p className="mt-0.5 text-xs text-ink-400">{sub}</p>}
         </div>
         {action}
       </div>
       {children}
-    </section>
+    </motion.section>
   );
 }
 
@@ -49,29 +83,40 @@ export function ScoreRing({
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const frac = Math.max(0.015, Math.min(1, score / scale));
+  const gid = `ring-${color.replace(/[^a-z0-9]/gi, "")}-${size}`;
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth={stroke} />
+        <defs>
+          <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor={color} stopOpacity="0.6" />
+            <stop offset="100%" stopColor={color} />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={color}
+          stroke={`url(#${gid})`}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - frac) }}
-          transition={{ duration: 1.1, ease: [0.22, 0.61, 0.36, 1] }}
+          transition={{ duration: 1.2, ease: [0.22, 0.61, 0.36, 1] }}
+          style={{ filter: `drop-shadow(0 0 ${size >= 120 ? 7 : 4}px ${color}66)` }}
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="tabular font-bold tracking-tight text-ink-50" style={{ fontSize: size / 3.4 }}>
-          {scale === 21 ? score.toFixed(1) : Math.round(score)}
-        </span>
-        {label && <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-400">{label}</span>}
+        <CountUp
+          value={scale === 21 ? score : Math.round(score)}
+          decimals={scale === 21 ? 1 : 0}
+          className="tabular font-display font-bold tracking-tight text-ink-50"
+          style={{ fontSize: size / 3.4 }}
+        />
+        {label && <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-400">{label}</span>}
         {sublabel && <span className="mt-0.5 text-[10px] text-ink-500">{sublabel}</span>}
       </div>
     </div>
@@ -198,7 +243,7 @@ export function PageHeader({ title, sub, right }: { title: string; sub?: string;
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="text-xl font-bold tracking-tight text-ink-50">{title}</h1>
+        <h1 className="font-display text-2xl font-bold tracking-tight text-ink-50">{title}</h1>
         {sub && <p className="mt-1 text-sm text-ink-400">{sub}</p>}
       </div>
       {right}
