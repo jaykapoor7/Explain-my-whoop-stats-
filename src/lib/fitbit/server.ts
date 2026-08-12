@@ -269,22 +269,26 @@ export async function inspectHealth(token: string): Promise<RawProbe[]> {
   // which one Google accepts — that reveals both the request and response.
   const end = new Date();
   const start = new Date(end.getTime() - 6 * 864e5);
-  const dObj = (d: Date) => ({ year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() });
   const sIso = start.toISOString();
   const eIso = end.toISOString();
-  const candidates: { label: string; method: string; body: Json }[] = [
-    { label: "localDateRange", method: "dailyRollUp", body: { localDateRange: { startDate: dObj(start), endDate: dObj(end) } } },
-    { label: "dateRange", method: "dailyRollUp", body: { dateRange: { startDate: dObj(start), endDate: dObj(end) } } },
-    { label: "startEndLocalDate", method: "dailyRollUp", body: { startLocalDate: dObj(start), endLocalDate: dObj(end) } },
-    { label: "startEndDate-obj", method: "dailyRollUp", body: { startDate: dObj(start), endDate: dObj(end) } },
-    { label: "interval", method: "dailyRollUp", body: { interval: { startTime: sIso, endTime: eIso } } },
-    { label: "timeRange", method: "dailyRollUp", body: { timeRange: { startTime: sIso, endTime: eIso } } },
-    { label: "rollup:localDateRange", method: "rollup", body: { localDateRange: { startDate: dObj(start), endDate: dObj(end) } } },
+  const stepFilter = `steps.sample_time.physical_time >= "${sIso}" AND steps.sample_time.physical_time < "${eIso}"`;
+  const candidates: { label: string; body: Json; query?: string }[] = [
+    // Empty body — Google often names the required field in the error.
+    { label: "empty-body", body: {} },
+    // list-style filter, in the body and as a query param
+    { label: "filter-body", body: { filter: stepFilter } },
+    { label: "filter-query", body: {}, query: `?filter=${encodeURIComponent(stepFilter)}` },
+    // top-level start/end time strings
+    { label: "startEndTime", body: { startTime: sIso, endTime: eIso } },
+    // a single window object with startTime/endTime
+    { label: "window", body: { window: { startTime: sIso, endTime: eIso } } },
+    // aggregateBy shape sometimes used by rollup APIs
+    { label: "aggregateBy", body: { aggregateBy: [{ startTime: sIso, endTime: eIso }] } },
   ];
   for (const c of candidates) {
-    const probe: RawProbe = { type: `steps ${c.method} [${c.label}]`, status: 0, ok: false, count: 0, sampleKeys: [] };
+    const probe: RawProbe = { type: `steps dailyRollUp [${c.label}]`, status: 0, ok: false, count: 0, sampleKeys: [] };
     try {
-      const res = await fetch(`${BASE}/dataTypes/steps/dataPoints:${c.method}`, {
+      const res = await fetch(`${BASE}/dataTypes/steps/dataPoints:dailyRollUp${c.query ?? ""}`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(c.body),
