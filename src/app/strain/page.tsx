@@ -3,8 +3,9 @@
 import { useState } from "react";
 import { ScorePage } from "@/components/score-page";
 import { Card, ConfidenceBadge, EmptyState, Section } from "@/components/ui";
-import { ZoneBars } from "@/components/charts";
+import { StrainCurve, ZoneBars } from "@/components/charts";
 import { useApp } from "@/lib/data/store";
+import { countedActivities } from "@/lib/scoring/strain";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
 import { Flame } from "lucide-react";
@@ -97,7 +98,16 @@ export default function StrainPage() {
       algoNote="Strain sums each counted activity's load plus a small term for daily movement. Unrecognized short HR spikes are excluded unless you confirm them. The load model is a placeholder until the final strain algorithm is designed."
       extras={(data) => {
         const acts = data.today!.day.activities;
+        const counted = countedActivities(data.today!.day);
         return (
+          <>
+          {counted.length > 0 && (
+            <Section title="Strain through the day" sub="How your load accumulated across the day">
+              <Card>
+                <StrainCurve activities={counted} color={DOMAIN_COLOR.strain} />
+              </Card>
+            </Section>
+          )}
           <Section title="Activity breakdown" sub="Per-activity load — low-confidence blocks need your review">
             {acts.length ? (
               <div className="space-y-3">
@@ -109,6 +119,7 @@ export default function StrainPage() {
               <EmptyState icon={<Flame size={20} />} title="No activity yet today" body="Move, and your load breakdown will appear here by activity." />
             )}
           </Section>
+          </>
         );
       }}
     />

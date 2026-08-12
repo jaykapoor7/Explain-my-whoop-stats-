@@ -193,3 +193,37 @@ export function ZoneBars({ zones }: { zones: number[] }) {
     </div>
   );
 }
+
+/** WHOOP-style strain curve: cumulative load climbing through the day. */
+export function StrainCurve({ activities, color }: { activities: { start: string; load: number; type: string }[]; color: string }) {
+  const hourly = new Array(25).fill(0);
+  for (const a of activities) {
+    const h = Math.min(24, Math.max(0, parseInt(a.start.slice(11, 13), 10) || 0));
+    hourly[h] += a.load;
+  }
+  let cum = 0;
+  const data = hourly.map((v, h) => {
+    cum += v;
+    return { label: `${String(h % 24).padStart(2, "0")}:00`, value: Math.round(cum * 10) / 10 };
+  });
+  const gid = `strain-${color.replace(/[^a-z0-9]/gi, "")}`;
+  return (
+    <div className="h-44 w-full">
+      <ResponsiveContainer>
+        <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity={0.32} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid {...GRID} />
+          <XAxis dataKey="label" {...AXIS} interval={5} minTickGap={16} />
+          <YAxis {...AXIS} width={30} domain={[0, (m: number) => Math.max(21, Math.ceil(m))]} allowDecimals={false} />
+          <Tooltip content={<Tip unit="" name="Cumulative strain" />} cursor={{ stroke: color, strokeOpacity: 0.3 }} />
+          <Area type="stepAfter" dataKey="value" stroke={color} strokeWidth={2.2} fill={`url(#${gid})`} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
