@@ -26,19 +26,19 @@ import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
 
 const NAV = [
-  { href: "/today", label: "Today", icon: Sun, color: "#eef0f4" },
-  { href: "/energy", label: "Energy", icon: BatteryCharging, color: "#f6b83b" },
-  { href: "/recovery", label: "Recovery", icon: HeartPulse, color: "#38d39f" },
-  { href: "/sleep", label: "Sleep", icon: Moon, color: "#8b8cff" },
-  { href: "/strain", label: "Strain", icon: Flame, color: "#ff7a5c" },
-  { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#5cc8ff" },
-  { href: "/medication", label: "Medication", icon: Pill, color: "#e089d2" },
-  { href: "/journal", label: "Journal", icon: NotebookPen, color: "#c9b98a" },
-  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#7ce7c4" },
-  { href: "/trends", label: "Trends", icon: LineChart, color: "#7dd3fc" },
-  { href: "/planner", label: "Planner", icon: CalendarDays, color: "#9fb6ff" },
-  { href: "/goals", label: "Goals", icon: Target, color: "#8ee06a" },
-  { href: "/settings", label: "Settings", icon: Settings, color: "#8b93a1" },
+  { href: "/today", label: "Today", icon: Sun, color: "#211c14" },
+  { href: "/energy", label: "Energy", icon: BatteryCharging, color: "#eb9d18" },
+  { href: "/recovery", label: "Recovery", icon: HeartPulse, color: "#13b57e" },
+  { href: "/sleep", label: "Sleep", icon: Moon, color: "#7b68ee" },
+  { href: "/strain", label: "Strain", icon: Flame, color: "#ef5a45" },
+  { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#2298cf" },
+  { href: "/medication", label: "Medication", icon: Pill, color: "#c2569f" },
+  { href: "/journal", label: "Journal", icon: NotebookPen, color: "#a98b3f" },
+  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
+  { href: "/trends", label: "Trends", icon: LineChart, color: "#2a8fc4" },
+  { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
+  { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
+  { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
 
 // Bottom tab bar shows the daily-driver five; the rest live behind "More".
@@ -101,13 +101,13 @@ function MobileNav() {
             const active = pathname.startsWith(href);
             return (
               <Link key={href} href={href} className="flex flex-1 flex-col items-center gap-1 py-2.5" onClick={() => setMoreOpen(false)}>
-                <Icon size={19} strokeWidth={2} style={{ color: active ? color : "#6b7482" }} />
+                <Icon size={19} strokeWidth={2} style={{ color: active ? color : "#9a8f78" }} />
                 <span className={cn("text-[10px] font-medium", active ? "text-ink-100" : "text-ink-400")}>{label}</span>
               </Link>
             );
           })}
           <button onClick={() => setMoreOpen(!moreOpen)} className="flex flex-1 flex-col items-center gap-1 py-2.5">
-            <Grid2x2 size={19} strokeWidth={2} style={{ color: moreOpen || moreActive ? "#eef0f4" : "#6b7482" }} />
+            <Grid2x2 size={19} strokeWidth={2} style={{ color: moreOpen || moreActive ? "#211c14" : "#9a8f78" }} />
             <span className={cn("text-[10px] font-medium", moreOpen || moreActive ? "text-ink-100" : "text-ink-400")}>More</span>
           </button>
         </div>
