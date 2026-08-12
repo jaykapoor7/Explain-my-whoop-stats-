@@ -39,7 +39,9 @@ interface AppState {
   goalTargets: Record<string, number>;
   settings: Settings;
   hydrated: boolean;
+  selectedDate: string | null; // day being viewed (null = latest); ephemeral
 
+  setSelectedDate: (d: string | null) => void;
   setWearableDays: (days: DailySummary[], syncedAt: string) => void;
   resolveActivity: (id: string, res: "confirmed" | "ignored" | "edited", newType?: string) => void;
   addMeal: (meal: Meal) => void;
@@ -75,7 +77,9 @@ export const useApp = create<AppState>()(
       goalTargets: {},
       settings: DEFAULT_SETTINGS,
       hydrated: false,
+      selectedDate: null,
 
+      setSelectedDate: (d) => set({ selectedDate: d }),
       setWearableDays: (incoming, syncedAt) =>
         set((s) => {
           // merge by date: new sync wins for wearable fields
@@ -119,7 +123,7 @@ export const useApp = create<AppState>()(
     {
       name: "health-os",
       storage: createJSONStorage(() => localStorage),
-      partialize: ({ hydrated: _h, ...rest }) => {
+      partialize: ({ hydrated: _h, selectedDate: _sd, ...rest }) => {
         const out = { ...rest } as Record<string, unknown>;
         for (const k of Object.keys(out)) if (typeof out[k] === "function") delete out[k];
         return out;

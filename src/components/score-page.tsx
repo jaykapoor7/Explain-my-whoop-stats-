@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Card, ContributorLedger, Delta, PageHeader, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { TrendArea } from "@/components/charts";
 import { ConnectGate } from "@/components/connect";
+import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { ScoredDay } from "@/lib/scoring/engine";
 import { ScoreResult } from "@/lib/types";
@@ -55,7 +56,7 @@ export function ScorePage({
   if (score.available === false) {
     return (
       <div className="animate-fadeUp">
-        <PageHeader title={title} sub={question} />
+        <PageHeader title={title} sub={question} right={<DaySwitcher />} />
         <Card className="mt-5 p-6 text-center">
           <p className="text-sm font-semibold text-ink-100">No {title.toLowerCase()} data for today</p>
           <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-ink-400">{score.explanation}</p>
@@ -80,7 +81,7 @@ export function ScorePage({
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title={title} sub={question} />
+      <PageHeader title={title} sub={question} right={<DaySwitcher />} />
 
       <Card className="mt-5">
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">

@@ -17,9 +17,10 @@ export function calcRecovery(
   prevStrain: number
 ): RecoveryScore {
   const sleepOk = sleep.available !== false;
-  // Recovery is meaningless without any morning physiology to read.
-  if (!hasHrv(day) && !hasRhr(day) && !sleepOk) {
-    return unavailable("recovery", 100, "No data", "No HRV, resting-heart-rate or sleep data synced for this day yet.");
+  // Like WHOOP, recovery isn't shown until last night's sleep has been
+  // processed — it's the anchor of the score, so no sleep means no recovery yet.
+  if (!sleepOk) {
+    return unavailable("recovery", 100, "Awaiting sleep", "Recovery is calculated once last night's sleep has been recorded and processed.");
   }
   const hrvDelta = day.hrv.rmssdMs - baseline.hrvMs;
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;

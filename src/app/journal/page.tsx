@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Sparkles } from "lucide-react";
 import { Card, PageHeader, Section, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
@@ -21,36 +21,47 @@ const QUICK_TAGS = [
   "Studying", "Social event", "Travel", "Big meal", "Medication",
 ];
 
+const blankEntry = (): JournalEntry => ({
+  date: todayISO(),
+  ratings: { mood: 5, stress: 5, energy: 5, focus: 5, sleepQuality: 5 },
+  tags: [],
+});
+
 export default function JournalPage() {
   const data = useHealth();
   const saveJournal = useApp((s) => s.saveJournal);
   const journalMap = useApp((s) => s.journal);
-  const [draftNote, setDraftNote] = useState<string | null>(null);
 
   const entry = data.todayJournal;
+  const [draft, setDraft] = useState<JournalEntry>(() => entry ?? blankEntry());
+  const [savedJson, setSavedJson] = useState<string>(() => JSON.stringify(entry ?? blankEntry()));
+  const [justSaved, setJustSaved] = useState(false);
 
-  const draft = useMemo<JournalEntry>(
-    () =>
-      entry ?? {
-        date: todayISO(),
-        ratings: { mood: 5, stress: 5, energy: 5, focus: 5, sleepQuality: 5 },
-        tags: [],
-      },
-    [entry]
-  );
+  // Adopt the persisted entry once it loads (only if there are no pending edits).
+  useEffect(() => {
+    const ej = JSON.stringify(entry ?? blankEntry());
+    if (ej !== savedJson && JSON.stringify(draft) === savedJson) {
+      setDraft(entry ?? blankEntry());
+      setSavedJson(ej);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entry]);
 
   if (!data.hydrated) return <SkeletonPage />;
 
+  const dirty = JSON.stringify(draft) !== savedJson;
   const setRating = (key: keyof JournalRatings, v: number) =>
-    saveJournal({ ...draft, note: draftNote ?? draft.note, ratings: { ...draft.ratings, [key]: v } });
-
-  const toggleTag = (label: string) => {
-    const has = draft.tags.some((t) => t.label === label);
-    saveJournal({
-      ...draft,
-      note: draftNote ?? draft.note,
-      tags: has ? draft.tags.filter((t) => t.label !== label) : [...draft.tags, { label }],
-    });
+    setDraft((d) => ({ ...d, ratings: { ...d.ratings, [key]: v } }));
+  const toggleTag = (label: string) =>
+    setDraft((d) => ({
+      ...d,
+      tags: d.tags.some((t) => t.label === label) ? d.tags.filter((t) => t.label !== label) : [...d.tags, { label }],
+    }));
+  const save = () => {
+    saveJournal(draft);
+    setSavedJson(JSON.stringify(draft));
+    setJustSaved(true);
+    setTimeout(() => setJustSaved(false), 1800);
   };
 
   const journalInsights = data.insights.filter((i) => i.domain === "journal");
@@ -105,13 +116,24 @@ export default function JournalPage() {
 
           <div className="mt-4">
             <textarea
-              value={draftNote ?? draft.note ?? ""}
-              onChange={(e) => setDraftNote(e.target.value)}
-              onBlur={() => draftNote !== null && saveJournal({ ...draft, note: draftNote })}
+              value={draft.note ?? ""}
+              onChange={(e) => setDraft((d) => ({ ...d, note: e.target.value }))}
               placeholder="Anything worth remembering about today…"
               rows={2}
               className="w-full rounded-xl border border-black/10 bg-ink-875 px-3.5 py-2.5 text-sm text-ink-100 outline-none placeholder:text-ink-500 focus:border-black/25"
             />
+          </div>
+
+          <div className="mt-4 flex items-center justify-end gap-3 border-t border-black/[0.06] pt-4">
+            {justSaved && <span className="flex items-center gap-1 text-xs font-medium text-good"><Check size={13} /> Saved</span>}
+            <button
+              onClick={save}
+              disabled={!dirty}
+              className="rounded-full px-5 py-2 text-xs font-semibold text-[#241f18] transition disabled:cursor-default disabled:opacity-40"
+              style={{ background: "#c9b98a" }}
+            >
+              {dirty ? "Save entry" : "Saved"}
+            </button>
           </div>
         </Card>
       </Section>

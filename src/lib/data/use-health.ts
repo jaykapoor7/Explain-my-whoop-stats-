@@ -34,7 +34,9 @@ export function deriveMedEvents(meds: Medication[], date: string, overrides: Rec
 
 export interface HealthData {
   days: ScoredDay[];
-  today?: ScoredDay;
+  today?: ScoredDay; // the day being viewed (latest unless a past day is selected)
+  viewDate?: string; // ISO of the viewed day
+  isLatest: boolean; // viewing the most recent synced day
   connected: boolean; // has any wearable data
   lastSync: string | null;
   insights: Insight[];
@@ -83,9 +85,14 @@ export function useHealth(): HealthData {
   const todayMedEvents = useMemo(() => deriveMedEvents(s.medications, tISO, s.medOverrides), [s.medications, s.medOverrides, tISO]);
 
   const last = days[days.length - 1];
+  // The viewed day: the selected date if it's a real synced day, else the latest.
+  const viewed = (s.selectedDate && days.find((d) => d.day.date === s.selectedDate)) || last;
+  const isLatest = !viewed || !last || viewed.day.date === last.day.date;
   return {
     days,
-    today: last,
+    today: viewed,
+    viewDate: viewed?.day.date,
+    isLatest,
     connected: s.wearableDays.length > 0,
     lastSync: s.lastSync,
     insights,

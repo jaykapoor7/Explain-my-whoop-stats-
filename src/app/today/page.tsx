@@ -5,6 +5,7 @@ import { ArrowRight, Check, Footprints, Sparkles } from "lucide-react";
 import { Card, ContributorLedger, Delta, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { FitbitCard } from "@/components/connect";
 import { HealthAgeCard } from "@/components/health-age";
+import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { ScoredDay } from "@/lib/scoring/engine";
@@ -96,7 +97,8 @@ export default function TodayPage() {
     <div className="animate-fadeUp">
       <PageHeader
         title={t ? relativeDay(t.day.date) : "Welcome"}
-        sub={t ? `${fmtDateLong(t.day.date)} — here's how you're doing.` : "Your Health OS — connect your Fitbit to bring it to life."}
+        sub={t ? `${fmtDateLong(t.day.date)} — ${data.isLatest ? "here's how you're doing." : "how this day went."}` : "Your Health OS — connect your Fitbit to bring it to life."}
+        right={t ? <DaySwitcher /> : undefined}
       />
 
       {t ? (
@@ -151,6 +153,8 @@ export default function TodayPage() {
         </div>
       )}
 
+      {data.isLatest && (
+      <>
       <Section title="Today's essentials">
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href="/nutrition">
@@ -254,6 +258,8 @@ export default function TodayPage() {
           </div>
         </Card>
       </Section>
+      </>
+      )}
 
       {data.insights[0] && (
         <Section title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
