@@ -53,21 +53,32 @@ export function TrendArea({
   const id = `g-${color.replace("#", "")}`;
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 6, right: 4, left: -16, bottom: 0 }}>
+      <AreaChart data={data} margin={{ top: 8, right: 6, left: -12, bottom: 0 }}>
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={color} stopOpacity={0.25} />
-            <stop offset="100%" stopColor={color} stopOpacity={0} />
+            <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+            <stop offset="100%" stopColor={color} stopOpacity={0.02} />
           </linearGradient>
         </defs>
         <CartesianGrid {...GRID} />
         <XAxis dataKey="date" {...AXIS} tickFormatter={(d) => fmtDate(String(d))} minTickGap={44} />
         <YAxis {...AXIS} width={44} domain={domain ?? ["auto", "auto"]} tickFormatter={(v) => fmtNum(v)} />
-        <Tooltip content={<Tip unit={unit} name={name} />} cursor={{ stroke: "#333a47" }} />
+        <Tooltip content={<Tip unit={unit} name={name} />} cursor={{ stroke: color, strokeOpacity: 0.35, strokeWidth: 1.5 }} />
         {baseline !== undefined && (
-          <ReferenceLine y={baseline} stroke="#4a5361" strokeDasharray="5 4" strokeWidth={1} />
+          <ReferenceLine y={baseline} stroke="#a4977f" strokeDasharray="5 4" strokeWidth={1.25} />
         )}
-        <Area type="monotone" dataKey="value" name={name} stroke={color} strokeWidth={2} fill={`url(#${id})`} dot={false} activeDot={{ r: 3.5, strokeWidth: 0 }} connectNulls />
+        <Area
+          type="monotone"
+          dataKey="value"
+          name={name}
+          stroke={color}
+          strokeWidth={2.5}
+          fill={`url(#${id})`}
+          dot={false}
+          activeDot={{ r: 4, strokeWidth: 2, stroke: "#fdfaf3" }}
+          connectNulls
+          style={{ filter: `drop-shadow(0 4px 8px ${color}33)` }}
+        />
       </AreaChart>
     </ResponsiveContainer>
   );
@@ -107,9 +118,12 @@ const STAGE_COLORS: Record<string, string> = { deep: "#4b3f9e", light: "#7b68ee"
 
 /** WHOOP-style hypnogram: stage depth over the night. */
 export function Hypnogram({ segments, bedtime, wake }: { segments: { start: string; end: string; stage: string }[]; bedtime: string; wake: string }) {
-  const startMs = Date.parse(bedtime);
-  const endMs = Date.parse(wake);
-  const dur = Math.max(1, endMs - startMs);
+  // Anchor the timeline to the actual segment span so it's robust to bad bounds.
+  const times = segments.flatMap((s) => [Date.parse(s.start), Date.parse(s.end)]).filter((n) => isFinite(n));
+  const startMs = Math.min(Date.parse(bedtime), ...times);
+  const endMs = Math.max(Date.parse(wake), ...times);
+  if (!(endMs > startMs)) return null;
+  const dur = endMs - startMs;
   const LANES = ["awake", "rem", "light", "deep"] as const;
   const laneLabel: Record<string, string> = { awake: "Awake", rem: "REM", light: "Light", deep: "Deep" };
   const laneH = 24;
@@ -210,18 +224,18 @@ export function StrainCurve({ activities, color }: { activities: { start: string
   return (
     <div className="h-44 w-full">
       <ResponsiveContainer>
-        <AreaChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 8, right: 10, left: -8, bottom: 0 }}>
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.32} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.02} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.45} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.05} />
             </linearGradient>
           </defs>
           <CartesianGrid {...GRID} />
           <XAxis dataKey="label" {...AXIS} interval={5} minTickGap={16} />
           <YAxis {...AXIS} width={30} domain={[0, (m: number) => Math.max(21, Math.ceil(m))]} allowDecimals={false} />
           <Tooltip content={<Tip unit="" name="Cumulative strain" />} cursor={{ stroke: color, strokeOpacity: 0.3 }} />
-          <Area type="stepAfter" dataKey="value" stroke={color} strokeWidth={2.2} fill={`url(#${gid})`} />
+          <Area type="stepAfter" dataKey="value" stroke={color} strokeWidth={3} fill={`url(#${gid})`} isAnimationActive={false} dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
