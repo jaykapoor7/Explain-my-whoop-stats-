@@ -346,7 +346,7 @@ export async function syncHealth(token: string, daysBack = 30): Promise<DailySum
   }
   for (const p of await listPoints("daily-heart-rate-variability", token, startIso, endIso)) {
     const h = mapHrv(p);
-    if (h) day(h.date).hrv = { date: h.date, rmssdMs: h.rmssdMs };
+    if (h) day(h.date).hrv = { date: h.date, rmssdMs: h.rmssdMs, nonRemHrBpm: h.nonRemHrBpm };
   }
 
   // Steps (dailyRollUp)
@@ -418,7 +418,7 @@ export async function syncHealth(token: string, daysBack = 30): Promise<DailySum
         debtMin: 0,
         needMin: 480,
       } satisfies SleepSession);
-    sleep.sleepHrBpm = sleep.sleepHrBpm || (p.rhr?.bpm ?? 0);
+    sleep.sleepHrBpm = sleep.sleepHrBpm || p.hrv?.nonRemHrBpm || (p.rhr?.bpm ?? 0);
     sleep.overnightHrvMs = p.hrv?.rmssdMs ?? 0;
     if (p.sleep) {
       debt = clamp(debt + (sleep.needMin - sleep.asleepMin) * 0.5, 0, 400);

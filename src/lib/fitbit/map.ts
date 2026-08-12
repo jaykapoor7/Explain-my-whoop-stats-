@@ -60,12 +60,13 @@ export function mapRhr(p: Json): { date: string; bpm: number } | null {
   return { date, bpm: Math.round(bpm) };
 }
 
-export function mapHrv(p: Json): { date: string; rmssdMs: number } | null {
+export function mapHrv(p: Json): { date: string; rmssdMs: number; nonRemHrBpm?: number } | null {
   const h = p?.dailyHeartRateVariability;
   const date = civilDate(h?.date);
   const ms = numOf(h?.averageHeartRateVariabilityMilliseconds) ?? numOf(h?.deepSleepRootMeanSquareOfSuccessiveDifferencesMilliseconds);
   if (!date || ms === undefined) return null;
-  return { date, rmssdMs: Math.round(ms) };
+  const nonRem = numOf(h?.nonRemHeartRateBeatsPerMinute);
+  return { date, rmssdMs: Math.round(ms), nonRemHrBpm: nonRem !== undefined ? Math.round(nonRem) : undefined };
 }
 
 export function mapWeight(p: Json): { date: string; kg: number } | null {

@@ -27,7 +27,8 @@ function ActivityRow({ a }: { a: Activity }) {
         </span>
       </div>
       <div className="mt-1.5 text-xs text-ink-400">
-        {fmtTime(a.start.slice(11, 16))} · {a.durationMin}m · avg {a.avgHr} / max {a.maxHr} bpm · {fmtNum(a.calories)} kcal
+        {fmtTime(a.start.slice(11, 16))} · {a.durationMin}m
+        {a.avgHr > 0 ? ` · avg ${a.avgHr}${a.maxHr > 0 ? ` / max ${a.maxHr}` : ""} bpm` : ""} · {fmtNum(a.calories)} kcal
       </div>
       {a.zones.some((z) => z > 0) && (
         <div className="mt-3">

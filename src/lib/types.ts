@@ -20,6 +20,7 @@ export interface HeartRateSample {
 export interface HRVMeasurement {
   date: ISODate;
   rmssdMs: number; // overnight rMSSD
+  nonRemHrBpm?: number; // real overnight (non-REM) heart rate, when reported
 }
 
 export interface RestingHeartRate {

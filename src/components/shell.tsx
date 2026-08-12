@@ -23,6 +23,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/format";
+import { AutoSync } from "@/components/auto-sync";
 
 const NAV = [
   { href: "/today", label: "Today", icon: Sun, color: "#eef0f4" },
@@ -160,6 +161,7 @@ function MobileNav() {
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
+      <AutoSync />
       <DesktopNav />
       <MobileNav />
       <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-4xl lg:pb-12 lg:pt-8 xl:mx-auto xl:pl-56">
