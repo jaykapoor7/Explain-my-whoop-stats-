@@ -264,17 +264,30 @@ export async function inspectHealth(token: string): Promise<RawProbe[]> {
     out.push(probe);
   }
 
-  // Rollup probes for the aggregate-only types.
+  // Rollup request-format discovery. The dailyRollUp body field names aren't
+  // documented here, so try several candidate shapes on `steps` and report
+  // which one Google accepts — that reveals both the request and response.
   const end = new Date();
   const start = new Date(end.getTime() - 6 * 864e5);
-  const asYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  for (const type of ["steps", "total-calories"]) {
-    const probe: RawProbe = { type: `${type} (dailyRollUp)`, status: 0, ok: false, count: 0, sampleKeys: [] };
+  const dObj = (d: Date) => ({ year: d.getFullYear(), month: d.getMonth() + 1, day: d.getDate() });
+  const sIso = start.toISOString();
+  const eIso = end.toISOString();
+  const candidates: { label: string; method: string; body: Json }[] = [
+    { label: "localDateRange", method: "dailyRollUp", body: { localDateRange: { startDate: dObj(start), endDate: dObj(end) } } },
+    { label: "dateRange", method: "dailyRollUp", body: { dateRange: { startDate: dObj(start), endDate: dObj(end) } } },
+    { label: "startEndLocalDate", method: "dailyRollUp", body: { startLocalDate: dObj(start), endLocalDate: dObj(end) } },
+    { label: "startEndDate-obj", method: "dailyRollUp", body: { startDate: dObj(start), endDate: dObj(end) } },
+    { label: "interval", method: "dailyRollUp", body: { interval: { startTime: sIso, endTime: eIso } } },
+    { label: "timeRange", method: "dailyRollUp", body: { timeRange: { startTime: sIso, endTime: eIso } } },
+    { label: "rollup:localDateRange", method: "rollup", body: { localDateRange: { startDate: dObj(start), endDate: dObj(end) } } },
+  ];
+  for (const c of candidates) {
+    const probe: RawProbe = { type: `steps ${c.method} [${c.label}]`, status: 0, ok: false, count: 0, sampleKeys: [] };
     try {
-      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints:dailyRollUp`, {
+      const res = await fetch(`${BASE}/dataTypes/steps/dataPoints:${c.method}`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json" },
-        body: JSON.stringify({ startDate: asYmd(start), endDate: asYmd(end), windowSizeDays: 1 }),
+        body: JSON.stringify(c.body),
         cache: "no-store",
       });
       probe.status = res.status;
