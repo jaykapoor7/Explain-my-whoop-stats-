@@ -176,30 +176,40 @@ export function mapExercise(p: Json): Activity | null {
   };
 }
 
-/** Daily step rollup point → { date, steps }. Rollup shape is probed tolerantly. */
+/** Best-effort date from any point/wrapper: civil date, interval start, or a time string. */
+function anyDate(...objs: (Json | undefined)[]): string | undefined {
+  for (const o of objs) {
+    if (!o) continue;
+    const cd = civilDate(o.date) ?? civilDate(o.civilTime?.date) ?? civilDate(o.sampleTime?.civilTime?.date);
+    if (cd) return cd;
+    const iv = o.interval ?? o;
+    const t = iv?.startTime ?? iv?.endTime ?? o.startTime ?? o.physicalTime ?? o.sampleTime?.physicalTime;
+    if (typeof t === "string") {
+      const s = localIso(t, iv?.startUtcOffset ?? iv?.endUtcOffset ?? o.utcOffset).slice(0, 10);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    }
+  }
+  return undefined;
+}
+
+/** Daily step rollup point → { date, steps }. Rollup shape probed tolerantly. */
 export function mapStepsRollup(p: Json): { date: string; steps: number } | null {
-  const w = p?.steps ?? p;
-  const date =
-    civilDate(w?.date) ??
-    civilDate(p?.date) ??
-    (typeof p?.startTime === "string" ? p.startTime.slice(0, 10) : undefined) ??
-    (typeof w?.startTime === "string" ? w.startTime.slice(0, 10) : undefined);
-  const steps = numOf(w?.count) ?? numOf(w?.countSum) ?? numOf(w?.steps) ?? numOf(p?.countSum) ?? numOf(p?.value);
+  const w = p?.steps ?? p?.dailySteps ?? p;
+  const date = anyDate(w, p);
+  const steps =
+    numOf(w?.count) ?? numOf(w?.countSum) ?? numOf(w?.steps) ?? numOf(w?.total) ?? numOf(w?.value) ??
+    numOf(p?.countSum) ?? numOf(p?.value);
   if (!date || steps === undefined) return null;
   return { date, steps: Math.round(steps) };
 }
 
 /** Daily total-calories rollup point → { date, kcal }. Tolerant probe. */
 export function mapCaloriesRollup(p: Json): { date: string; kcal: number } | null {
-  const w = p?.totalCalories ?? p;
-  const date =
-    civilDate(w?.date) ??
-    civilDate(p?.date) ??
-    (typeof p?.startTime === "string" ? p.startTime.slice(0, 10) : undefined) ??
-    (typeof w?.startTime === "string" ? w.startTime.slice(0, 10) : undefined);
+  const w = p?.totalCalories ?? p?.dailyTotalCalories ?? p;
+  const date = anyDate(w, p);
   const kcal =
-    numOf(w?.energyKcal) ?? numOf(w?.caloriesKcal) ?? numOf(w?.kilocalories) ?? numOf(w?.energy) ??
-    numOf(w?.value) ?? numOf(p?.energySum) ?? numOf(p?.value);
+    numOf(w?.energyKcal) ?? numOf(w?.caloriesKcal) ?? numOf(w?.kilocalories) ?? numOf(w?.calories) ??
+    numOf(w?.energy) ?? numOf(w?.total) ?? numOf(w?.value) ?? numOf(p?.energySum) ?? numOf(p?.value);
   if (!date || kcal === undefined) return null;
   return { date, kcal: Math.round(kcal) };
 }
