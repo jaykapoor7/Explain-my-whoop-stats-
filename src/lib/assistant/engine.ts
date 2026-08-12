@@ -17,6 +17,7 @@ export interface AssistantReply {
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
 
 function explainScore(name: string, s: ScoreResult): string {
+  if (s.available === false) return `Your ${name} can't be scored today — ${s.explanation}`;
   const ups = s.contributors.filter((c) => c.points > 0).slice(0, 3);
   const downs = s.contributors.filter((c) => c.points < 0).slice(0, 3);
   const fmtSide = (list: typeof ups) => list.map((c) => `${c.label} (${signed(c.points)})`).join(", ");
@@ -46,12 +47,14 @@ export function answer(q: string, d: HealthData): AssistantReply {
   if (/(energy|battery)/.test(lower)) return { text: explainScore("energy", t.energy) };
   if (/(strain|load|training)/.test(lower) && !/sleep/.test(lower)) return { text: explainScore("strain", t.strain) };
   if (/sleep/.test(lower) && /(week|trend|lately|average)/.test(lower)) {
-    const week = d.days.slice(-7);
-    const avg = mean(week.map((s) => s.day.sleep.asleepMin).filter((v) => v > 0));
-    const best = [...week].sort((a, b) => b.sleep.score - a.sleep.score)[0];
-    const worst = [...week].sort((a, b) => a.sleep.score - b.sleep.score)[0];
+    const nights = d.days.slice(-7).filter((s) => s.sleep.available !== false);
+    if (!nights.length)
+      return { text: "No sleep has synced in the last week yet. Wear your Fitbit overnight and sync — then I can summarize your nights, debt and best/worst." };
+    const avg = mean(nights.map((s) => s.day.sleep.asleepMin));
+    const best = [...nights].sort((a, b) => b.sleep.score - a.sleep.score)[0];
+    const worst = [...nights].sort((a, b) => a.sleep.score - b.sleep.score)[0];
     return {
-      text: `Over the last ${week.length} nights you averaged ${fmtDuration(avg)} of sleep. Best night: ${best.day.date} (score ${best.sleep.score}); toughest: ${worst.day.date} (score ${worst.sleep.score}). Your sleep debt currently stands at ${fmtDuration(t.day.sleep.debtMin)}.${avg < 450 ? " You're running under your ~8h need — the single highest-leverage fix in your data." : ""}`,
+      text: `Over your last ${nights.length} recorded night${nights.length > 1 ? "s" : ""} you averaged ${fmtDuration(avg)} of sleep. Best: ${best.day.date} (score ${best.sleep.score}); toughest: ${worst.day.date} (score ${worst.sleep.score}).${t.sleep.available !== false ? ` Your sleep debt currently stands at ${fmtDuration(t.day.sleep.debtMin)}.` : ""}${avg < 450 ? " You're running under your ~8h need — the single highest-leverage fix in your data." : ""}`,
     };
   }
   if (/sleep/.test(lower)) return { text: explainScore("sleep", t.sleep) };
@@ -83,12 +86,16 @@ export function answer(q: string, d: HealthData): AssistantReply {
 
   // hrv / rhr
   if (/hrv/.test(lower)) {
+    if (t.day.hrv.rmssdMs <= 0)
+      return { text: "No overnight HRV has synced for today yet. It comes from the Google Health `daily-heart-rate-variability` type — check Settings → Sync diagnostics to confirm it's coming through." };
     const c = correlate(d.days, "sleepMin", "hrv", 0);
     return {
       text: `Overnight HRV is ${t.day.hrv.rmssdMs} ms vs your ${Math.round(t.baseline.hrvMs)} ms baseline (${signed(t.day.hrv.rmssdMs - t.baseline.hrvMs)}).${c ? ` Across ${c.n} days, sleep duration and HRV correlate at r = ${fmtNum(c.r, 2)} in your data.` : ""} Higher-than-baseline HRV generally reads as better recovery capacity.`,
     };
   }
   if (/(resting|rhr|heart rate)/.test(lower)) {
+    if (t.day.rhr.bpm <= 0)
+      return { text: "No resting heart rate has synced for today yet. Check Settings → Sync diagnostics to see whether it's coming through from Fitbit." };
     return {
       text: `Resting HR is ${t.day.rhr.bpm} bpm vs your ${Math.round(t.baseline.rhrBpm)} bpm baseline (${signed(t.day.rhr.bpm - t.baseline.rhrBpm)} — ${t.day.rhr.bpm <= t.baseline.rhrBpm ? "a good sign" : "slightly elevated; alcohol, late meals, illness or hard training are common causes"}).`,
     };
@@ -96,13 +103,22 @@ export function answer(q: string, d: HealthData): AssistantReply {
 
   // today / general
   if (/(today|how am i|doing|summary|morning)/.test(lower)) {
-    return {
-      text: `${explainScore("energy", t.energy)}\n\nRecovery ${t.recovery.score}% · Sleep ${fmtDuration(t.day.sleep.asleepMin)} (score ${t.sleep.score}) · Strain ${t.strain.score.toFixed(1)} · ${fmtNum(t.day.steps)} steps.`,
-    };
+    const bits: string[] = [];
+    if (t.recovery.available !== false) bits.push(`Recovery ${t.recovery.score}%`);
+    if (t.sleep.available !== false) bits.push(`Sleep ${fmtDuration(t.day.sleep.asleepMin)} (score ${t.sleep.score})`);
+    bits.push(`Strain ${t.strain.score.toFixed(1)}`);
+    if (t.day.steps > 0) bits.push(`${fmtNum(t.day.steps)} steps`);
+    const missing = [
+      t.sleep.available === false && "sleep",
+      t.recovery.available === false && "recovery",
+      t.energy.available === false && "energy",
+    ].filter(Boolean);
+    const tail = missing.length ? `\n\nNo ${missing.join(", ")} data has synced for today — check Settings → Sync diagnostics.` : "";
+    return { text: `${explainScore("energy", t.energy)}\n\n${bits.join(" · ")}.${tail}` };
   }
 
   return {
-    text: `I can explain any score ("why is my recovery ${t.recovery.score}?"), summarize sleep ("how did I sleep this week?"), report what appears to affect you ("what affects my sleep?"), and answer nutrition, HRV, resting-HR and medication questions — all from your own data, on-device.`,
+    text: `I can explain any score ("why is my recovery?"), summarize sleep ("how did I sleep this week?"), report what appears to affect you ("what affects my sleep?"), and answer nutrition, HRV, resting-HR and medication questions — all from your own data, on-device.`,
   };
 }
 

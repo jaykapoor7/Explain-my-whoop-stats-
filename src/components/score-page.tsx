@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useState } from "react";
+import Link from "next/link";
 import { Card, ContributorLedger, Delta, PageHeader, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { TrendArea } from "@/components/charts";
 import { ConnectGate } from "@/components/connect";
@@ -46,7 +47,36 @@ export function ScorePage({
   }
 
   const score = pick(data.today);
-  const trend = data.days.slice(-range).map((s) => ({ date: s.day.date, value: pick(s).score }));
+  const trend = data.days
+    .slice(-range)
+    .filter((s) => pick(s).available !== false)
+    .map((s) => ({ date: s.day.date, value: pick(s).score }));
+
+  if (score.available === false) {
+    return (
+      <div className="animate-fadeUp">
+        <PageHeader title={title} sub={question} />
+        <Card className="mt-5 p-6 text-center">
+          <p className="text-sm font-semibold text-ink-100">No {title.toLowerCase()} data for today</p>
+          <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-ink-400">{score.explanation}</p>
+          <p className="mx-auto mt-2 max-w-md text-[11px] leading-relaxed text-ink-500">
+            Rather than show a made-up number, this stays blank until the data syncs. Check{" "}
+            <Link href="/settings" className="text-ink-300 underline hover:text-ink-100">
+              Settings → Sync diagnostics
+            </Link>{" "}
+            to see which metrics came through.
+          </p>
+        </Card>
+        {trend.length > 1 && (
+          <Section title="Recent history" sub={`Days that did sync · last ${range}`}>
+            <Card>
+              <TrendArea data={trend} color={color} domain={score.scale === 21 ? [0, 21] : [0, 100]} name={title} />
+            </Card>
+          </Section>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fadeUp">

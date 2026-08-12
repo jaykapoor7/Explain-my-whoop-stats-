@@ -13,11 +13,11 @@ import { cn, fmtNum } from "@/lib/format";
 const RANGES = [7, 30, 90] as const;
 
 const SERIES: { key: string; label: string; unit: string; color: string; get: (s: ScoredDay) => number }[] = [
-  { key: "recovery", label: "Recovery", unit: "", color: "#38d39f", get: (s) => s.recovery.score },
-  { key: "energy", label: "Energy", unit: "", color: "#f6b83b", get: (s) => s.energy.score },
-  { key: "sleepMin", label: "Sleep (min)", unit: " min", color: "#8b8cff", get: (s) => s.day.sleep.asleepMin },
-  { key: "hrv", label: "HRV (ms)", unit: " ms", color: "#7dd3fc", get: (s) => s.day.hrv.rmssdMs },
-  { key: "rhr", label: "Resting HR", unit: " bpm", color: "#e089d2", get: (s) => s.day.rhr.bpm },
+  { key: "recovery", label: "Recovery", unit: "", color: "#38d39f", get: (s) => (s.recovery.available === false ? NaN : s.recovery.score) },
+  { key: "energy", label: "Energy", unit: "", color: "#f6b83b", get: (s) => (s.energy.available === false ? NaN : s.energy.score) },
+  { key: "sleepMin", label: "Sleep (min)", unit: " min", color: "#8b8cff", get: (s) => (s.day.sleep.asleepMin > 0 ? s.day.sleep.asleepMin : NaN) },
+  { key: "hrv", label: "HRV (ms)", unit: " ms", color: "#7dd3fc", get: (s) => (s.day.hrv.rmssdMs > 0 ? s.day.hrv.rmssdMs : NaN) },
+  { key: "rhr", label: "Resting HR", unit: " bpm", color: "#e089d2", get: (s) => (s.day.rhr.bpm > 0 ? s.day.rhr.bpm : NaN) },
   { key: "strain", label: "Strain", unit: "", color: "#ff7a5c", get: (s) => s.strain.score },
   { key: "steps", label: "Steps", unit: "", color: "#8ee06a", get: (s) => s.day.steps },
   { key: "kcal", label: "Calories in", unit: " kcal", color: "#5cc8ff", get: (s) => s.nutrition.kcal },

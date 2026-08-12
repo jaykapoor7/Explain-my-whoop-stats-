@@ -229,6 +229,9 @@ export interface ScoreResult {
   baseline: number;
   contributors: Contributor[];
   explanation: string;
+  /** false when the underlying data for this pillar wasn't synced for the day.
+   * The score is meaningless then and the UI shows "No data" instead of a number. */
+  available?: boolean;
 }
 
 export type EnergyScore = ScoreResult;

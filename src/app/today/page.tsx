@@ -9,19 +9,31 @@ import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO }
 import { ScoredDay } from "@/lib/scoring/engine";
 import { ScoreResult } from "@/lib/types";
 
+function NoDataRing({ size = 64 }: { size?: number }) {
+  return (
+    <span
+      className="flex shrink-0 items-center justify-center rounded-full border border-dashed border-white/15 text-ink-500"
+      style={{ width: size, height: size }}
+    >
+      <span className="text-lg">—</span>
+    </span>
+  );
+}
+
 function ScoreTile({ href, label, score, color, unit }: { href: string; label: string; score: ScoreResult; color: string; unit?: string }) {
+  const na = score.available === false;
   return (
     <Link href={href} className="group">
       <Card className="flex items-center gap-4 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
-        <ScoreRing score={score.score} scale={score.scale} color={color} size={64} />
+        {na ? <NoDataRing /> : <ScoreRing score={score.score} scale={score.scale} color={color} size={64} />}
         <div className="min-w-0 flex-1">
           <div className="flex items-center justify-between gap-2">
             <span className="text-[13px] font-semibold text-ink-100">{label}</span>
-            <Delta value={score.deltaVsYesterday} decimals={score.scale === 21 ? 1 : 0} />
+            {!na && <Delta value={score.deltaVsYesterday} decimals={score.scale === 21 ? 1 : 0} />}
           </div>
           <div className="mt-0.5 text-xs text-ink-400">
-            {score.status}
-            {unit ? ` · ${unit}` : ""}
+            {na ? "No data yet" : score.status}
+            {!na && unit ? ` · ${unit}` : ""}
           </div>
         </div>
         <ArrowRight size={14} className="shrink-0 text-ink-500 transition-transform group-hover:translate-x-0.5" />
@@ -44,11 +56,23 @@ function explainDay(s: ScoredDay): string {
   const led = dayLedger(s);
   const ups = led.filter((c) => c.points > 0).map((c) => c.label.toLowerCase());
   const downs = led.filter((c) => c.points < 0).map((c) => c.label.toLowerCase());
-  const sleepH = (s.day.sleep.asleepMin / 60).toFixed(1);
-  let text = `You slept ${sleepH}h and woke at ${s.recovery.score}% recovery, so your battery started ${s.energy.score >= 60 ? "well charged" : s.energy.score >= 40 ? "partly charged" : "low"}. `;
-  if (ups.length) text += `Working for you: ${ups.slice(0, 3).join(", ")}. `;
-  if (downs.length) text += `Working against you: ${downs.slice(0, 3).join(", ")}. `;
-  return text;
+  const sleepOk = s.sleep.available !== false;
+  const recOk = s.recovery.available !== false;
+  const enOk = s.energy.available !== false;
+
+  const parts: string[] = [];
+  if (sleepOk) {
+    const sleepH = (s.day.sleep.asleepMin / 60).toFixed(1);
+    parts.push(recOk ? `You slept ${sleepH}h and woke at ${s.recovery.score}% recovery.` : `You slept ${sleepH}h.`);
+  } else if (recOk) {
+    parts.push(`No sleep was recorded last night, but your morning recovery read ${s.recovery.score}%.`);
+  } else {
+    parts.push("No overnight sleep, HRV or resting-HR data has synced for today yet.");
+  }
+  if (enOk) parts.push(`Your battery is ${s.energy.score >= 60 ? "well charged" : s.energy.score >= 40 ? "partly charged" : "running low"}.`);
+  if (ups.length) parts.push(`Working for you: ${ups.slice(0, 3).join(", ")}.`);
+  if (downs.length) parts.push(`Working against you: ${downs.slice(0, 3).join(", ")}.`);
+  return parts.join(" ");
 }
 
 export default function TodayPage() {
@@ -78,15 +102,24 @@ export default function TodayPage() {
         <>
           <Card className="mt-5">
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
-              <ScoreRing score={t.energy.score} color={DOMAIN_COLOR.energy} label="Energy" />
+              {t.energy.available === false ? <NoDataRing size={96} /> : <ScoreRing score={t.energy.score} color={DOMAIN_COLOR.energy} label="Energy" />}
               <div className="w-full min-w-0 flex-1 text-center sm:text-left">
-                <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                  <StatusPill text={t.energy.status} color={DOMAIN_COLOR.energy} />
-                  <span className="text-xs text-ink-400">
-                    vs yesterday <Delta value={t.energy.deltaVsYesterday} /> · baseline {t.energy.baseline}
-                  </span>
-                </div>
-                <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
+                {t.energy.available === false ? (
+                  <>
+                    <StatusPill text="No data yet" color={DOMAIN_COLOR.energy} />
+                    <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
+                      <StatusPill text={t.energy.status} color={DOMAIN_COLOR.energy} />
+                      <span className="text-xs text-ink-400">
+                        vs yesterday <Delta value={t.energy.deltaVsYesterday} /> · baseline {t.energy.baseline}
+                      </span>
+                    </div>
+                    <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
+                  </>
+                )}
               </div>
             </div>
             <Why summary="Explain my day">{explainDay(t)}</Why>
@@ -101,7 +134,7 @@ export default function TodayPage() {
           <Section title="Scores">
             <div className="grid gap-3 sm:grid-cols-2">
               <ScoreTile href="/recovery" label="Recovery" score={t.recovery} color={DOMAIN_COLOR.recovery} />
-              <ScoreTile href="/sleep" label="Sleep" score={t.sleep} color={DOMAIN_COLOR.sleep} unit={fmtDuration(t.day.sleep.asleepMin)} />
+              <ScoreTile href="/sleep" label="Sleep" score={t.sleep} color={DOMAIN_COLOR.sleep} unit={t.sleep.available === false ? undefined : fmtDuration(t.day.sleep.asleepMin)} />
               <ScoreTile href="/strain" label="Strain" score={t.strain} color={DOMAIN_COLOR.strain} />
               <ScoreTile href="/energy" label="Energy" score={t.energy} color={DOMAIN_COLOR.energy} />
             </div>

@@ -1,6 +1,6 @@
-import { DailySummary, EnergyScore, PersonalBaseline } from "../types";
+import { Contributor, DailySummary, EnergyScore, PersonalBaseline, ScoreResult } from "../types";
 import { clamp } from "../format";
-import { build, term } from "./sleep";
+import { build, hasHrv, term, unavailable } from "./sleep";
 import { countedActivities } from "./strain";
 
 /**
@@ -14,16 +14,21 @@ import { countedActivities } from "./strain";
 export function calcEnergy(
   day: DailySummary,
   baseline: PersonalBaseline,
-  sleepScore: number,
-  recoveryScore: number
+  sleep: ScoreResult,
+  recovery: ScoreResult
 ): EnergyScore {
-  const charging = [
-    term("Sleep", (sleepScore - 60) * 0.32, `Sleep scored ${Math.round(sleepScore)} overnight`),
-    term("HRV", (day.hrv.rmssdMs - baseline.hrvMs) * 0.7, `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`),
-    term("Recovery base", (recoveryScore - 55) * 0.22, `Woke at ${Math.round(recoveryScore)}% recovery`),
-  ];
+  const sleepOk = sleep.available !== false;
+  const recoveryOk = recovery.available !== false;
+  // With no overnight signal at all there's nothing to gauge starting capacity from.
+  if (!sleepOk && !recoveryOk && !hasHrv(day)) {
+    return unavailable("energy", 100, "No data", "No sleep, recovery or HRV data synced for this day yet.");
+  }
+  const charging: Contributor[] = [];
+  if (sleepOk) charging.push(term("Sleep", (sleep.score - 60) * 0.32, `Sleep scored ${Math.round(sleep.score)} overnight`));
+  if (hasHrv(day)) charging.push(term("HRV", (day.hrv.rmssdMs - baseline.hrvMs) * 0.7, `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`));
+  if (recoveryOk) charging.push(term("Recovery base", (recovery.score - 55) * 0.22, `Woke at ${Math.round(recovery.score)}% recovery`));
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
-  if (Math.abs(rhrDelta) >= 1.5) {
+  if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.5) {
     charging.push(term(rhrDelta > 0 ? "Elevated RHR" : "Low RHR", -rhrDelta * 1.5, `${day.rhr.bpm} bpm this morning`));
   }
   const spend = countedActivities(day).map((a) =>
@@ -33,12 +38,13 @@ export function calcEnergy(
   const score = clamp(56 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
+  const start = sleepOk ? (sleep.score >= 70 ? "well-charged" : "partially charged") : recoveryOk && recovery.score >= 60 ? "well-charged" : "partially charged";
   return build(
     "energy",
     100,
     score,
     terms,
     status,
-    `You started with a ${sleepScore >= 70 ? "well-charged" : "partially charged"} battery and today's activity has drawn roughly ${spent} points so far.`
+    `You started with a ${start} battery and today's activity has drawn roughly ${spent} points so far.`
   );
 }

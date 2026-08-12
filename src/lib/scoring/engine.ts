@@ -33,6 +33,9 @@ export function nutritionTotals(day: Pick<DailySummary, "meals">): NutritionTota
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
+// Baselines must average over days that actually have the metric — a day that
+// didn't sync arrives as 0 and would otherwise drag the "typical" value down.
+const meanPos = (xs: number[]) => mean(xs.filter((x) => x > 0));
 
 /** Rolling 14-day personal baseline ending BEFORE index i (falls back to whole history start). */
 function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): PersonalBaseline {
@@ -40,14 +43,14 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
   const window = days.slice(from, Math.max(from + 1, i));
   const scoredWindow = scored.slice(from, Math.max(from + 1, i));
   return {
-    hrvMs: mean(window.map((d) => d.hrv.rmssdMs)) || days[i].hrv.rmssdMs,
-    rhrBpm: mean(window.map((d) => d.rhr.bpm)) || days[i].rhr.bpm,
-    sleepMin: mean(window.map((d) => d.sleep.asleepMin)) || days[i].sleep.asleepMin,
-    sleepEffPct: mean(window.map((d) => d.sleep.efficiencyPct)) || days[i].sleep.efficiencyPct,
+    hrvMs: meanPos(window.map((d) => d.hrv.rmssdMs)) || days[i].hrv.rmssdMs || 45,
+    rhrBpm: meanPos(window.map((d) => d.rhr.bpm)) || days[i].rhr.bpm || 60,
+    sleepMin: meanPos(window.map((d) => d.sleep.asleepMin)) || days[i].sleep.asleepMin || 450,
+    sleepEffPct: meanPos(window.map((d) => d.sleep.efficiencyPct)) || days[i].sleep.efficiencyPct || 90,
     strain: mean(window.map((d) => countedActivities(d).reduce((s, a) => s + a.load, 0))) || 10,
-    steps: mean(window.map((d) => d.steps)) || days[i].steps,
-    energy: mean(scoredWindow.map((s) => s.energy.score)) || 55,
-    recovery: mean(scoredWindow.map((s) => s.recovery.score)) || 55,
+    steps: meanPos(window.map((d) => d.steps)) || days[i].steps,
+    energy: mean(scoredWindow.filter((s) => s.energy.available !== false).map((s) => s.energy.score)) || 55,
+    recovery: mean(scoredWindow.filter((s) => s.recovery.available !== false).map((s) => s.recovery.score)) || 55,
   };
 }
 
@@ -59,16 +62,17 @@ export function computeScoredDays(days: DailySummary[]): ScoredDay[] {
     const baseline = baselineAt(days, i, out);
     const sleep = calcSleep(day).raw;
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
-    const recovery = calcRecovery(day, baseline, sleep.score, prevStrain);
+    const recovery = calcRecovery(day, baseline, sleep, prevStrain);
     const strain = calcStrain(day);
-    const energy = calcEnergy(day, baseline, sleep.score, recovery.score);
+    const energy = calcEnergy(day, baseline, sleep, recovery);
 
-    // deltas vs yesterday + baselines for display
+    // deltas vs yesterday + baselines for display (only between days that both have the pillar)
     if (i > 0) {
-      sleep.deltaVsYesterday = sleep.score - out[i - 1].sleep.score;
-      recovery.deltaVsYesterday = recovery.score - out[i - 1].recovery.score;
-      strain.deltaVsYesterday = Math.round((strain.score - out[i - 1].strain.score) * 10) / 10;
-      energy.deltaVsYesterday = energy.score - out[i - 1].energy.score;
+      const prev = out[i - 1];
+      if (sleep.available !== false && prev.sleep.available !== false) sleep.deltaVsYesterday = sleep.score - prev.sleep.score;
+      if (recovery.available !== false && prev.recovery.available !== false) recovery.deltaVsYesterday = recovery.score - prev.recovery.score;
+      strain.deltaVsYesterday = Math.round((strain.score - prev.strain.score) * 10) / 10;
+      if (energy.available !== false && prev.energy.available !== false) energy.deltaVsYesterday = energy.score - prev.energy.score;
     }
     sleep.baseline = Math.round(baseline.sleepMin / 6) / 10; // hours, for display
     recovery.baseline = Math.round(baseline.recovery);

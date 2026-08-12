@@ -9,8 +9,26 @@ import { clamp } from "../format";
  *
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
+// Data availability — a metric that didn't sync arrives as 0, which is NOT a
+// real measurement. Every calculator must exclude a missing input rather than
+// score it, so the app never fabricates "0h slept" or penalizes absent data.
+export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
+export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
+export const hasRhr = (d: DailySummary) => d.rhr.bpm > 0;
+
+/** A pillar with no underlying data for the day. Shown as "No data", never a number. */
+export function unavailable(domain: SleepScore["domain"], scale: number, status: string, explanation: string): SleepScore {
+  return { domain, scale, score: 0, status, explanation, deltaVsYesterday: 0, baseline: 0, contributors: [], available: false };
+}
+
 export function calcSleep(day: DailySummary): { raw: SleepScore; features: SleepFeatures } {
   const s = day.sleep;
+  if (!hasSleep(day)) {
+    return {
+      raw: unavailable("sleep", 100, "No data", "No sleep was recorded for this night — wear your device overnight, then sync."),
+      features: { deepRemMin: 0 },
+    };
+  }
   const deepRem = s.stages.deep + s.stages.rem;
   const terms: Contributor[] = [
     term("Duration", (s.asleepMin - s.needMin) / 8, `${Math.round(s.asleepMin)}m asleep vs ${s.needMin}m need`),

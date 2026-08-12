@@ -25,13 +25,16 @@ interface Metric {
   get: (s: ScoredDay) => number;
 }
 
+// A metric returns NaN when its underlying data didn't sync for the day; the
+// isFinite guards in compare()/correlate() then exclude that day, so a missing
+// value never enters an average or a correlation as a spurious 0.
 const METRICS: Metric[] = [
-  { key: "recovery", label: "next-day recovery", unit: " pts", decimals: 0, get: (s) => s.recovery.score },
-  { key: "hrv", label: "overnight HRV", unit: " ms", decimals: 0, get: (s) => s.day.hrv.rmssdMs },
-  { key: "sleepScore", label: "sleep score", unit: " pts", decimals: 0, get: (s) => s.sleep.score },
-  { key: "sleepMin", label: "sleep duration", unit: " min", decimals: 0, get: (s) => s.day.sleep.asleepMin },
-  { key: "energy", label: "next-day energy", unit: " pts", decimals: 0, get: (s) => s.energy.score },
-  { key: "rhr", label: "resting heart rate", unit: " bpm", decimals: 1, get: (s) => s.day.rhr.bpm },
+  { key: "recovery", label: "next-day recovery", unit: " pts", decimals: 0, get: (s) => (s.recovery.available === false ? NaN : s.recovery.score) },
+  { key: "hrv", label: "overnight HRV", unit: " ms", decimals: 0, get: (s) => (s.day.hrv.rmssdMs > 0 ? s.day.hrv.rmssdMs : NaN) },
+  { key: "sleepScore", label: "sleep score", unit: " pts", decimals: 0, get: (s) => (s.sleep.available === false ? NaN : s.sleep.score) },
+  { key: "sleepMin", label: "sleep duration", unit: " min", decimals: 0, get: (s) => (s.day.sleep.asleepMin > 0 ? s.day.sleep.asleepMin : NaN) },
+  { key: "energy", label: "next-day energy", unit: " pts", decimals: 0, get: (s) => (s.energy.available === false ? NaN : s.energy.score) },
+  { key: "rhr", label: "resting heart rate", unit: " bpm", decimals: 1, get: (s) => (s.day.rhr.bpm > 0 ? s.day.rhr.bpm : NaN) },
   { key: "mood", label: "mood", unit: " /10", decimals: 1, get: (s) => s.day.journal?.ratings.mood ?? NaN },
 ];
 
