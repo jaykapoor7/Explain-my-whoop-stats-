@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Check, Footprints, Sparkles } from "lucide-react";
 import { Card, ContributorLedger, Delta, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { FitbitCard } from "@/components/connect";
+import { HealthAgeCard } from "@/components/health-age";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { ScoredDay } from "@/lib/scoring/engine";
@@ -138,6 +139,10 @@ export default function TodayPage() {
               <ScoreTile href="/strain" label="Strain" score={t.strain} color={DOMAIN_COLOR.strain} />
               <ScoreTile href="/energy" label="Energy" score={t.energy} color={DOMAIN_COLOR.energy} />
             </div>
+          </Section>
+
+          <Section title="Health Age" sub="How old your body reads vs the calendar">
+            <HealthAgeCard />
           </Section>
         </>
       ) : (

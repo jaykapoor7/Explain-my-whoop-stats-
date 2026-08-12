@@ -17,14 +17,29 @@ export default function SettingsPage() {
 
       <Section title="Profile">
         <Card className="space-y-4">
-          <label className="block">
-            <span className="text-xs font-medium text-ink-300">Display name</span>
-            <input
-              value={settings.name}
-              onChange={(e) => setSettings({ name: e.target.value })}
-              className="mt-1.5 h-10 w-full rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25 sm:max-w-xs"
-            />
-          </label>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-medium text-ink-300">Display name</span>
+              <input
+                value={settings.name}
+                onChange={(e) => setSettings({ name: e.target.value })}
+                className="mt-1.5 h-10 w-full rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-medium text-ink-300">Birth year <span className="text-ink-500">· for Health Age</span></span>
+              <input
+                type="number"
+                value={settings.birthYear ?? ""}
+                onChange={(e) => {
+                  const y = parseInt(e.target.value, 10);
+                  setSettings({ birthYear: Number.isFinite(y) ? y : undefined });
+                }}
+                placeholder="e.g. 1998"
+                className="tabular mt-1.5 h-10 w-full rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+              />
+            </label>
+          </div>
           <div>
             <span className="text-xs font-medium text-ink-300">Weight unit</span>
             <div className="mt-1.5 flex overflow-hidden rounded-lg border border-white/[0.08] text-xs" style={{ width: "fit-content" }}>

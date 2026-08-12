@@ -13,6 +13,7 @@ export interface Settings {
   name: string;
   weightUnit: "kg" | "lb";
   showLowConfidence: boolean;
+  birthYear?: number; // for Health Age; optional
 }
 
 export const DEFAULT_GOALS: Goal[] = [
