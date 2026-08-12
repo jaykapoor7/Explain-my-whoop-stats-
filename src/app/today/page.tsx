@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, Footprints, Sparkles } from "lucide-react";
-import { Card, ContributorLedger, Delta, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
+import { Check, Footprints, Sparkles } from "lucide-react";
+import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { FitbitCard } from "@/components/connect";
 import { HealthAgeCard } from "@/components/health-age";
 import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { ScoredDay } from "@/lib/scoring/engine";
-import { ScoreResult } from "@/lib/types";
 
 function NoDataRing({ size = 64 }: { size?: number }) {
   return (
@@ -19,28 +18,6 @@ function NoDataRing({ size = 64 }: { size?: number }) {
     >
       <span className="text-lg">—</span>
     </span>
-  );
-}
-
-function ScoreTile({ href, label, score, color, unit }: { href: string; label: string; score: ScoreResult; color: string; unit?: string }) {
-  const na = score.available === false;
-  return (
-    <Link href={href} className="group">
-      <Card className="flex items-center gap-4 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
-        {na ? <NoDataRing /> : <ScoreRing score={score.score} scale={score.scale} color={color} size={64} />}
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
-            <span className="text-[13px] font-semibold text-ink-100">{label}</span>
-            {!na && <Delta value={score.deltaVsYesterday} decimals={score.scale === 21 ? 1 : 0} />}
-          </div>
-          <div className="mt-0.5 text-xs text-ink-400">
-            {na ? "No data yet" : score.status}
-            {!na && unit ? ` · ${unit}` : ""}
-          </div>
-        </div>
-        <ArrowRight size={14} className="shrink-0 text-ink-500 transition-transform group-hover:translate-x-0.5" />
-      </Card>
-    </Link>
   );
 }
 
@@ -134,12 +111,36 @@ export default function TodayPage() {
             </Card>
           </Section>
 
-          <Section title="Scores">
-            <div className="grid gap-3 sm:grid-cols-2">
-              <ScoreTile href="/recovery" label="Recovery" score={t.recovery} color={DOMAIN_COLOR.recovery} />
-              <ScoreTile href="/sleep" label="Sleep" score={t.sleep} color={DOMAIN_COLOR.sleep} unit={t.sleep.available === false ? undefined : fmtDuration(t.day.sleep.asleepMin)} />
-              <ScoreTile href="/strain" label="Strain" score={t.strain} color={DOMAIN_COLOR.strain} />
-              <ScoreTile href="/energy" label="Energy" score={t.energy} color={DOMAIN_COLOR.energy} />
+          <Section title="Your day at a glance" sub="The three pillars behind your energy">
+            <div className="flex gap-3">
+              <DialTile
+                href="/recovery"
+                label="Recovery"
+                score={t.recovery.score}
+                color={DOMAIN_COLOR.recovery}
+                available={t.recovery.available !== false}
+                sub={t.recovery.status}
+                delta={t.recovery.deltaVsYesterday}
+              />
+              <DialTile
+                href="/strain"
+                label="Strain"
+                score={t.strain.score}
+                scale={t.strain.scale}
+                color={DOMAIN_COLOR.strain}
+                available={t.strain.available !== false}
+                sub={t.strain.status}
+                delta={t.strain.deltaVsYesterday}
+              />
+              <DialTile
+                href="/sleep"
+                label="Sleep"
+                score={t.sleep.score}
+                color={DOMAIN_COLOR.sleep}
+                available={t.sleep.available !== false}
+                sub={t.sleep.available === false ? undefined : fmtDuration(t.day.sleep.asleepMin)}
+                delta={t.sleep.deltaVsYesterday}
+              />
             </div>
           </Section>
 

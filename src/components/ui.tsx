@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion, useInView } from "framer-motion";
 import { ChevronDown, HelpCircle } from "lucide-react";
 import { cn, signed } from "@/lib/format";
@@ -120,6 +121,53 @@ export function ScoreRing({
         {sublabel && <span className="mt-0.5 text-[10px] text-ink-500">{sublabel}</span>}
       </div>
     </div>
+  );
+}
+
+/** WHOOP-style overview dial: a centered ring with a metric label beneath, tappable. */
+export function DialTile({
+  href,
+  label,
+  score,
+  scale = 100,
+  color,
+  available = true,
+  sub,
+  delta,
+}: {
+  href: string;
+  label: string;
+  score: number;
+  scale?: number;
+  color: string;
+  available?: boolean;
+  sub?: string;
+  delta?: number;
+}) {
+  const inner = (
+    <div className="card flex flex-col items-center gap-2.5 px-3 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lift">
+      {available ? (
+        <ScoreRing score={score} scale={scale} color={color} size={92} />
+      ) : (
+        <span className="flex h-[92px] w-[92px] items-center justify-center rounded-full border border-dashed border-black/15 text-lg text-ink-500">—</span>
+      )}
+      <div className="flex flex-col items-center">
+        <span className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color }}>
+          {label}
+        </span>
+        <span className="mt-0.5 text-[11px] text-ink-400">{available ? sub ?? "" : "No data yet"}</span>
+        {available && delta !== undefined && (
+          <span className="mt-0.5">
+            <Delta value={delta} decimals={scale === 21 ? 1 : 0} />
+          </span>
+        )}
+      </div>
+    </div>
+  );
+  return (
+    <Link href={href} className="group flex-1">
+      {inner}
+    </Link>
   );
 }
 

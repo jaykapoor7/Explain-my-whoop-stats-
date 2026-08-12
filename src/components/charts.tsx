@@ -221,21 +221,32 @@ export function StrainCurve({ activities, color }: { activities: { start: string
     return { label: `${String(h % 24).padStart(2, "0")}:00`, value: Math.round(cum * 10) / 10 };
   });
   const gid = `strain-${color.replace(/[^a-z0-9]/gi, "")}`;
+  const peak = data[data.length - 1]?.value ?? 0;
   return (
     <div className="h-44 w-full">
       <ResponsiveContainer>
         <AreaChart data={data} margin={{ top: 8, right: 10, left: -8, bottom: 0 }}>
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.45} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.05} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.55} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.08} />
             </linearGradient>
           </defs>
           <CartesianGrid {...GRID} />
           <XAxis dataKey="label" {...AXIS} interval={5} minTickGap={16} />
           <YAxis {...AXIS} width={30} domain={[0, (m: number) => Math.max(21, Math.ceil(m))]} allowDecimals={false} />
           <Tooltip content={<Tip unit="" name="Cumulative strain" />} cursor={{ stroke: color, strokeOpacity: 0.3 }} />
-          <Area type="stepAfter" dataKey="value" stroke={color} strokeWidth={3} fill={`url(#${gid})`} isAnimationActive={false} dot={false} />
+          {peak > 0 && <ReferenceLine y={peak} stroke={color} strokeDasharray="4 4" strokeOpacity={0.4} />}
+          <Area
+            type="stepAfter"
+            dataKey="value"
+            stroke={color}
+            strokeWidth={3.5}
+            fill={`url(#${gid})`}
+            isAnimationActive={false}
+            dot={false}
+            style={{ filter: `drop-shadow(0 3px 6px ${color}44)` }}
+          />
         </AreaChart>
       </ResponsiveContainer>
     </div>
