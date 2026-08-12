@@ -176,40 +176,27 @@ export function mapExercise(p: Json): Activity | null {
   };
 }
 
-/** Best-effort date from any point/wrapper: civil date, interval start, or a time string. */
-function anyDate(...objs: (Json | undefined)[]): string | undefined {
-  for (const o of objs) {
-    if (!o) continue;
-    const cd = civilDate(o.date) ?? civilDate(o.civilTime?.date) ?? civilDate(o.sampleTime?.civilTime?.date);
-    if (cd) return cd;
-    const iv = o.interval ?? o;
-    const t = iv?.startTime ?? iv?.endTime ?? o.startTime ?? o.physicalTime ?? o.sampleTime?.physicalTime;
-    if (typeof t === "string") {
-      const s = localIso(t, iv?.startUtcOffset ?? iv?.endUtcOffset ?? o.utcOffset).slice(0, 10);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-    }
-  }
-  return undefined;
+/** Date of a dailyRollUp point: civilStartTime.date (else civilEndTime.date). */
+function rollupDate(p: Json): string | undefined {
+  return civilDate(p?.civilStartTime?.date) ?? civilDate(p?.civilEndTime?.date) ?? civilDate(p?.date);
 }
 
-/** Daily step rollup point → { date, steps }. Rollup shape probed tolerantly. */
+/** Daily step rollup point → { date, steps }. Verified: steps.countSum. */
 export function mapStepsRollup(p: Json): { date: string; steps: number } | null {
-  const w = p?.steps ?? p?.dailySteps ?? p;
-  const date = anyDate(w, p);
-  const steps =
-    numOf(w?.count) ?? numOf(w?.countSum) ?? numOf(w?.steps) ?? numOf(w?.total) ?? numOf(w?.value) ??
-    numOf(p?.countSum) ?? numOf(p?.value);
+  const w = p?.steps ?? p;
+  const date = rollupDate(p);
+  const steps = numOf(w?.countSum) ?? numOf(w?.count) ?? numOf(w?.steps) ?? numOf(w?.total) ?? numOf(w?.value);
   if (!date || steps === undefined) return null;
   return { date, steps: Math.round(steps) };
 }
 
-/** Daily total-calories rollup point → { date, kcal }. Tolerant probe. */
+/** Daily total-calories rollup point → { date, kcal }. Verified: totalCalories.kcalSum. */
 export function mapCaloriesRollup(p: Json): { date: string; kcal: number } | null {
-  const w = p?.totalCalories ?? p?.dailyTotalCalories ?? p;
-  const date = anyDate(w, p);
+  const w = p?.totalCalories ?? p;
+  const date = rollupDate(p);
   const kcal =
-    numOf(w?.energyKcal) ?? numOf(w?.caloriesKcal) ?? numOf(w?.kilocalories) ?? numOf(w?.calories) ??
-    numOf(w?.energy) ?? numOf(w?.total) ?? numOf(w?.value) ?? numOf(p?.energySum) ?? numOf(p?.value);
+    numOf(w?.kcalSum) ?? numOf(w?.energyKcal) ?? numOf(w?.caloriesKcal) ?? numOf(w?.kilocalories) ??
+    numOf(w?.calories) ?? numOf(w?.value);
   if (!date || kcal === undefined) return null;
   return { date, kcal: Math.round(kcal) };
 }
