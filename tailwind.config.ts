@@ -27,14 +27,14 @@ const config: Config = {
           50: "#eef0f4",
         },
         // Domain accents
-        energy: { DEFAULT: "#f6b83b", soft: "#fbd07a", dim: "#7a5c1c" },
-        recovery: { DEFAULT: "#38d39f", soft: "#7ce7c4", dim: "#1a6a52" },
-        sleep: { DEFAULT: "#8b8cff", soft: "#b6b7ff", dim: "#45466f" },
-        strain: { DEFAULT: "#ff7a5c", soft: "#ffb09b", dim: "#7a3626" },
-        nutrition: { DEFAULT: "#5cc8ff", soft: "#a3e0ff", dim: "#24576f" },
+        energy: { DEFAULT: "#ffc24b", soft: "#ffd684", dim: "#7a5c1c" },
+        recovery: { DEFAULT: "#34e0a1", soft: "#7cefc9", dim: "#186a52" },
+        sleep: { DEFAULT: "#9d8bff", soft: "#c1b6ff", dim: "#484670" },
+        strain: { DEFAULT: "#ff6f61", soft: "#ffa79b", dim: "#7a322a" },
+        nutrition: { DEFAULT: "#4ec3ff", soft: "#9cdcff", dim: "#215870" },
         // Status
-        good: "#38d39f",
-        warn: "#f6b83b",
+        good: "#34e0a1",
+        warn: "#ffc24b",
         bad: "#ff6b6b",
       },
       fontFamily: {

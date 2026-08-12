@@ -74,11 +74,11 @@ export function clamp(v: number, lo: number, hi: number): number {
 }
 
 export const DOMAIN_COLOR: Record<Domain | "strain" | "sleep" | "energy" | "recovery", string> = {
-  energy: "#f6b83b",
-  recovery: "#38d39f",
-  sleep: "#8b8cff",
-  strain: "#ff7a5c",
-  nutrition: "#5cc8ff",
+  energy: "#ffc24b",
+  recovery: "#34e0a1",
+  sleep: "#9d8bff",
+  strain: "#ff6f61",
+  nutrition: "#4ec3ff",
 };
 
 export const DOMAIN_LABEL: Record<string, string> = {

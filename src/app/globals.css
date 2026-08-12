@@ -12,33 +12,64 @@ html {
 
 body {
   background:
-    radial-gradient(1200px 700px at 80% -20%, rgba(56, 211, 159, 0.05), transparent 55%),
-    radial-gradient(1000px 600px at 0% 10%, rgba(139, 140, 255, 0.05), transparent 55%),
-    #08090c;
+    radial-gradient(1100px 640px at 82% -18%, rgba(52, 224, 161, 0.14), transparent 58%),
+    radial-gradient(900px 560px at 6% 4%, rgba(157, 139, 255, 0.13), transparent 55%),
+    radial-gradient(760px 520px at 96% 88%, rgba(90, 200, 255, 0.09), transparent 60%),
+    radial-gradient(680px 480px at 20% 96%, rgba(255, 178, 71, 0.06), transparent 62%),
+    #06070b;
   background-attachment: fixed;
-  color: #d5d9e0;
+  color: #d7dbe2;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "cv02", "cv03", "ss01";
 }
 
 ::selection {
-  background: rgba(56, 211, 159, 0.28);
+  background: rgba(52, 224, 161, 0.3);
 }
 
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: #262c37; border-radius: 8px; }
+*::-webkit-scrollbar-thumb { background: #2b323f; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #3a4252; }
 *::-webkit-scrollbar-track { background: transparent; }
 
 .tabular { font-variant-numeric: tabular-nums; }
 
+/* Layered card: subtle top highlight, gradient body, soft deep shadow. */
 .card {
+  position: relative;
   border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  background: linear-gradient(180deg, rgba(24, 28, 36, 0.9), rgba(20, 23, 30, 0.9));
-  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.04) inset, 0 10px 30px -18px rgba(0, 0, 0, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background:
+    linear-gradient(180deg, rgba(28, 33, 43, 0.92), rgba(18, 21, 28, 0.92));
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
+    0 14px 40px -22px rgba(0, 0, 0, 0.85);
+}
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 40%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 .hairline { border-color: rgba(255, 255, 255, 0.07); }
+
+/* Gradient text for hero numbers / accents. */
+.gradient-text {
+  background: linear-gradient(135deg, #eef0f4, #aeb5c1);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Soft colored glow, driven by --glow set inline per accent. */
+.glow { box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset, 0 8px 40px -12px var(--glow, rgba(52,224,161,0.5)); }
 
 .skeleton {
   position: relative;
