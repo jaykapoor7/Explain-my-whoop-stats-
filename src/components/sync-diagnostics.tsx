@@ -1,10 +1,134 @@
 "use client";
 
-import { AlertTriangle, CheckCircle2, Info, MinusCircle } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Copy, Info, Loader2, MinusCircle, Stethoscope } from "lucide-react";
 import { Card } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { fmtDate, fmtDuration, fmtNum } from "@/lib/format";
 import { DailySummary } from "@/lib/types";
+
+interface RawProbe {
+  type: string;
+  status: number;
+  ok: boolean;
+  count: number;
+  sampleKeys: string[];
+  sample?: unknown;
+  note?: string;
+}
+
+/** Live connection test: hits each Google Health type and shows the real
+ *  status + field names, so a connection/scope problem is distinguishable
+ *  from a field-mapping gap. Copy the result to share it for a precise fix. */
+function ConnectionTest() {
+  const connected = useApp((s) => s.wearableDays.length > 0);
+  const [busy, setBusy] = useState(false);
+  const [probes, setProbes] = useState<RawProbe[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const run = async () => {
+    setBusy(true);
+    setError(null);
+    setProbes(null);
+    try {
+      const r = await fetch("/api/fitbit/raw", { cache: "no-store" });
+      const j = await r.json();
+      if (!r.ok) {
+        setError(
+          j.error === "not_connected"
+            ? "Not connected — connect your Fitbit above first."
+            : j.error === "refresh_failed"
+              ? "Your session expired — disconnect and reconnect above."
+              : j.message || j.error || "Test failed."
+        );
+      } else {
+        setProbes(j.probes as RawProbe[]);
+      }
+    } catch {
+      setError("Couldn't reach the server.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const copy = () => {
+    navigator.clipboard?.writeText(JSON.stringify(probes, null, 2)).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+
+  return (
+    <Card className="p-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-recovery/12 text-recovery">
+          <Stethoscope size={14} />
+        </span>
+        <span className="text-sm font-semibold text-ink-100">Connection test</span>
+        <button
+          onClick={run}
+          disabled={busy}
+          className="ml-auto flex items-center gap-1.5 rounded-full bg-recovery px-3.5 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-50"
+        >
+          {busy ? <Loader2 size={13} className="animate-spin" /> : <Stethoscope size={13} />} Run test
+        </button>
+      </div>
+      <p className="mt-2 text-xs leading-relaxed text-ink-400">
+        Asks Google Health directly for each metric and shows the real response — this tells us whether a metric is a
+        connection/permission problem or a data-format mismatch we can fix.
+      </p>
+
+      {error && (
+        <p className="mt-3 flex items-start gap-1.5 text-xs text-bad">
+          <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {error}
+        </p>
+      )}
+
+      {probes && (
+        <div className="mt-3">
+          <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+            {probes.map((p) => {
+              const good = p.ok && p.count > 0;
+              const auth = p.status === 401 || p.status === 403;
+              return (
+                <div key={p.type} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/[0.05] px-3 py-2 last:border-0">
+                  <span className="shrink-0">
+                    {good ? (
+                      <CheckCircle2 size={13} className="text-good" />
+                    ) : (
+                      <AlertTriangle size={13} className={auth ? "text-bad" : "text-warn"} />
+                    )}
+                  </span>
+                  <span className="w-52 shrink-0 font-mono text-[11px] text-ink-100">{p.type}</span>
+                  <span className="tabular text-[11px] text-ink-400">HTTP {p.status || "—"}</span>
+                  <span className="tabular text-[11px] text-ink-400">{p.count} pts</span>
+                  <span className="min-w-0 flex-1 truncate text-[10px] text-ink-500" title={p.sampleKeys.join(", ") || p.note}>
+                    {p.count > 0 ? p.sampleKeys.slice(0, 8).join(", ") : p.note ? `⚠ ${p.note}` : "no data returned"}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <button
+            onClick={copy}
+            className="mt-3 flex items-center gap-1.5 rounded-full border border-white/12 px-3.5 py-1.5 text-xs font-medium text-ink-200 hover:bg-white/[0.06]"
+          >
+            <Copy size={12} /> {copied ? "Copied — paste it to me" : "Copy full result"}
+          </button>
+          <p className="mt-2 text-[10px] leading-relaxed text-ink-500">
+            Copy this and paste it back in chat — it contains the exact field names for your account, which is what&apos;s
+            needed to map sleep, strain and the rest correctly. It&apos;s your own data and never leaves your device
+            except when you paste it.
+          </p>
+        </div>
+      )}
+      {!probes && !connected && (
+        <p className="mt-2 text-[11px] text-ink-500">Connect and sync above first, then run this to see what&apos;s coming through.</p>
+      )}
+    </Card>
+  );
+}
 
 /**
  * Sync diagnostics — the honesty panel. It reads back exactly what the last
@@ -70,14 +194,17 @@ export function SyncDiagnostics() {
 
   if (!wearableDays.length) {
     return (
-      <Card className="flex items-start gap-3 p-4">
-        <Info size={16} className="mt-0.5 shrink-0 text-ink-400" />
-        <p className="text-xs leading-relaxed text-ink-400">
-          Nothing synced yet. Connect above and press <span className="font-medium text-ink-200">Sync now</span> — this
-          panel will then show exactly which metrics came back from Fitbit and their values, so you can check them
-          against the Fitbit app.
-        </p>
-      </Card>
+      <div className="space-y-4">
+        <ConnectionTest />
+        <Card className="flex items-start gap-3 p-4">
+          <Info size={16} className="mt-0.5 shrink-0 text-ink-400" />
+          <p className="text-xs leading-relaxed text-ink-400">
+            Nothing synced yet. Connect above and press <span className="font-medium text-ink-200">Sync now</span> — this
+            panel will then show exactly which metrics came back from Fitbit and their values, so you can check them
+            against the Fitbit app.
+          </p>
+        </Card>
+      </div>
     );
   }
 
@@ -86,6 +213,7 @@ export function SyncDiagnostics() {
 
   return (
     <div className="space-y-4">
+      <ConnectionTest />
       <Card className="p-4">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <span className="text-sm font-semibold text-ink-100">Metric coverage</span>

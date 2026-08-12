@@ -188,6 +188,81 @@ async function listPoints(type: string, token: string, startIso: string, endIso:
   return out;
 }
 
+// ---------------- Raw connection inspector ----------------
+// Calls each data type with no field mapping and reports the real HTTP
+// status + the actual field names Google returns, so a broken connection
+// (401/403/scope) can be told apart from a field-mapping gap, and the
+// mapping can be corrected against the true response shape.
+
+export interface RawProbe {
+  type: string;
+  status: number;
+  ok: boolean;
+  count: number;
+  sampleKeys: string[];
+  sample?: unknown;
+  note?: string;
+}
+
+const PROBE_TYPES = [
+  "sleep",
+  "exercise",
+  "daily-resting-heart-rate",
+  "daily-heart-rate-variability",
+  "steps",
+  "total-calories",
+  "weight",
+];
+
+function collectKeys(obj: unknown, prefix = "", depth = 0): string[] {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj) || depth > 2) return [];
+  const keys: string[] = [];
+  for (const [k, v] of Object.entries(obj as Json)) {
+    keys.push(prefix + k);
+    if (v && typeof v === "object" && !Array.isArray(v)) keys.push(...collectKeys(v, `${prefix}${k}.`, depth + 1));
+  }
+  return keys;
+}
+
+/** Probe each type once (unfiltered, tiny page) and capture the raw truth. */
+export async function inspectHealth(token: string): Promise<RawProbe[]> {
+  const out: RawProbe[] = [];
+  for (const type of PROBE_TYPES) {
+    const probe: RawProbe = { type, status: 0, ok: false, count: 0, sampleKeys: [] };
+    try {
+      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints?pageSize=3`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+        cache: "no-store",
+      });
+      probe.status = res.status;
+      probe.ok = res.ok;
+      const text = await res.text();
+      let j: Json | null = null;
+      try {
+        j = JSON.parse(text) as Json;
+      } catch {
+        probe.note = text.slice(0, 220);
+      }
+      if (j) {
+        const pts = ((j.dataPoints as Json[]) ?? (j.rollupDataPoints as Json[]) ?? []) as Json[];
+        probe.count = Array.isArray(pts) ? pts.length : 0;
+        if (probe.count > 0) {
+          probe.sampleKeys = collectKeys(pts[0]).slice(0, 40);
+          probe.sample = pts[0];
+        }
+        if (!probe.ok) {
+          const err = j.error as { message?: string; status?: string } | undefined;
+          probe.note = err?.message ?? JSON.stringify(j).slice(0, 220);
+        }
+      }
+    } catch (e) {
+      probe.note = e instanceof Error ? e.message : "request failed";
+    }
+    out.push(probe);
+  }
+  return out;
+}
+
 /** POST dailyRollUp for a type across [startDate, endDate] (civil dates). */
 async function dailyRollUp(type: string, token: string, startDate: string, endDate: string): Promise<Json[]> {
   const j = await api(`/dataTypes/${type}/dataPoints:dailyRollUp`, token, {
