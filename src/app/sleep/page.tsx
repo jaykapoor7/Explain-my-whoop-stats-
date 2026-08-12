@@ -2,7 +2,7 @@
 
 import { ScorePage } from "@/components/score-page";
 import { Card, Delta, Section } from "@/components/ui";
-import { SleepStagesBar } from "@/components/charts";
+import { Hypnogram, SleepStagesBar } from "@/components/charts";
 import { DOMAIN_COLOR, fmtDuration, fmtTime } from "@/lib/format";
 
 function Fact({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -35,6 +35,11 @@ export default function SleepPage() {
           <>
             <Section title="Last night" sub={`${fmtTime(s.bedtime.slice(11, 16))} → ${fmtTime(s.wake.slice(11, 16))}`}>
               <Card>
+                {s.segments && s.segments.length > 3 && (
+                  <div className="mb-4">
+                    <Hypnogram segments={s.segments} bedtime={s.bedtime} wake={s.wake} />
+                  </div>
+                )}
                 <SleepStagesBar stages={s.stages} />
                 <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
                   <Fact label="Asleep" value={fmtDuration(s.asleepMin)} hint={`need ${fmtDuration(s.needMin)}`} />

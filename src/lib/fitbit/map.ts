@@ -114,6 +114,15 @@ export function mapSleep(p: Json): (SleepSession & { mainSleep: boolean }) | nul
     ? s.shortAwakenings.length
     : Math.round(numOf(summaryStages.find((x) => String(x.type).toUpperCase() === "AWAKE")?.count) ?? 0);
 
+  // Per-stage timeline (for the hypnogram) from the real stage blocks.
+  const segments: { start: string; end: string; stage: "awake" | "light" | "deep" | "rem" }[] = [];
+  const rawStages: Json[] = Array.isArray(s.stages) ? s.stages : [];
+  for (const seg of rawStages) {
+    const st = STAGE_MAP[String(seg.type).toUpperCase()];
+    if (!st || typeof seg.startTime !== "string" || typeof seg.endTime !== "string") continue;
+    segments.push({ start: localIso(seg.startTime, seg.startUtcOffset), end: localIso(seg.endTime, seg.endUtcOffset), stage: st });
+  }
+
   return {
     date,
     bedtime: bedtime || `${date}T23:30:00`,
@@ -128,6 +137,7 @@ export function mapSleep(p: Json): (SleepSession & { mainSleep: boolean }) | nul
     consistencyPct: 0,
     debtMin: 0,
     needMin: 480,
+    segments: segments.length ? segments : undefined,
     mainSleep: s.metadata?.mainSleep !== false,
   };
 }

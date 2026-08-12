@@ -35,6 +35,13 @@ export interface SleepStage {
   minutes: number;
 }
 
+/** A single contiguous stage block during the night (for the hypnogram). */
+export interface SleepSegment {
+  start: string; // local ISO datetime
+  end: string;
+  stage: SleepStageKind;
+}
+
 export interface SleepSession {
   date: ISODate; // the morning you woke on
   bedtime: string; // ISO datetime
@@ -49,6 +56,7 @@ export interface SleepSession {
   consistencyPct: number; // bed/wake regularity vs baseline
   debtMin: number; // rolling shortfall vs need
   needMin: number;
+  segments?: SleepSegment[]; // per-stage timeline for the hypnogram
 }
 
 export type ActivityConfidence = "high" | "medium" | "low";

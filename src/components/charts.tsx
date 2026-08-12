@@ -13,10 +13,10 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { fmtDate, fmtNum } from "@/lib/format";
+import { fmtDate, fmtNum, fmtTime } from "@/lib/format";
 
-const AXIS = { stroke: "#333a47", tick: { fill: "#6b7482", fontSize: 11 }, tickLine: false, axisLine: false } as const;
-const GRID = { stroke: "#1e232c", vertical: false } as const;
+const AXIS = { stroke: "#dcd2be", tick: { fill: "#83765f", fontSize: 11 }, tickLine: false, axisLine: false } as const;
+const GRID = { stroke: "#e7dfce", vertical: false } as const;
 
 function Tip({ active, payload, label, unit, name }: { active?: boolean; payload?: { value?: number | string }[]; label?: string | number; unit?: string; name?: string }) {
   if (!active || !payload?.length) return null;
@@ -103,7 +103,54 @@ export function MiniBars({
   );
 }
 
-const STAGE_COLORS: Record<string, string> = { deep: "#5f60d8", rem: "#8b8cff", light: "#b6b7ff", awake: "#4a5361" };
+const STAGE_COLORS: Record<string, string> = { deep: "#4b3f9e", light: "#7b68ee", rem: "#2298cf", awake: "#d98324" };
+
+/** WHOOP-style hypnogram: stage depth over the night. */
+export function Hypnogram({ segments, bedtime, wake }: { segments: { start: string; end: string; stage: string }[]; bedtime: string; wake: string }) {
+  const startMs = Date.parse(bedtime);
+  const endMs = Date.parse(wake);
+  const dur = Math.max(1, endMs - startMs);
+  const LANES = ["awake", "rem", "light", "deep"] as const;
+  const laneLabel: Record<string, string> = { awake: "Awake", rem: "REM", light: "Light", deep: "Deep" };
+  const laneH = 24;
+  const gap = 6;
+  const height = LANES.length * laneH + (LANES.length - 1) * gap;
+  return (
+    <div>
+      <div className="flex gap-2.5">
+        <div className="flex w-9 shrink-0 flex-col" style={{ height }}>
+          {LANES.map((lane, i) => (
+            <div key={lane} className="flex items-center" style={{ height: laneH, marginTop: i ? gap : 0 }}>
+              <span className="text-[9px] font-medium uppercase tracking-wide text-ink-500">{laneLabel[lane]}</span>
+            </div>
+          ))}
+        </div>
+        <div className="relative flex-1" style={{ height }}>
+          {LANES.map((lane, i) => (
+            <div key={lane} className="absolute inset-x-0 rounded-md bg-black/[0.035]" style={{ top: i * (laneH + gap), height: laneH }} />
+          ))}
+          {segments.map((seg, i) => {
+            const laneIdx = LANES.indexOf(seg.stage as (typeof LANES)[number]);
+            if (laneIdx < 0) return null;
+            const x = ((Date.parse(seg.start) - startMs) / dur) * 100;
+            const w = ((Date.parse(seg.end) - Date.parse(seg.start)) / dur) * 100;
+            return (
+              <div
+                key={i}
+                className="absolute rounded-[3px]"
+                style={{ left: `${x}%`, width: `calc(max(2px, ${w}%))`, top: laneIdx * (laneH + gap) + 4, height: laneH - 8, background: STAGE_COLORS[seg.stage] }}
+              />
+            );
+          })}
+        </div>
+      </div>
+      <div className="ml-[46px] mt-1.5 flex justify-between text-[10px] tabular text-ink-500">
+        <span>{fmtTime(bedtime.slice(11, 16))}</span>
+        <span>{fmtTime(wake.slice(11, 16))}</span>
+      </div>
+    </div>
+  );
+}
 
 export function SleepStagesBar({ stages }: { stages: Record<string, number> }) {
   const order = ["deep", "rem", "light", "awake"];
@@ -128,7 +175,7 @@ export function SleepStagesBar({ stages }: { stages: Record<string, number> }) {
   );
 }
 
-const ZONE_COLORS = ["#4a5361", "#5cc8ff", "#38d39f", "#f6b83b", "#ff7a5c"];
+const ZONE_COLORS = ["#a4977f", "#2298cf", "#13b57e", "#eb9d18", "#ef5a45"];
 
 export function ZoneBars({ zones }: { zones: number[] }) {
   const max = Math.max(...zones, 1);
