@@ -1,8 +1,9 @@
 /**
  * Health OS domain model. Designed to map cleanly onto a future Prisma /
- * PostgreSQL schema, but V1 runs entirely on deterministic mock data.
- * Everything is keyed by an ISO date (YYYY-MM-DD) so the whole app can be
- * assembled into one unified per-day timeline.
+ * PostgreSQL schema. Wearable fields are populated only from a real Google
+ * Health sync (see src/lib/fitbit/server.ts) — there is no sample or demo
+ * data anywhere in the app. Everything is keyed by an ISO date (YYYY-MM-DD)
+ * so the whole app can be assembled into one unified per-day timeline.
  */
 
 export type ISODate = string; // YYYY-MM-DD

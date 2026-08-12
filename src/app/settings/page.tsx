@@ -2,6 +2,7 @@
 
 import { RotateCcw, ShieldCheck } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
+import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { cn } from "@/lib/format";
@@ -53,6 +54,10 @@ export default function SettingsPage() {
 
       <Section title="Data source" sub="Google Health API (successor to the Fitbit Web API) — Google OAuth 2.0, tokens in a secure cookie, data stored only on this device">
         <FitbitCard autoSyncOnConnected />
+      </Section>
+
+      <Section title="Sync diagnostics" sub="Check what the last sync actually pulled from Fitbit, and which numbers are real vs estimated">
+        <SyncDiagnostics />
       </Section>
 
       <Section title="Privacy">
