@@ -1,65 +1,220 @@
 # Health OS
 
-**An open-source personal Health OS for the Fitbit Air** — great hardware, better software.
+An open-source personal Health OS for your Fitbit Air.
 
-Instead of just showing numbers, every screen follows one philosophy:
+Most health apps hand you a number and leave. Health OS is built around one rule:
 
-**DATA → SCORE → WHY → IMPACT → PERSONAL PATTERNS → ACTION**
+> **Never just show a number.** Explain what it means, what pushed it up or down, and how it
+> affected everything else.
 
-Sleep, recovery, strain and energy each get a score, a plain-English explanation of *what moved
-it*, how it rippled into the other scores, and what your own history says about it.
+Every score follows the same path:
+
+```
+DATA → SCORE → WHY → IMPACT → PERSONAL PATTERNS → ACTION
+```
+
+Your data is fetched from Google Health on demand and stored **in your browser only**. There is no
+database, no account, and no server-side copy of your health data.
+
+---
 
 ## Sections
 
-Today · Energy · Recovery · Sleep · Strain · Nutrition · Medication · Journal · Trends/Insights ·
-Planner · Goals · Settings
+| Section | What it answers |
+| --- | --- |
+| **Today** | What state am I in, and *what affected me*? A signed ledger (↑ Sleep +9, ↓ Late football −6) plus "Explain My Day". |
+| **Energy** | How much usable capacity do I have right now? |
+| **Recovery** | How prepared is my body for more stress? HRV, resting HR, sleep and yesterday's strain. |
+| **Sleep** | How well did last night restore me? Stages, efficiency, debt, consistency — and how it rippled into today. |
+| **Strain** | How much load did I take on? Per-activity breakdown with confidence gating. |
+| **Nutrition** | Calories and macros (protein, carbs, fat, fiber, sugar, sodium) vs your goals, intake vs expenditure. |
+| **Medication** | Your own schedule, reminders and adherence. Observational only — never advice. |
+| **Journal** | Mood, stress, energy, focus and tags. The input side of personal experiments. |
+| **Assistant** | Ask questions about your own stats in plain language. Runs entirely on-device. |
+| **Trends** | Correlations and group comparisons across your history, always with sample sizes. |
+| **Planner** | What's on today, and how it lines up with your capacity. |
+| **Goals** | Editable targets that drive every other page's thresholds. |
+| **Settings** | Connection, privacy, and a one-click wipe of everything. |
 
-Highlights:
+---
 
-- **Today** — "How am I doing?" with an energy ring, the signed *What affected you* ledger
-  (↑ Sleep +9 · ↑ HRV +4 · ↓ Football −6), and an expandable *Explain my day*.
-- **Strain** — per-activity load breakdown with **activity confidence**: short unrecognized HR
-  spikes are *never* counted as workouts until you Confirm / Edit / Ignore them.
-- **Nutrition** — calorie + macro tracker (protein/carbs/fat/fiber/sugar/sodium), food search,
-  custom foods, servings, intake vs expenditure, goal-based targets.
-- **Medication** — schedule, taken/skipped/delayed logging, adherence history, and strictly
-  observational associations ("Logged doses were associated with…"). Never recommends changing
-  medication. Treated as sensitive data.
-- **Journal** — mood/stress/energy/focus ratings plus behavior tags (smoking, caffeine, alcohol,
-  football, studying…). Feeds the pattern engine: *"Across 18 logged instances, smoking was
-  associated with 8% lower HRV."* Sample sizes always shown; causation never claimed.
-- **Trends** — 7/30/90d metric explorer, behavior→physiology associations, and paired-metric
-  correlations (Sleep↔Recovery, Exercise↔Sleep, Nutrition↔Energy…).
-- **Planner & Goals** — day/week/month planner (tasks, classes, exams, work shifts) with an early
-  health-aware nudge (high recovery → schedule the hard block), and goals that feed Today,
-  Nutrition and the Planner.
+## The "no phantom workouts" rule
 
-## Architecture
+Wrist wearables mistake stress, caffeine, a hot shower or a bus sprint for exercise. Health OS
+never silently turns a short HR spike into a workout.
 
-- **Next.js 14 (App Router) · strict TypeScript · Tailwind · Recharts · Zustand**
-- **Unified timeline**: everything (wearable, meals, meds, journal, planner) keys off one
-  `DailySummary` per date — enabling EVENT → PHYSIOLOGY → RECOVERY → NEXT-DAY OUTCOME analysis.
-- **Providers** (`src/lib/data/provider.ts`): `HealthDataProvider` interface with a
-  `MockHealthDataProvider` shipping 90 days of deterministic, physiologically-plausible data.
-  A `GoogleHealthProvider` (Fitbit Air) implements the same interface next — no UI or scoring
-  changes required. Extensible to Apple Health / Garmin / WHOOP / Oura.
-- **Calculators** (`src/lib/scoring/`): separate `EnergyCalculator`, `RecoveryCalculator`,
-  `SleepScoreCalculator`, `StrainCalculator` with deterministic placeholder weights — every score
-  decomposes into signed contributors that sum to the value shown. **Final algorithms are
-  deliberately not designed yet.**
-- **User state** (`src/lib/data/store.ts`): only user actions are persisted (localStorage);
-  the mock regenerates deterministically. Maps cleanly onto a future PostgreSQL/Prisma schema.
+Every detected activity carries a confidence level:
 
-## Run
+- **High / Medium** → counted toward strain normally.
+- **Low** → shown, but **excluded from your strain score** until you resolve it with
+  **Ignore**, **Confirm as workout**, or **Edit type**.
+
+Your corrections are stored and are the intended training signal for better detection later.
+
+---
+
+## Scoring
+
+Four independent calculators live in `src/lib/scoring/`:
+
+- `sleep.ts` — duration vs personal need, efficiency, deep + REM share, timing consistency, awakenings
+- `recovery.ts` — overnight HRV vs baseline, resting HR vs baseline, sleep score, yesterday's strain
+- `strain.ts` — summed load of *counted* activities plus a movement term
+- `energy.ts` — recovery, sleep debt, accumulated strain, nutrition and time of day
+
+Each returns a `ScoreResult` with **signed contributors that sum to the score**, so the "why" is
+never a post-hoc narration — it *is* the calculation. Baselines are rolling 14-day personal
+baselines, not population norms.
+
+> These are deliberate, deterministic placeholders. The final health algorithms are designed
+> separately; nothing here is tuned or validated.
+
+---
+
+## Statistics honesty
+
+`src/lib/insights/insights.ts` only reports patterns that clear a minimum sample size, and always
+prints `n`. It uses Welch-style group comparisons and Pearson correlations, and it phrases every
+finding observationally:
+
+- "On days you logged *X*, your recovery averaged 6 points higher (n = 23)."
+- **Never** "X causes Y", and **never** a recommendation about medication.
+
+---
+
+## Connecting your Fitbit (Google Health API)
+
+Fitbit's developer surface has moved to the **Google Health API** with Google OAuth 2.0 — the
+legacy Fitbit Web API is deprecated (sunset September 2026). This app targets the current API.
+
+Open **Settings → Connect**, and the app walks you through it. In full:
+
+### 1. Google Cloud APIs to enable
+
+In the [Google Cloud console](https://console.cloud.google.com), create a project and enable:
+
+- **Google Health API** (`health.googleapis.com`) — the only API required.
+
+### 2. OAuth consent screen
+
+- User type **External**.
+- Add yourself under **Test users**. All `googlehealth.*` scopes are **Restricted**, so while the
+  consent screen is in *Testing*, only listed test users can connect. Publishing to public users
+  requires Google's verification review.
+- Add these scopes:
+
+```
+https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
+https://www.googleapis.com/auth/googlehealth.sleep.readonly
+https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
+```
+
+All three are read-only. Health OS never writes to your Google Health data.
+
+### 3. OAuth client
+
+Create **Credentials → OAuth client ID → Web application**. The client ID ends in
+`.apps.googleusercontent.com`.
+
+**Authorized redirect URIs** — add every origin you use, exactly:
+
+```
+http://localhost:3000/api/fitbit/callback
+https://<your-app>.vercel.app/api/fitbit/callback
+```
+
+**Authorized JavaScript origins** are not needed (this is a server-side code flow).
+
+### 4. Environment variables
+
+All optional — if unset, the app prompts for the client ID and secret in the UI and keeps them in
+httpOnly cookies in your browser.
+
+| Variable | Purpose |
+| --- | --- |
+| `GOOGLE_CLIENT_ID` | Web OAuth client ID (`….apps.googleusercontent.com`) |
+| `GOOGLE_CLIENT_SECRET` | Web OAuth client secret (`GOCSPX-…`) |
+| `APP_URL` | Public origin, e.g. `https://your-app.vercel.app`. Used to build the redirect URI; must match a registered one. |
+
+On Vercel: **Settings → Environment Variables**, applied to Production and Preview. See
+`.env.example`.
+
+### 5. What gets synced
+
+`POST /api/fitbit/sync` pulls the last 30 days:
+
+| Data | Google Health data type |
+| --- | --- |
+| Resting heart rate | `daily-resting-heart-rate` |
+| HRV | `daily-heart-rate-variability` |
+| Steps | `steps` (daily roll-up) |
+| Calories | `total-calories` (daily roll-up, chunked to the documented 14-day cap) |
+| Sleep sessions & stages | `sleep` |
+| Workouts | `exercise` |
+| Weight | `weight` |
+
+The flow is Authorization Code + PKCE with `access_type=offline`; access and refresh tokens live in
+httpOnly cookies and never reach the client bundle.
+
+> **Field-mapping caveat:** per-data-type response field names for some types are not fully
+> published, so the mapper probes several plausible field names and fails soft per field rather
+> than dropping the whole day. If a metric reads as missing after your first real sync, that mapper
+> is where to look.
+
+---
+
+## Running it
 
 ```bash
 npm install
-npm run dev        # http://localhost:3000
-npm run typecheck && npm run lint && npm run build
+npm run dev          # http://localhost:3000
 ```
+
+```bash
+npm run typecheck    # tsc --noEmit, strict
+npm run lint
+npm run build
+```
+
+Deploying to Vercel: import the repo, framework preset **Next.js** (pinned in `vercel.json`), add
+the environment variables above, deploy.
+
+---
+
+## Phone widgets
+
+Health OS is an installable PWA. On iPhone: open it in Safari → **Share → Add to Home Screen** for
+a standalone icon. `/widget` is a compact, glanceable view of Energy, Recovery, Sleep and Strain
+designed for that.
+
+**An honest limit:** true iOS *lock screen* widgets require a native app using Apple's WidgetKit.
+No web app of any kind can add one — that would need a companion iOS app, which this repo does not
+include.
+
+---
 
 ## Privacy
 
-No secrets or real personal health data in the repo. Credentials go in env vars. Medication,
-journal and health data are treated as sensitive — local-only in this build, excluded from any
-future analytics by default. Not a medical device; nothing here is medical advice.
+- Health data lives in `localStorage` in your browser. There is no database and no analytics.
+- OAuth tokens and client credentials are httpOnly cookies, never exposed to client JavaScript.
+- Medication, journal and health data are treated as sensitive: never logged, never transmitted
+  anywhere except directly to Google's API for your own sync.
+- **Settings → Clear all data** wipes everything, including stored credentials.
+- No secrets or personal health data are committed to this repository.
+
+---
+
+## Stack
+
+Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Recharts · Zustand · framer-motion
+
+Business logic is kept out of the UI: `src/lib/scoring`, `src/lib/insights`, `src/lib/assistant`
+and `src/lib/fitbit` are all independently testable and hold no React.
+
+---
+
+## Not medical advice
+
+Health OS is a personal data tool, not a medical device. It reports patterns in your own data. It
+does not diagnose, and it will never recommend starting, stopping, or changing any medication or
+dose. Talk to a clinician about anything that concerns you.
