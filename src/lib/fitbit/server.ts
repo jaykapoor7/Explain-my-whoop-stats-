@@ -1,7 +1,8 @@
 import "server-only";
 import crypto from "crypto";
 import type { NextRequest } from "next/server";
-import { Activity, ActivityConfidence, DailySummary, SleepSession } from "../types";
+import { DailySummary, SleepSession } from "../types";
+import { mapCaloriesRollup, mapExercise, mapHrv, mapRhr, mapSleep, mapStepsRollup, mapWeight } from "./map";
 
 /**
  * Google Health API integration — the successor to the legacy Fitbit Web API
@@ -224,42 +225,70 @@ function collectKeys(obj: unknown, prefix = "", depth = 0): string[] {
   return keys;
 }
 
-/** Probe each type once (unfiltered, tiny page) and capture the raw truth. */
+function summarize(probe: RawProbe, j: Json | null, text: string, ok: boolean) {
+  if (!j) {
+    probe.note = text.slice(0, 220);
+    return;
+  }
+  const pts = ((j.dataPoints as Json[]) ?? (j.rollupDataPoints as Json[]) ?? []) as Json[];
+  probe.count = Array.isArray(pts) ? pts.length : 0;
+  if (probe.count > 0) {
+    probe.sampleKeys = collectKeys(pts[0]).slice(0, 40);
+    probe.sample = pts[0];
+  }
+  if (!ok) {
+    const err = j.error as { message?: string; status?: string } | undefined;
+    probe.note = err?.message ?? JSON.stringify(j).slice(0, 220);
+  }
+}
+
+/** Probe each type once and capture the raw truth: list for most, plus a
+ *  dailyRollUp probe for steps + total-calories (which only support rollup). */
 export async function inspectHealth(token: string): Promise<RawProbe[]> {
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
   const out: RawProbe[] = [];
+
   for (const type of PROBE_TYPES) {
     const probe: RawProbe = { type, status: 0, ok: false, count: 0, sampleKeys: [] };
     try {
-      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints?pageSize=3`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints?pageSize=3`, { headers, cache: "no-store" });
+      probe.status = res.status;
+      probe.ok = res.ok;
+      const text = await res.text();
+      let j: Json | null = null;
+      try { j = JSON.parse(text) as Json; } catch { /* non-JSON body captured below */ }
+      summarize(probe, j, text, res.ok);
+    } catch (e) {
+      probe.note = e instanceof Error ? e.message : "request failed";
+    }
+    out.push(probe);
+  }
+
+  // Rollup probes for the aggregate-only types.
+  const end = new Date();
+  const start = new Date(end.getTime() - 6 * 864e5);
+  const asYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  for (const type of ["steps", "total-calories"]) {
+    const probe: RawProbe = { type: `${type} (dailyRollUp)`, status: 0, ok: false, count: 0, sampleKeys: [] };
+    try {
+      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints:dailyRollUp`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({ startDate: asYmd(start), endDate: asYmd(end), windowSizeDays: 1 }),
         cache: "no-store",
       });
       probe.status = res.status;
       probe.ok = res.ok;
       const text = await res.text();
       let j: Json | null = null;
-      try {
-        j = JSON.parse(text) as Json;
-      } catch {
-        probe.note = text.slice(0, 220);
-      }
-      if (j) {
-        const pts = ((j.dataPoints as Json[]) ?? (j.rollupDataPoints as Json[]) ?? []) as Json[];
-        probe.count = Array.isArray(pts) ? pts.length : 0;
-        if (probe.count > 0) {
-          probe.sampleKeys = collectKeys(pts[0]).slice(0, 40);
-          probe.sample = pts[0];
-        }
-        if (!probe.ok) {
-          const err = j.error as { message?: string; status?: string } | undefined;
-          probe.note = err?.message ?? JSON.stringify(j).slice(0, 220);
-        }
-      }
+      try { j = JSON.parse(text) as Json; } catch { /* non-JSON body captured below */ }
+      summarize(probe, j, text, res.ok);
     } catch (e) {
       probe.note = e instanceof Error ? e.message : "request failed";
     }
     out.push(probe);
   }
+
   return out;
 }
 
@@ -274,47 +303,6 @@ async function dailyRollUp(type: string, token: string, startDate: string, endDa
 }
 
 const camel = (t: string) => t.replace(/-([a-z])/g, (_, c: string) => c.toUpperCase());
-
-// --- tolerant field extraction (exact per-type payload fields are not all
-// --- publicly documented; probe the documented/likely shapes, skip on miss)
-
-function num(v: unknown): number | undefined {
-  if (typeof v === "number" && isFinite(v)) return v;
-  if (typeof v === "string") {
-    const n = parseFloat(v);
-    if (isFinite(n)) return n;
-  }
-  return undefined;
-}
-
-function pick(obj: Json | undefined, ...keys: string[]): unknown {
-  if (!obj) return undefined;
-  for (const k of keys) {
-    if (obj[k] !== undefined) return obj[k];
-    // nested one level (e.g. { value: { bpm: 62 } } or typed wrapper)
-    for (const v of Object.values(obj)) {
-      if (v && typeof v === "object" && (v as Json)[k] !== undefined) return (v as Json)[k];
-    }
-  }
-  return undefined;
-}
-
-function pointDate(p: Json): string | undefined {
-  const cand =
-    pick(p, "date", "civilDate", "startDate") ??
-    pick(p, "startTime", "physicalTime", "sampleTime", "time", "endTime");
-  if (typeof cand === "string") {
-    const m = cand.match(/^\d{4}-\d{2}-\d{2}/);
-    if (m) return m[0];
-  }
-  if (cand && typeof cand === "object") {
-    const y = num((cand as Json).year);
-    const mo = num((cand as Json).month);
-    const d = num((cand as Json).day);
-    if (y && mo && d) return `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
-  }
-  return undefined;
-}
 
 const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -344,115 +332,56 @@ export async function syncHealth(token: string, daysBack = 30): Promise<DailySum
 
   // Daily physiological summaries (list of per-day points)
   for (const p of await listPoints("daily-resting-heart-rate", token, startIso, endIso)) {
-    const date = pointDate(p);
-    const bpm = num(pick(p, "restingHeartRate", "bpm", "value", "beatsPerMinute"));
-    if (date && bpm) day(date).rhr = { date, bpm: Math.round(bpm) };
+    const r = mapRhr(p);
+    if (r) day(r.date).rhr = { date: r.date, bpm: r.bpm };
   }
   for (const p of await listPoints("daily-heart-rate-variability", token, startIso, endIso)) {
-    const date = pointDate(p);
-    const rmssd = num(pick(p, "rmssd", "dailyRmssd", "value", "rmssdMillis"));
-    if (date && rmssd) day(date).hrv = { date, rmssdMs: Math.round(rmssd) };
+    const h = mapHrv(p);
+    if (h) day(h.date).hrv = { date: h.date, rmssdMs: h.rmssdMs };
   }
 
-  // Steps + calories via dailyRollUp (steps ≤90d; total-calories ≤14d → chunk)
+  // Steps (dailyRollUp)
   for (const p of await dailyRollUp("steps", token, startDate, endDate)) {
-    const date = pointDate(p);
-    const steps = num(pick(p, "countSum", "steps", "sum", "value"));
-    if (date && steps !== undefined) day(date).steps = Math.round(steps);
+    const s = mapStepsRollup(p);
+    if (s) day(s.date).steps = s.steps;
   }
-  for (let chunkStart = new Date(start); chunkStart <= end; chunkStart = new Date(chunkStart.getTime() + 14 * 864e5)) {
-    const chunkEnd = new Date(Math.min(end.getTime(), chunkStart.getTime() + 13 * 864e5));
-    for (const p of await dailyRollUp("total-calories", token, ymd(chunkStart), ymd(chunkEnd))) {
-      const date = pointDate(p);
-      const kcal = num(pick(p, "energySum", "caloriesSum", "kilocalories", "sum", "value", "countSum"));
-      if (date && kcal !== undefined) {
-        const d = day(date);
-        d.restingCalories = Math.round(kcal * 0.72);
-        d.activeCalories = Math.round(kcal) - d.restingCalories;
+  // Total calories (dailyRollUp, chunked to the documented 14-day cap)
+  for (let cs = new Date(start); cs <= end; cs = new Date(cs.getTime() + 14 * 864e5)) {
+    const ce = new Date(Math.min(end.getTime(), cs.getTime() + 13 * 864e5));
+    for (const p of await dailyRollUp("total-calories", token, ymd(cs), ymd(ce))) {
+      const c = mapCaloriesRollup(p);
+      if (c) {
+        const d = day(c.date);
+        d.restingCalories = Math.round(c.kcal * 0.72);
+        d.activeCalories = c.kcal - d.restingCalories;
       }
     }
   }
 
-  // Sleep sessions
+  // Sleep sessions — prefer Fitbit's flagged main sleep, else the longest.
+  const sleepIsMain = new Map<string, boolean>();
   for (const p of await listPoints("sleep", token, startIso, endIso)) {
-    const startTime = (pick(p, "startTime", "physicalStartTime", "bedtime") as string) ?? "";
-    const endTime = (pick(p, "endTime", "physicalEndTime", "wakeTime") as string) ?? "";
-    const date = (endTime || startTime).slice(0, 10) || pointDate(p);
-    if (!date) continue;
-    const stageMin = (names: string[]) => {
-      const v = num(pick(p, ...names));
-      return v !== undefined ? Math.round(v) : 0;
-    };
-    const deep = stageMin(["deepSleepMinutes", "minutesDeep", "deep"]);
-    const rem = stageMin(["remSleepMinutes", "minutesRem", "rem"]);
-    const light = stageMin(["lightSleepMinutes", "minutesLight", "light"]);
-    const awake = stageMin(["awakeMinutes", "minutesAwake", "wake", "awake"]);
-    let asleepMin = num(pick(p, "minutesAsleep", "totalSleepMinutes", "asleepMinutes")) ?? deep + rem + light;
-    if (!asleepMin && startTime && endTime) {
-      asleepMin = Math.max(0, Math.round((Date.parse(endTime) - Date.parse(startTime)) / 60000) - awake);
+    const s = mapSleep(p);
+    if (!s) continue;
+    const { mainSleep, ...session } = s;
+    const existing = byDate.get(s.date)?.sleep;
+    const existingMain = sleepIsMain.get(s.date) ?? false;
+    if (!existing || (mainSleep && !existingMain) || (mainSleep === existingMain && session.asleepMin > existing.asleepMin)) {
+      day(s.date).sleep = session;
+      sleepIsMain.set(s.date, mainSleep);
     }
-    if (!asleepMin) continue;
-    const inBedMin = num(pick(p, "timeInBedMinutes", "minutesInBed")) ?? asleepMin + awake;
-    const existing = byDate.get(date)?.sleep;
-    if (existing && existing.asleepMin >= asleepMin) continue; // keep main sleep
-    const session: SleepSession = {
-      date,
-      bedtime: startTime || `${date}T23:30:00`,
-      wake: endTime || `${date}T07:00:00`,
-      inBedMin: Math.round(inBedMin),
-      asleepMin: Math.round(asleepMin),
-      efficiencyPct: Math.round(num(pick(p, "efficiency", "efficiencyPct")) ?? clamp((asleepMin / Math.max(1, inBedMin)) * 100, 40, 99)),
-      stages: { awake, light: light || Math.max(0, Math.round(asleepMin) - deep - rem), deep, rem },
-      awakenings: Math.round(num(pick(p, "awakeningsCount", "awakenings", "wakeCount")) ?? 0),
-      sleepHrBpm: 0,
-      overnightHrvMs: 0,
-      consistencyPct: 0,
-      debtMin: 0,
-      needMin: 480,
-    };
-    day(date).sleep = session;
   }
 
   // Workouts / exercise sessions
   for (const p of await listPoints("exercise", token, startIso, endIso)) {
-    const startTime = (pick(p, "startTime", "physicalStartTime") as string) ?? "";
-    const date = startTime.slice(0, 10) || pointDate(p);
-    if (!date) continue;
-    let durMin = num(pick(p, "durationMinutes", "activeDurationMinutes"));
-    if (durMin === undefined) {
-      const endTime = (pick(p, "endTime", "physicalEndTime") as string) ?? "";
-      const durMs = num(pick(p, "durationMillis", "duration"));
-      durMin = durMs !== undefined ? durMs / 60000 : endTime && startTime ? (Date.parse(endTime) - Date.parse(startTime)) / 60000 : 0;
-    }
-    durMin = Math.round(durMin);
-    if (durMin <= 0) continue;
-    const name = (pick(p, "exerciseType", "activityName", "activityType", "name", "type") as string) ?? "Workout";
-    const auto = ((pick(p, "logType", "source", "detectionMethod") as string) ?? "").toLowerCase().includes("auto");
-    const confidence: ActivityConfidence = auto && durMin < 15 ? "low" : auto ? "medium" : "high";
-    const avgHr = Math.round(num(pick(p, "averageHeartRate", "avgHeartRate", "meanHeartRate")) ?? 0);
-    const kcal = Math.round(num(pick(p, "calories", "energyExpended", "kilocalories")) ?? 0);
-    const load = clamp(durMin * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
-    const acts = (day(date).activities ??= []);
-    acts.push({
-      id: `gh-${pick(p, "dataPointId", "id", "logId") ?? `${date}-${acts.length}`}`,
-      date,
-      type: auto && durMin < 15 ? "Unrecognized elevated HR" : humanize(String(name)),
-      start: startTime || `${date}T12:00:00`,
-      durationMin: durMin,
-      avgHr,
-      maxHr: Math.round(num(pick(p, "maxHeartRate", "peakHeartRate")) ?? 0),
-      calories: kcal,
-      zones: [0, 0, 0, 0, 0],
-      load: Math.round(load * 10) / 10,
-      confidence,
-    } satisfies Activity);
+    const a = mapExercise(p);
+    if (a) (day(a.date).activities ??= []).push(a);
   }
 
   // Weight
   for (const p of await listPoints("weight", token, startIso, endIso)) {
-    const date = pointDate(p);
-    const kg = num(pick(p, "weightKg", "kilograms", "weight", "value"));
-    if (date && kg) day(date).weightKg = Math.round(kg * 10) / 10;
+    const w = mapWeight(p);
+    if (w) day(w.date).weightKg = w.kg;
   }
 
   // Assemble; derive sleep debt/consistency across the window.
@@ -507,12 +436,4 @@ export async function syncHealth(token: string, daysBack = 30): Promise<DailySum
     });
   }
   return out;
-}
-
-function humanize(s: string): string {
-  return s
-    .replace(/[_-]+/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
 }
