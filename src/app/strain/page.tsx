@@ -43,18 +43,18 @@ function ActivityRow({ a }: { a: Activity }) {
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <button
               onClick={() => resolveActivity(a.id, "ignored")}
-              className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-white/[0.07]"
+              className="rounded-full border border-black/15 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-black/[0.07]"
             >
               Ignore
             </button>
             <button
               onClick={() => resolveActivity(a.id, "confirmed")}
-              className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-50 hover:bg-white/[0.16]"
+              className="rounded-full bg-black/10 px-3 py-1.5 text-xs font-medium text-ink-50 hover:bg-black/[0.16]"
             >
               Confirm as workout
             </button>
             {!editing ? (
-              <button onClick={() => setEditing(true)} className="rounded-full border border-white/15 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-white/[0.07]">
+              <button onClick={() => setEditing(true)} className="rounded-full border border-black/15 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-black/[0.07]">
                 Edit type…
               </button>
             ) : (
@@ -62,7 +62,7 @@ function ActivityRow({ a }: { a: Activity }) {
                 <select
                   value={newType}
                   onChange={(e) => setNewType(e.target.value)}
-                  className="h-8 rounded-lg border border-white/15 bg-ink-800 px-2 text-xs text-ink-100 outline-none"
+                  className="h-8 rounded-lg border border-black/15 bg-ink-800 px-2 text-xs text-ink-100 outline-none"
                 >
                   {["Football", "Running", "Gym", "Walking", "Cycling", "Other"].map((t) => (
                     <option key={t}>{t}</option>
@@ -70,7 +70,7 @@ function ActivityRow({ a }: { a: Activity }) {
                 </select>
                 <button
                   onClick={() => resolveActivity(a.id, "edited", newType)}
-                  className="rounded-full bg-white/10 px-3 py-1.5 text-xs font-medium text-ink-50 hover:bg-white/[0.16]"
+                  className="rounded-full bg-black/10 px-3 py-1.5 text-xs font-medium text-ink-50 hover:bg-black/[0.16]"
                 >
                   Save
                 </button>

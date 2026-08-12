@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -12,38 +12,38 @@ html {
 
 body {
   background:
-    radial-gradient(1100px 640px at 82% -18%, rgba(52, 224, 161, 0.14), transparent 58%),
-    radial-gradient(900px 560px at 6% 4%, rgba(157, 139, 255, 0.13), transparent 55%),
-    radial-gradient(760px 520px at 96% 88%, rgba(90, 200, 255, 0.09), transparent 60%),
-    radial-gradient(680px 480px at 20% 96%, rgba(255, 178, 71, 0.06), transparent 62%),
-    #06070b;
+    radial-gradient(1100px 640px at 82% -18%, rgba(19, 181, 126, 0.07), transparent 58%),
+    radial-gradient(900px 560px at 4% 2%, rgba(123, 104, 238, 0.06), transparent 55%),
+    radial-gradient(820px 560px at 98% 92%, rgba(34, 152, 207, 0.05), transparent 60%),
+    radial-gradient(720px 500px at 16% 98%, rgba(235, 157, 24, 0.05), transparent 62%),
+    #f4efe4;
   background-attachment: fixed;
-  color: #d7dbe2;
+  color: #332e23;
   -webkit-font-smoothing: antialiased;
   font-feature-settings: "cv02", "cv03", "ss01";
 }
 
 ::selection {
-  background: rgba(52, 224, 161, 0.3);
+  background: rgba(19, 181, 126, 0.22);
 }
 
 *::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: #2b323f; border-radius: 8px; }
-*::-webkit-scrollbar-thumb:hover { background: #3a4252; }
+*::-webkit-scrollbar-thumb { background: #d8cdb8; border-radius: 8px; }
+*::-webkit-scrollbar-thumb:hover { background: #c6b99f; }
 *::-webkit-scrollbar-track { background: transparent; }
 
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Layered card: subtle top highlight, gradient body, soft deep shadow. */
+/* Premium cream card: near-white surface, warm hairline, soft warm shadow. */
 .card {
   position: relative;
   border-radius: 1.25rem;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background:
-    linear-gradient(180deg, rgba(28, 33, 43, 0.92), rgba(18, 21, 28, 0.92));
+  border: 1px solid rgba(59, 46, 20, 0.08);
+  background: linear-gradient(180deg, #fefcf8, #fbf7ef);
   box-shadow:
-    0 1px 0 0 rgba(255, 255, 255, 0.05) inset,
-    0 14px 40px -22px rgba(0, 0, 0, 0.85);
+    0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 2px -1px rgba(59, 46, 20, 0.08),
+    0 16px 40px -26px rgba(59, 46, 20, 0.32);
 }
 .card::before {
   content: "";
@@ -51,37 +51,38 @@ body {
   inset: 0;
   border-radius: inherit;
   padding: 1px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0) 40%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0) 45%);
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
   -webkit-mask-composite: xor;
   mask-composite: exclude;
   pointer-events: none;
 }
 
-.hairline { border-color: rgba(255, 255, 255, 0.07); }
+.hairline { border-color: rgba(59, 46, 20, 0.09); }
 
 /* Gradient text for hero numbers / accents. */
 .gradient-text {
-  background: linear-gradient(135deg, #eef0f4, #aeb5c1);
+  background: linear-gradient(135deg, #211c14, #655b49);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
 
 /* Soft colored glow, driven by --glow set inline per accent. */
-.glow { box-shadow: 0 0 0 1px rgba(255,255,255,0.05) inset, 0 8px 40px -12px var(--glow, rgba(52,224,161,0.5)); }
+.glow { box-shadow: 0 1px 0 0 rgba(255,255,255,0.6) inset, 0 10px 34px -14px var(--glow, rgba(19,181,126,0.45)); }
 
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: #14171e;
+  background: #ece5d6;
+  border-radius: 1rem;
 }
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.65), transparent);
   animation: shimmer 1.5s infinite;
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }

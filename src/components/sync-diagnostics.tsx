@@ -69,7 +69,7 @@ function ConnectionTest() {
         <button
           onClick={run}
           disabled={busy}
-          className="ml-auto flex items-center gap-1.5 rounded-full bg-recovery px-3.5 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-50"
+          className="ml-auto flex items-center gap-1.5 rounded-full bg-recovery px-3.5 py-1.5 text-xs font-semibold text-[#241f18] disabled:opacity-50"
         >
           {busy ? <Loader2 size={13} className="animate-spin" /> : <Stethoscope size={13} />} Run test
         </button>
@@ -87,12 +87,12 @@ function ConnectionTest() {
 
       {probes && (
         <div className="mt-3">
-          <div className="overflow-hidden rounded-xl border border-white/[0.06]">
+          <div className="overflow-hidden rounded-xl border border-black/[0.06]">
             {probes.map((p) => {
               const good = p.ok && p.count > 0;
               const auth = p.status === 401 || p.status === 403;
               return (
-                <div key={p.type} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-white/[0.05] px-3 py-2 last:border-0">
+                <div key={p.type} className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-black/[0.05] px-3 py-2 last:border-0">
                   <span className="shrink-0">
                     {good ? (
                       <CheckCircle2 size={13} className="text-good" />
@@ -112,7 +112,7 @@ function ConnectionTest() {
           </div>
           <button
             onClick={copy}
-            className="mt-3 flex items-center gap-1.5 rounded-full border border-white/12 px-3.5 py-1.5 text-xs font-medium text-ink-200 hover:bg-white/[0.06]"
+            className="mt-3 flex items-center gap-1.5 rounded-full border border-black/12 px-3.5 py-1.5 text-xs font-medium text-ink-200 hover:bg-black/[0.06]"
           >
             <Copy size={12} /> {copied ? "Copied — paste it to me" : "Copy full result"}
           </button>
@@ -221,7 +221,7 @@ export function SyncDiagnostics() {
             {wearableDays.length} days synced{lastSync ? ` · last ${new Date(lastSync).toLocaleString()}` : ""}
           </span>
         </div>
-        <div className="mt-2 divide-y divide-white/[0.05]">
+        <div className="mt-2 divide-y divide-black/[0.05]">
           {METRICS.map((m) => (
             <CoverageRow key={m.key} metric={m} days={wearableDays} />
           ))}
@@ -256,7 +256,7 @@ export function SyncDiagnostics() {
             </thead>
             <tbody className="tabular">
               {recent.map((d) => (
-                <tr key={d.date} className="border-t border-white/[0.05]">
+                <tr key={d.date} className="border-t border-black/[0.05]">
                   <td className="py-1.5 pr-3 text-ink-300">{fmtDate(d.date, { month: "short", day: "numeric" })}</td>
                   {METRICS.map((m) => {
                     const v = m.get(d);

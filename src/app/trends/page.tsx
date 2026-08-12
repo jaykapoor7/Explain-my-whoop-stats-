@@ -71,9 +71,9 @@ export default function TrendsPage() {
         title="Trends & Insights"
         sub="What is changing — and what appears to affect you."
         right={
-          <div className="flex overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+          <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
             {RANGES.map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium", range === r ? "bg-white/[0.1] text-ink-50" : "text-ink-400")}>
+              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>
                 {r}d
               </button>
             ))}
@@ -88,7 +88,7 @@ export default function TrendsPage() {
             onClick={() => setSeriesKey(s.key)}
             className={cn(
               "rounded-full px-3 py-1.5 text-xs font-medium transition",
-              seriesKey === s.key ? "text-ink-950" : "border border-white/12 text-ink-300 hover:bg-white/[0.06]"
+              seriesKey === s.key ? "text-[#241f18]" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]"
             )}
             style={seriesKey === s.key ? { background: s.color } : undefined}
           >
@@ -120,7 +120,7 @@ export default function TrendsPage() {
           <div className="space-y-3">
             {data.insights.map((i) => (
               <Card key={i.id} className="flex items-start gap-3 p-4">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-ink-200">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
                   <Sparkles size={15} />
                 </span>
                 <div className="min-w-0 flex-1">
@@ -130,7 +130,7 @@ export default function TrendsPage() {
                 <span
                   className={cn(
                     "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                    i.strength === "clear" ? "bg-good/15 text-good" : i.strength === "moderate" ? "bg-warn/15 text-warn" : "bg-white/[0.07] text-ink-300"
+                    i.strength === "clear" ? "bg-good/15 text-good" : i.strength === "moderate" ? "bg-warn/15 text-warn" : "bg-black/[0.07] text-ink-300"
                   )}
                 >
                   {i.strength}

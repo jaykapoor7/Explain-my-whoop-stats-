@@ -65,7 +65,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
             <button
               key={k}
               onClick={() => setKind(k)}
-              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", kind === k ? "bg-ink-50 text-ink-950" : "border border-white/12 text-ink-300 hover:bg-white/[0.06]")}
+              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", kind === k ? "bg-ink-50 text-[#241f18]" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]")}
             >
               {MEAL_LABEL[k]}
             </button>
@@ -80,7 +80,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setSelected(null); }}
                 placeholder="Search foods…"
-                className="h-10 w-full rounded-xl border border-white/10 bg-ink-875 pl-9 pr-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                className="h-10 w-full rounded-xl border border-black/10 bg-ink-875 pl-9 pr-3 text-sm text-ink-100 outline-none focus:border-black/25"
               />
             </div>
             <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
@@ -90,7 +90,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
                   onClick={() => setSelected(f)}
                   className={cn(
                     "flex w-full items-center justify-between gap-2 rounded-lg px-3 py-2 text-left transition",
-                    selected?.id === f.id ? "bg-white/[0.09]" : "hover:bg-white/[0.05]"
+                    selected?.id === f.id ? "bg-black/[0.09]" : "hover:bg-black/[0.05]"
                   )}
                 >
                   <span className="text-sm text-ink-100">
@@ -103,7 +103,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
               ))}
               {!results.length && <p className="px-3 py-2 text-xs text-ink-400">No match — add it as a custom food.</p>}
             </div>
-            <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.05] pt-3">
+            <div className="mt-3 flex items-center justify-between gap-3 border-t border-black/[0.05] pt-3">
               <button onClick={() => setCustom(true)} className="text-xs font-medium text-nutrition hover:underline">
                 + Custom food
               </button>
@@ -115,12 +115,12 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
                   step={0.5}
                   value={servings}
                   onChange={(e) => setServings(Math.max(0.5, parseFloat(e.target.value) || 1))}
-                  className="tabular h-8 w-16 rounded-lg border border-white/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
+                  className="tabular h-8 w-16 rounded-lg border border-black/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
                 />
                 <button
                   disabled={!selected}
                   onClick={() => selected && commit(selected)}
-                  className="rounded-full bg-nutrition px-4 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-40"
+                  className="rounded-full bg-nutrition px-4 py-1.5 text-xs font-semibold text-[#241f18] disabled:opacity-40"
                 >
                   Add
                 </button>
@@ -130,13 +130,13 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
         ) : (
           <div className="mt-3">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-              <input value={cf.name} onChange={(e) => setCf({ ...cf, name: e.target.value })} placeholder="Name" className="col-span-2 h-9 rounded-lg border border-white/12 bg-ink-875 px-2.5 text-sm text-ink-100 outline-none sm:col-span-1" />
+              <input value={cf.name} onChange={(e) => setCf({ ...cf, name: e.target.value })} placeholder="Name" className="col-span-2 h-9 rounded-lg border border-black/12 bg-ink-875 px-2.5 text-sm text-ink-100 outline-none sm:col-span-1" />
               {(["kcal", "protein", "carbs", "fat"] as const).map((k) => (
-                <input key={k} type="number" value={cf[k]} onChange={(e) => setCf({ ...cf, [k]: e.target.value })} placeholder={k === "kcal" ? "kcal" : `${k} g`} className="tabular h-9 rounded-lg border border-white/12 bg-ink-875 px-2.5 text-sm text-ink-100 outline-none" />
+                <input key={k} type="number" value={cf[k]} onChange={(e) => setCf({ ...cf, [k]: e.target.value })} placeholder={k === "kcal" ? "kcal" : `${k} g`} className="tabular h-9 rounded-lg border border-black/12 bg-ink-875 px-2.5 text-sm text-ink-100 outline-none" />
               ))}
             </div>
             <div className="mt-3 flex justify-end gap-2">
-              <button onClick={() => setCustom(false)} className="rounded-full border border-white/15 px-3.5 py-1.5 text-xs font-medium text-ink-200">Back</button>
+              <button onClick={() => setCustom(false)} className="rounded-full border border-black/15 px-3.5 py-1.5 text-xs font-medium text-ink-200">Back</button>
               <button
                 disabled={!cf.name.trim() || !cf.kcal}
                 onClick={() =>
@@ -150,7 +150,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
                     fat: +cf.fat || 0,
                   })
                 }
-                className="rounded-full bg-nutrition px-4 py-1.5 text-xs font-semibold text-ink-950 disabled:opacity-40"
+                className="rounded-full bg-nutrition px-4 py-1.5 text-xs font-semibold text-[#241f18] disabled:opacity-40"
               >
                 Add custom
               </button>
@@ -199,7 +199,7 @@ export default function NutritionPage() {
         title="Nutrition"
         sub="Calories and macros against your goals."
         right={
-          <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full bg-nutrition px-4 py-2 text-xs font-semibold text-ink-950">
+          <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full bg-nutrition px-4 py-2 text-xs font-semibold text-[#241f18]">
             <Plus size={14} /> Log food
           </button>
         }
@@ -285,9 +285,9 @@ export default function NutritionPage() {
         title="Progress"
         sub={`${adherent} logged day${adherent === 1 ? "" : "s"} within your calorie cap in the last ${rangeDays}`}
         action={
-          <div className="flex overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+          <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
             {(["day", "week", "month"] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium capitalize", range === r ? "bg-white/[0.1] text-ink-50" : "text-ink-400")}>
+              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium capitalize", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>
                 {r}
               </button>
             ))}

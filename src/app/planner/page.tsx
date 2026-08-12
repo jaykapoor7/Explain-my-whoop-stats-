@@ -30,19 +30,19 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
           <button onClick={onClose} className="text-ink-400" aria-label="Close"><X size={16} /></button>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25 sm:col-span-2" />
-          <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Title" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25 sm:col-span-2" />
+          <select value={kind} onChange={(e) => setKind(e.target.value as TaskKind)} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
             {(Object.keys(KIND_COLOR) as TaskKind[]).map((k) => (
               <option key={k} value={k}>{k[0].toUpperCase() + k.slice(1)}</option>
             ))}
           </select>
-          <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
+          <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
             <option value="low">Low priority</option>
             <option value="medium">Medium priority</option>
             <option value="high">High priority</option>
           </select>
-          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
-          <input type="number" value={estMin} onChange={(e) => setEstMin(e.target.value)} placeholder="Est. minutes" className="tabular h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none" />
+          <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+          <input type="number" value={estMin} onChange={(e) => setEstMin(e.target.value)} placeholder="Est. minutes" className="tabular h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none" />
         </div>
         <div className="mt-3 flex justify-end">
           <button
@@ -51,7 +51,7 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
               addTask({ id: `ut-${Date.now()}`, date, title: title.trim(), kind, start: start || undefined, estMin: parseInt(estMin, 10) || undefined, priority, done: false });
               onClose();
             }}
-            className="rounded-full bg-[#9fb6ff] px-4 py-2 text-xs font-semibold text-ink-950 disabled:opacity-40"
+            className="rounded-full bg-[#9fb6ff] px-4 py-2 text-xs font-semibold text-[#241f18] disabled:opacity-40"
           >
             Add
           </button>
@@ -91,14 +91,14 @@ export default function PlannerPage() {
         sub="Tasks, classes, deadlines and training — soon scheduled around your body."
         right={
           <div className="flex items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+            <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
               {(["day", "week", "month"] as const).map((v) => (
-                <button key={v} onClick={() => { setView(v); setAnchor(todayISO()); }} className={cn("px-3 py-1.5 font-medium capitalize", view === v ? "bg-white/[0.1] text-ink-50" : "text-ink-400")}>
+                <button key={v} onClick={() => { setView(v); setAnchor(todayISO()); }} className={cn("px-3 py-1.5 font-medium capitalize", view === v ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>
                   {v}
                 </button>
               ))}
             </div>
-            <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full bg-[#9fb6ff] px-3.5 py-2 text-xs font-semibold text-ink-950">
+            <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full bg-[#9fb6ff] px-3.5 py-2 text-xs font-semibold text-[#241f18]">
               <Plus size={14} /> Add
             </button>
           </div>
@@ -134,7 +134,7 @@ export default function PlannerPage() {
                         onClick={() => toggleTask(t.id, !t.done)}
                         className={cn(
                           "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
-                          t.done ? "border-transparent bg-good text-ink-950" : "border-white/20 hover:border-white/40"
+                          t.done ? "border-transparent bg-good text-[#241f18]" : "border-black/20 hover:border-black/40"
                         )}
                         aria-label="Toggle done"
                       >
@@ -160,7 +160,7 @@ export default function PlannerPage() {
                   ))}
                 </div>
               ) : (
-                <p className="rounded-xl border border-dashed border-white/[0.08] px-4 py-3 text-xs text-ink-500">Nothing scheduled.</p>
+                <p className="rounded-xl border border-dashed border-black/[0.08] px-4 py-3 text-xs text-ink-500">Nothing scheduled.</p>
               )}
             </div>
           );

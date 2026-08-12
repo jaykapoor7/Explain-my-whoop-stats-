@@ -136,12 +136,12 @@ export function ScorePage({
 
 export function RangeToggle({ range, setRange, options = [7, 30] }: { range: number; setRange: (r: never) => void; options?: number[] }) {
   return (
-    <div className="flex overflow-hidden rounded-lg border border-white/[0.08] text-xs">
+    <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
       {options.map((r) => (
         <button
           key={r}
           onClick={() => setRange(r as never)}
-          className={cn("px-3 py-1.5 font-medium transition-colors", range === r ? "bg-white/[0.1] text-ink-50" : "text-ink-400 hover:text-ink-200")}
+          className={cn("px-3 py-1.5 font-medium transition-colors", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400 hover:text-ink-200")}
         >
           {r}d
         </button>

@@ -7,7 +7,7 @@ import { DOMAIN_COLOR, fmtDuration, fmtTime } from "@/lib/format";
 
 function Fact({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="rounded-xl border border-white/[0.05] bg-white/[0.02] px-3.5 py-3">
+    <div className="rounded-xl border border-black/[0.05] bg-black/[0.02] px-3.5 py-3">
       <div className="text-[11px] font-medium uppercase tracking-wide text-ink-500">{label}</div>
       <div className="tabular mt-1 text-lg font-semibold text-ink-50">{value}</div>
       {hint && <div className="mt-0.5 text-[11px] text-ink-400">{hint}</div>}

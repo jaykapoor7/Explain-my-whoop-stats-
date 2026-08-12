@@ -33,29 +33,29 @@ function AddMed({ onClose }: { onClose: () => void }) {
           <button onClick={onClose} className="text-ink-400" aria-label="Close"><X size={16} /></button>
         </div>
         <div className="mt-3 grid gap-2 sm:grid-cols-2">
-          <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Name" className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25" />
-          <input value={f.dose} onChange={(e) => setF({ ...f, dose: e.target.value })} placeholder="Dose (e.g. 10 mg)" className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25" />
-          <select value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value as MedFrequency })} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
+          <input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Name" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25" />
+          <input value={f.dose} onChange={(e) => setF({ ...f, dose: e.target.value })} placeholder="Dose (e.g. 10 mg)" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25" />
+          <select value={f.frequency} onChange={(e) => setF({ ...f, frequency: e.target.value as MedFrequency })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
             <option value="once">Once daily</option>
             <option value="twice">Twice daily</option>
             <option value="thrice">Three times daily</option>
             <option value="as-needed">As needed</option>
           </select>
-          <select value={f.withFood} onChange={(e) => setF({ ...f, withFood: e.target.value as Medication["withFood"] })} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
+          <select value={f.withFood} onChange={(e) => setF({ ...f, withFood: e.target.value as Medication["withFood"] })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
             <option value="either">With or without food</option>
             <option value="with">With food</option>
             <option value="without">Without food</option>
           </select>
           {f.frequency !== "as-needed" && (
-            <input type="time" value={f.time1} onChange={(e) => setF({ ...f, time1: e.target.value })} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time1} onChange={(e) => setF({ ...f, time1: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
           )}
           {(f.frequency === "twice" || f.frequency === "thrice") && (
-            <input type="time" value={f.time2} onChange={(e) => setF({ ...f, time2: e.target.value })} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time2} onChange={(e) => setF({ ...f, time2: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
           )}
           {f.frequency === "thrice" && (
-            <input type="time" value={f.time3} onChange={(e) => setF({ ...f, time3: e.target.value })} className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time3} onChange={(e) => setF({ ...f, time3: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
           )}
-          <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Notes (optional)" className="h-10 rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none sm:col-span-2" />
+          <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Notes (optional)" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none sm:col-span-2" />
         </div>
         <div className="mt-3 flex justify-end">
           <button
@@ -73,7 +73,7 @@ function AddMed({ onClose }: { onClose: () => void }) {
               });
               onClose();
             }}
-            className="rounded-full px-4 py-2 text-xs font-semibold text-ink-950 disabled:opacity-40"
+            className="rounded-full px-4 py-2 text-xs font-semibold text-[#241f18] disabled:opacity-40"
             style={{ background: ACCENT }}
           >
             Add medication
@@ -112,7 +112,7 @@ export default function MedicationPage() {
         title="Medication"
         sub="Schedule, adherence and history — treated as sensitive data."
         right={
-          <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-ink-950" style={{ background: ACCENT }}>
+          <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-[#241f18]" style={{ background: ACCENT }}>
             <Plus size={14} /> Add
           </button>
         }
@@ -174,7 +174,7 @@ export default function MedicationPage() {
                           onClick={() => setMedStatus(e.id, status, status === "skipped" ? undefined : new Date().toTimeString().slice(0, 5))}
                           className={cn(
                             "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                            e.status === status ? "border-transparent bg-white/[0.12] text-ink-50" : "border-white/12 text-ink-300 hover:bg-white/[0.06]"
+                            e.status === status ? "border-transparent bg-black/[0.12] text-ink-50" : "border-black/12 text-ink-300 hover:bg-black/[0.06]"
                           )}
                         >
                           <Icon size={12} /> {label}
@@ -227,7 +227,7 @@ export default function MedicationPage() {
                       <div key={h.date} className="flex flex-1 flex-col items-center gap-1.5">
                         <div
                           className="h-14 w-full rounded-md"
-                          style={{ background: h.total === 0 ? "rgba(255,255,255,0.04)" : `${ACCENT}${frac === 1 ? "cc" : frac >= 0.5 ? "66" : "26"}` }}
+                          style={{ background: h.total === 0 ? "rgba(0,0,0,0.04)" : `${ACCENT}${frac === 1 ? "cc" : frac >= 0.5 ? "66" : "26"}` }}
                           title={`${h.taken}/${h.total} taken`}
                         />
                         <span className="text-[9px] text-ink-500">{fmtDate(h.date, { day: "numeric" })}</span>
@@ -254,7 +254,7 @@ export default function MedicationPage() {
         </Section>
       )}
 
-      <Card className="mt-8 flex items-start gap-3 border-white/[0.08] p-4">
+      <Card className="mt-8 flex items-start gap-3 border-black/[0.08] p-4">
         <ShieldAlert size={16} className="mt-0.5 shrink-0 text-ink-400" />
         <p className="text-xs leading-relaxed text-ink-400">
           This app never recommends starting, stopping, or changing any medication or dose. Medication data stays on

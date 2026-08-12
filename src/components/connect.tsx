@@ -105,7 +105,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                 <CheckCircle2 size={10} /> Connected
               </span>
             ) : (
-              <span className="rounded-full bg-white/[0.07] px-2 py-0.5 text-[10px] font-semibold text-ink-300">Not connected</span>
+              <span className="rounded-full bg-black/[0.07] px-2 py-0.5 text-[10px] font-semibold text-ink-300">Not connected</span>
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink-400">
@@ -114,7 +114,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
           </p>
 
           {status && !status.connected && (
-            <div className="mt-3 rounded-xl border border-white/[0.07] bg-white/[0.02] p-3.5">
+            <div className="mt-3 rounded-xl border border-black/[0.07] bg-black/[0.02] p-3.5">
               {!status.envConfigured && (
                 <>
                   <p className="text-xs leading-relaxed text-ink-300">
@@ -138,7 +138,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                       value={clientId}
                       onChange={(e) => setClientId(e.target.value)}
                       placeholder="Client ID (…apps.googleusercontent.com)"
-                      className="h-9 w-full rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                      className="h-9 w-full rounded-lg border border-black/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
                     />
                     <div className="flex gap-2">
                       <input
@@ -146,12 +146,12 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                         onChange={(e) => setClientSecret(e.target.value)}
                         placeholder="Client secret (GOCSPX-…)"
                         type="password"
-                        className="h-9 min-w-0 flex-1 rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                        className="h-9 min-w-0 flex-1 rounded-lg border border-black/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
                       />
                       <button
                         onClick={() => saveCreds(clientId, clientSecret)}
                         disabled={!clientId.trim() || !clientSecret.trim() || busy !== null}
-                        className="flex shrink-0 items-center gap-1.5 rounded-full bg-recovery px-4 text-xs font-semibold text-ink-950 disabled:opacity-40"
+                        className="flex shrink-0 items-center gap-1.5 rounded-full bg-recovery px-4 text-xs font-semibold text-[#241f18] disabled:opacity-40"
                       >
                         {busy === "save" ? <Loader2 size={13} className="animate-spin" /> : <Plug size={13} />} Connect
                       </button>
@@ -168,7 +168,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
               {status.envConfigured && (
                 <button
                   onClick={() => (window.location.href = "/api/fitbit/connect")}
-                  className="flex items-center gap-1.5 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-ink-950"
+                  className="flex items-center gap-1.5 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-[#241f18]"
                 >
                   <Plug size={13} /> Connect with Google
                 </button>
@@ -181,11 +181,11 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
               <button
                 onClick={sync}
                 disabled={busy !== null}
-                className="flex items-center gap-1.5 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-ink-950 disabled:opacity-50"
+                className="flex items-center gap-1.5 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-[#241f18] disabled:opacity-50"
               >
                 <RefreshCw size={13} className={busy === "sync" ? "animate-spin" : ""} /> Sync now
               </button>
-              <button onClick={disconnect} className="rounded-full border border-white/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-white/[0.06]">
+              <button onClick={disconnect} className="rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.06]">
                 Disconnect
               </button>
               {lastSync && <span className="text-[11px] text-ink-500">last sync {new Date(lastSync).toLocaleString()}</span>}

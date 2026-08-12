@@ -13,7 +13,7 @@ import { ScoreResult } from "@/lib/types";
 function NoDataRing({ size = 64 }: { size?: number }) {
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full border border-dashed border-white/15 text-ink-500"
+      className="flex shrink-0 items-center justify-center rounded-full border border-dashed border-black/15 text-ink-500"
       style={{ width: size, height: size }}
     >
       <span className="text-lg">—</span>
@@ -258,7 +258,7 @@ export default function TodayPage() {
       {data.insights[0] && (
         <Section title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
           <Card className="flex items-start gap-3 p-4">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-ink-200">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
               <Sparkles size={15} />
             </span>
             <div>

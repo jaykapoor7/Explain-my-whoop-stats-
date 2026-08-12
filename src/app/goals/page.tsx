@@ -82,7 +82,7 @@ export default function GoalsPage() {
                     type="number"
                     value={g.target}
                     onChange={(e) => setGoalTarget(g.id, Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="tabular h-7 w-20 rounded-lg border border-white/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
+                    className="tabular h-7 w-20 rounded-lg border border-black/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
                   />
                   <span>{g.unit}</span>
                 </div>

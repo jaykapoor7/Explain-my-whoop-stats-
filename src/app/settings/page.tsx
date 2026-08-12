@@ -23,7 +23,7 @@ export default function SettingsPage() {
               <input
                 value={settings.name}
                 onChange={(e) => setSettings({ name: e.target.value })}
-                className="mt-1.5 h-10 w-full rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                className="mt-1.5 h-10 w-full rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
               />
             </label>
             <label className="block">
@@ -36,18 +36,18 @@ export default function SettingsPage() {
                   setSettings({ birthYear: Number.isFinite(y) ? y : undefined });
                 }}
                 placeholder="e.g. 1998"
-                className="tabular mt-1.5 h-10 w-full rounded-xl border border-white/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+                className="tabular mt-1.5 h-10 w-full rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
               />
             </label>
           </div>
           <div>
             <span className="text-xs font-medium text-ink-300">Weight unit</span>
-            <div className="mt-1.5 flex overflow-hidden rounded-lg border border-white/[0.08] text-xs" style={{ width: "fit-content" }}>
+            <div className="mt-1.5 flex overflow-hidden rounded-lg border border-black/[0.08] text-xs" style={{ width: "fit-content" }}>
               {(["kg", "lb"] as const).map((u) => (
                 <button
                   key={u}
                   onClick={() => setSettings({ weightUnit: u })}
-                  className={cn("px-4 py-2 font-medium", settings.weightUnit === u ? "bg-white/[0.1] text-ink-50" : "text-ink-400")}
+                  className={cn("px-4 py-2 font-medium", settings.weightUnit === u ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}
                 >
                   {u}
                 </button>

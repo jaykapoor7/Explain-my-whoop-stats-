@@ -22,7 +22,7 @@ function Tip({ active, payload, label, unit, name }: { active?: boolean; payload
   if (!active || !payload?.length) return null;
   const v = payload[0]?.value;
   return (
-    <div className="rounded-lg border border-white/10 bg-ink-800/95 px-3 py-2 text-xs shadow-lift backdrop-blur">
+    <div className="rounded-lg border border-black/10 bg-ink-800/95 px-3 py-2 text-xs shadow-lift backdrop-blur">
       <div className="font-medium text-ink-50">{typeof label === "string" && label.includes("-") ? fmtDate(label, { weekday: "short", month: "short", day: "numeric" }) : label}</div>
       <div className="mt-0.5 text-ink-300">
         {name ? `${name}: ` : ""}
@@ -92,7 +92,7 @@ export function MiniBars({
         <CartesianGrid {...GRID} />
         <XAxis dataKey="label" {...AXIS} interval={0} />
         <YAxis {...AXIS} width={42} tickFormatter={(v) => fmtNum(v)} />
-        <Tooltip content={<Tip unit={unit} name={name} />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+        <Tooltip content={<Tip unit={unit} name={name} />} cursor={{ fill: "rgba(0,0,0,0.04)" }} />
         <Bar dataKey="value" name={name} radius={[4, 4, 0, 0]} maxBarSize={44} isAnimationActive={false}>
           {data.map((_, i) => (
             <Cell key={i} fill={color} />
@@ -137,7 +137,7 @@ export function ZoneBars({ zones }: { zones: number[] }) {
       {zones.map((min, i) => (
         <div key={i} className="flex items-center gap-2.5">
           <span className="w-10 text-[11px] text-ink-400">Z{i + 1}</span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-white/[0.06]">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-black/[0.06]">
             <div className="h-full rounded-full" style={{ width: `${(min / max) * 100}%`, background: ZONE_COLORS[i] }} />
           </div>
           <span className="tabular w-10 text-right text-[11px] text-ink-300">{Math.round(min)}m</span>

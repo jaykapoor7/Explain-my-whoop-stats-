@@ -45,7 +45,7 @@ export default function AssistantPage() {
       <div className="mt-4 flex-1 space-y-3 overflow-y-auto pb-3 pr-1">
         {msgs.length === 0 && (
           <div className="mx-auto max-w-md pt-6 text-center">
-            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-white/[0.06] text-ink-200">
+            <span className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-black/[0.06] text-ink-200">
               <MessageCircle size={19} />
             </span>
             <p className="mt-3 text-xs text-ink-400">Try one of these:</p>
@@ -54,7 +54,7 @@ export default function AssistantPage() {
                 <button
                   key={s}
                   onClick={() => ask(s)}
-                  className="rounded-xl border border-white/[0.08] bg-white/[0.02] px-3 py-2.5 text-left text-xs text-ink-200 transition hover:border-white/[0.2] hover:bg-white/[0.05]"
+                  className="rounded-xl border border-black/[0.08] bg-black/[0.02] px-3 py-2.5 text-left text-xs text-ink-200 transition hover:border-black/[0.2] hover:bg-black/[0.05]"
                 >
                   {s}
                 </button>
@@ -73,7 +73,7 @@ export default function AssistantPage() {
             <div
               className={cn(
                 "max-w-[85%] whitespace-pre-line rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                m.role === "user" ? "rounded-br-md bg-recovery text-ink-950" : "card rounded-bl-md text-ink-100"
+                m.role === "user" ? "rounded-br-md bg-recovery text-[#241f18]" : "card rounded-bl-md text-ink-100"
               )}
             >
               {m.text}
@@ -112,7 +112,7 @@ export default function AssistantPage() {
         <button
           type="submit"
           disabled={!input.trim() || thinking}
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-recovery text-ink-950 disabled:opacity-40"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-recovery text-[#241f18] disabled:opacity-40"
           aria-label="Send"
         >
           <Send size={15} />

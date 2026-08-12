@@ -93,7 +93,7 @@ export function ScoreRing({
             <stop offset="100%" stopColor={color} />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
@@ -154,7 +154,7 @@ export function ContributorLedger({ contributors, unit = "" }: { contributors: C
   return (
     <div className="space-y-1">
       {contributors.map((c, i) => (
-        <div key={`${c.label}-${i}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-white/[0.03]">
+        <div key={`${c.label}-${i}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/[0.03]">
           <span className={cn("w-4 text-center text-sm", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
             {c.points > 0 ? "↑" : c.points < 0 ? "↓" : "·"}
           </span>
@@ -162,7 +162,7 @@ export function ContributorLedger({ contributors, unit = "" }: { contributors: C
             <span className="text-sm text-ink-100">{c.label}</span>
             {c.detail && <span className="ml-2 hidden text-xs text-ink-400 sm:inline">{c.detail}</span>}
           </div>
-          <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-white/[0.06] sm:block">
+          <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-black/[0.06] sm:block">
             <div
               className={cn("h-full rounded-full", c.points >= 0 ? "bg-good" : "bg-bad")}
               style={{ width: `${(Math.abs(c.points) / max) * 100}%`, opacity: 0.8 }}
@@ -182,7 +182,7 @@ export function ContributorLedger({ contributors, unit = "" }: { contributors: C
 export function Why({ summary, children }: { summary: string; children?: ReactNode }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mt-3 rounded-xl border border-white/[0.06] bg-white/[0.02]">
+    <div className="mt-3 rounded-xl border border-black/[0.06] bg-black/[0.02]">
       <button onClick={() => setOpen(!open)} className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left">
         <HelpCircle size={14} className="shrink-0 text-ink-400" />
         <span className="flex-1 text-sm text-ink-200">{summary}</span>
@@ -196,7 +196,7 @@ export function Why({ summary, children }: { summary: string; children?: ReactNo
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="border-t border-white/[0.05] px-3.5 py-3 text-sm leading-relaxed text-ink-300">{children}</div>
+            <div className="border-t border-black/[0.05] px-3.5 py-3 text-sm leading-relaxed text-ink-300">{children}</div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -208,7 +208,7 @@ export function ProgressBar({ value, max, color, invertOver = false }: { value: 
   const pct = max > 0 ? Math.min(100, (value / max) * 100) : 0;
   const over = value > max;
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/[0.07]">
+    <div className="h-2 overflow-hidden rounded-full bg-black/[0.07]">
       <motion.div
         className="h-full rounded-full"
         style={{ background: over && invertOver ? "#ff6b6b" : color }}

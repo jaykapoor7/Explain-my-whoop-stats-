@@ -21,14 +21,14 @@ function AgeSetter() {
         value={year}
         onChange={(e) => setYear(e.target.value)}
         placeholder="Birth year"
-        className="tabular h-9 w-32 rounded-lg border border-white/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-white/25"
+        className="tabular h-9 w-32 rounded-lg border border-black/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
       />
       <button
         onClick={() => {
           const y = parseInt(year, 10);
           if (y >= thisYear - 100 && y <= thisYear - 13) setSettings({ birthYear: y });
         }}
-        className="rounded-full px-4 py-2 text-xs font-semibold text-ink-950"
+        className="rounded-full px-4 py-2 text-xs font-semibold text-[#241f18]"
         style={{ background: YOUNGER }}
       >
         Save

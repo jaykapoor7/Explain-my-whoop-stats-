@@ -82,7 +82,7 @@ export default function JournalPage() {
             ))}
           </div>
 
-          <div className="mt-5 border-t border-white/[0.06] pt-4">
+          <div className="mt-5 border-t border-black/[0.06] pt-4">
             <div className="text-xs font-medium text-ink-200">Tags & events</div>
             <div className="mt-2 flex flex-wrap gap-1.5">
               {QUICK_TAGS.map((tag) => {
@@ -93,7 +93,7 @@ export default function JournalPage() {
                     onClick={() => toggleTag(tag)}
                     className={cn(
                       "rounded-full px-3 py-1.5 text-xs font-medium transition",
-                      on ? "bg-[#c9b98a] text-ink-950" : "border border-white/12 text-ink-300 hover:bg-white/[0.06]"
+                      on ? "bg-[#c9b98a] text-[#241f18]" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]"
                     )}
                   >
                     {tag}
@@ -110,7 +110,7 @@ export default function JournalPage() {
               onBlur={() => draftNote !== null && saveJournal({ ...draft, note: draftNote })}
               placeholder="Anything worth remembering about today…"
               rows={2}
-              className="w-full rounded-xl border border-white/10 bg-ink-875 px-3.5 py-2.5 text-sm text-ink-100 outline-none placeholder:text-ink-500 focus:border-white/25"
+              className="w-full rounded-xl border border-black/10 bg-ink-875 px-3.5 py-2.5 text-sm text-ink-100 outline-none placeholder:text-ink-500 focus:border-black/25"
             />
           </div>
         </Card>
@@ -121,7 +121,7 @@ export default function JournalPage() {
           <div className="space-y-3">
             {journalInsights.map((i) => (
               <Card key={i.id} className="flex items-start gap-3 p-4">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white/[0.06] text-ink-200">
+                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
                   <Sparkles size={15} />
                 </span>
                 <div>
@@ -152,7 +152,7 @@ export default function JournalPage() {
                   {j.tags.length > 0 && (
                     <div className="mt-2 flex flex-wrap gap-1.5">
                       {j.tags.map((t, i2) => (
-                        <span key={i2} className="rounded-full bg-white/[0.06] px-2.5 py-0.5 text-[11px] text-ink-300">
+                        <span key={i2} className="rounded-full bg-black/[0.06] px-2.5 py-0.5 text-[11px] text-ink-300">
                           {t.label}
                           {t.intensity ? ` ×${t.intensity}` : ""}
                         </span>

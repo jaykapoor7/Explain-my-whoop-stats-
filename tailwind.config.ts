@@ -10,32 +10,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
+        // Warm cream light palette. Higher number = lighter surface, lower =
+        // darker text (inverted from the old dark scale so existing classes work).
         ink: {
-          950: "#08090c",
-          900: "#0c0e12",
-          875: "#101319",
-          850: "#14171e",
-          800: "#181c24",
-          750: "#1e232c",
-          700: "#262c37",
-          600: "#333a47",
-          500: "#4a5361",
-          400: "#6b7482",
-          300: "#8b93a1",
-          200: "#aeb5c1",
-          100: "#d5d9e0",
-          50: "#eef0f4",
+          950: "#f4efe4", // page background (warm cream)
+          900: "#fdfaf3", // raised card surface (near-white warm)
+          875: "#fffefb", // input surface (brightest)
+          850: "#f7f2e8", // alt panel
+          800: "#efe9db", // hover surface
+          750: "#e7dfce", // stronger hover
+          700: "#dcd2be", // borders
+          600: "#c8bba2", // strong borders
+          500: "#a4977f", // faint text / icons
+          400: "#83765f", // muted text
+          300: "#655b49", // secondary text
+          200: "#484031", // strong secondary
+          100: "#332e23", // near-primary text
+          50: "#211c14", // primary text (darkest warm)
         },
-        // Domain accents
-        energy: { DEFAULT: "#ffc24b", soft: "#ffd684", dim: "#7a5c1c" },
-        recovery: { DEFAULT: "#34e0a1", soft: "#7cefc9", dim: "#186a52" },
-        sleep: { DEFAULT: "#9d8bff", soft: "#c1b6ff", dim: "#484670" },
-        strain: { DEFAULT: "#ff6f61", soft: "#ffa79b", dim: "#7a322a" },
-        nutrition: { DEFAULT: "#4ec3ff", soft: "#9cdcff", dim: "#215870" },
+        // Domain accents — deep, saturated jewel tones that read on cream
+        energy: { DEFAULT: "#eb9d18", soft: "#f6c35e", dim: "#8a5e0e" },
+        recovery: { DEFAULT: "#13b57e", soft: "#4fd3a4", dim: "#0c6f4e" },
+        sleep: { DEFAULT: "#7b68ee", soft: "#a99bf4", dim: "#4b3f9e" },
+        strain: { DEFAULT: "#ef5a45", soft: "#f79383", dim: "#a2331f" },
+        nutrition: { DEFAULT: "#2298cf", soft: "#6dc0e6", dim: "#175f82" },
         // Status
-        good: "#34e0a1",
-        warn: "#ffc24b",
-        bad: "#ff6b6b",
+        good: "#13b57e",
+        warn: "#d98324",
+        bad: "#e0433f",
       },
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "-apple-system", "Segoe UI", "sans-serif"],
