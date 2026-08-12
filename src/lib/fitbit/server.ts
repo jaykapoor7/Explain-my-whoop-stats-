@@ -264,81 +264,50 @@ export async function inspectHealth(token: string): Promise<RawProbe[]> {
     out.push(probe);
   }
 
-  // Definitive: read Google's discovery document (Vercel can reach it) and
-  // report the exact request schema for the dailyRollUp method.
-  out.push(await discoverMethod("dailyRollUp"));
-
-  return out;
-}
-
-/** Resolve a discovery schema's property shape, following $refs a couple levels. */
-function schemaShape(doc: Json, name: string, depth = 0): unknown {
-  const schemas = doc.schemas as Record<string, Json> | undefined;
-  const s = schemas?.[name];
-  if (!s || depth > 3) return name;
-  const props = s.properties as Record<string, Json> | undefined;
-  if (!props) return (s.type as string) ?? name;
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(props)) {
-    const ref = (v.$ref as string) ?? ((v.items as Json)?.$ref as string);
-    out[k] = ref ? schemaShape(doc, ref, depth + 1) : `${v.type ?? "?"}${v.format ? `(${v.format})` : ""}`;
-  }
-  return out;
-}
-
-/** Find a method by name in the discovery doc and return its request schema. */
-async function discoverMethod(needle: string): Promise<RawProbe> {
-  const probe: RawProbe = { type: `DISCOVERY: ${needle} request schema`, status: 0, ok: false, count: 0, sampleKeys: [] };
-  try {
-    const res = await fetch("https://health.googleapis.com/$discovery/rest?version=v4", {
-      headers: { Accept: "application/json" },
-      cache: "no-store",
-    });
-    probe.status = res.status;
-    probe.ok = res.ok;
-    const doc = (await res.json()) as Json;
-    const methods: Json[] = [];
-    const walk = (node: Json | undefined) => {
-      if (!node || typeof node !== "object") return;
-      const ms = node.methods as Record<string, Json> | undefined;
-      if (ms) for (const m of Object.values(ms)) methods.push(m);
-      const rs = node.resources as Record<string, Json> | undefined;
-      if (rs) for (const r of Object.values(rs)) walk(r);
-    };
-    walk(doc);
-    const m = methods.find((x) => {
-      const id = String(x.id ?? ""), path = String(x.path ?? x.flatPath ?? "");
-      return new RegExp(needle, "i").test(id) || new RegExp(needle, "i").test(path);
-    });
-    if (!m) {
-      probe.note = `method matching "${needle}" not found; available: ${methods.map((x) => String(x.id ?? "")).filter((s) => /rollup|rollUp/i.test(s)).join(", ") || "none with rollup"}`;
-      return probe;
+  // Real dailyRollUp calls with the correct `range` body (from discovery),
+  // so we capture the rollup RESPONSE shape for steps + total-calories.
+  const end = new Date();
+  const start = new Date(end.getTime() - 6 * 864e5);
+  const asYmd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  for (const type of ["steps", "total-calories"]) {
+    const probe: RawProbe = { type: `${type} dailyRollUp [range]`, status: 0, ok: false, count: 0, sampleKeys: [] };
+    try {
+      const res = await fetch(`${BASE}/dataTypes/${type}/dataPoints:dailyRollUp`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify(rollUpBody(asYmd(start), asYmd(end))),
+        cache: "no-store",
+      });
+      probe.status = res.status;
+      probe.ok = res.ok;
+      const text = await res.text();
+      let j: Json | null = null;
+      try { j = JSON.parse(text) as Json; } catch { /* non-JSON body captured below */ }
+      summarize(probe, j, text, res.ok);
+    } catch (e) {
+      probe.note = e instanceof Error ? e.message : "request failed";
     }
-    const request = m.request as Json | undefined;
-    const ref = request?.$ref as string | undefined;
-    const info = {
-      id: m.id,
-      httpMethod: m.httpMethod,
-      path: m.path ?? m.flatPath,
-      queryParameters: Object.keys((m.parameters as Json) ?? {}),
-      requestSchema: ref ? schemaShape(doc, ref) : "(none)",
-    };
-    probe.sample = info;
-    probe.sampleKeys = Object.keys(info);
-    probe.count = 1;
-  } catch (e) {
-    probe.note = e instanceof Error ? e.message : "discovery failed";
+    out.push(probe);
   }
-  return probe;
+
+  return out;
 }
 
-/** POST dailyRollUp for a type across [startDate, endDate] (civil dates). */
-async function dailyRollUp(type: string, token: string, startDate: string, endDate: string): Promise<Json[]> {
-  const j = await api(`/dataTypes/${type}/dataPoints:dailyRollUp`, token, {
-    startDate,
-    endDate,
+/** Build the dailyRollUp `range` body (civil {date,time}) from YYYY-MM-DD strings. */
+export function rollUpBody(startDate: string, endDate: string) {
+  const [sy, sm, sd] = startDate.split("-").map(Number);
+  const [ey, em, ed] = endDate.split("-").map(Number);
+  return {
+    range: {
+      start: { date: { year: sy, month: sm, day: sd }, time: { hours: 0, minutes: 0, seconds: 0 } },
+      end: { date: { year: ey, month: em, day: ed }, time: { hours: 23, minutes: 59, seconds: 59 } },
+    },
     windowSizeDays: 1,
-  });
+  };
+}
+
+async function dailyRollUp(type: string, token: string, startDate: string, endDate: string): Promise<Json[]> {
+  const j = await api(`/dataTypes/${type}/dataPoints:dailyRollUp`, token, rollUpBody(startDate, endDate) as unknown as Json);
   return ((j?.dataPoints as Json[]) ?? (j?.rollupDataPoints as Json[]) ?? []) as Json[];
 }
 
