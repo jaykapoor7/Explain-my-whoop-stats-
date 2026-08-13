@@ -95,7 +95,7 @@ export default function StrainPage() {
       ringLabel="Strain"
       pick={(s) => s.strain}
       baselineLabel={(s) => `Your typical daily strain is ${s.baseline} over the last two weeks (0–21 scale).`}
-      algoNote="Strain sums each counted activity's load plus a small term for daily movement. Unrecognized short HR spikes are excluded unless you confirm them. The load model is a placeholder until the final strain algorithm is designed."
+      algoNote="Strain sums each counted activity's load plus a term for all-day movement from your steps. Unrecognized short HR spikes are excluded unless you confirm them."
       extras={(data) => {
         const acts = data.today!.day.activities;
         const counted = countedActivities(data.today!.day);

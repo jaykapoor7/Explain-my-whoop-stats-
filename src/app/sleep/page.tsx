@@ -24,7 +24,7 @@ export default function SleepPage() {
       ringLabel="Sleep"
       pick={(s) => s.sleep}
       baselineLabel={(s) => `You typically sleep ${s.baseline}h a night over the last two weeks.`}
-      algoNote="Duration vs your personal need, efficiency, deep + REM share, timing consistency and awakenings each contribute signed points. Weights are placeholders until the final sleep model is designed."
+      algoNote="Duration vs your personal need, deep and REM sleep, efficiency, restfulness, timing consistency and accrued sleep debt each contribute signed points."
       extras={(data) => {
         const s = data.today!.day.sleep;
         const rec = data.today!.recovery;

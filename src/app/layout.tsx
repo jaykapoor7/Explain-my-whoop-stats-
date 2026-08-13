@@ -7,9 +7,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
 
 export const metadata: Metadata = {
-  title: { default: "Health OS", template: "%s · Health OS" },
+  title: { default: "CURA", template: "%s · CURA" },
   description:
-    "An open-source personal Health OS: scores, explanations, and personal patterns from your wearable, nutrition, medication, journal and planner.",
+    "CURA turns your wearable into clear daily scores, plain-English explanations and personal patterns — recovery, sleep, strain, energy and more.",
 };
 
 export const viewport: Viewport = {

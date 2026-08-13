@@ -1,12 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Card, PageHeader, Section, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { addDays, cn, fmtDate, fmtNum, isoOf, relativeDay, todayISO } from "@/lib/format";
 import { JournalEntry, JournalRatings } from "@/lib/types";
+import type { ScoredDay } from "@/lib/scoring/engine";
+
+interface TagImpact { tag: string; n: number; withAvg: number; delta: number; }
+
+/** For a tag, how recovery on the days you logged it compares to days you didn't. */
+function tagImpact(days: ScoredDay[], tag: string): TagImpact | null {
+  const withTag: number[] = [];
+  const without: number[] = [];
+  for (const s of days) {
+    if (s.recovery.available === false) continue;
+    (s.day.journal?.tags.some((t) => t.label === tag) ? withTag : without).push(s.recovery.score);
+  }
+  if (withTag.length < 2) return null;
+  const mean = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
+  const mw = mean(withTag);
+  const mo = without.length ? mean(without) : mw;
+  return { tag, n: withTag.length, withAvg: Math.round(mw), delta: Math.round(mw - mo) };
+}
 
 const RATING_KEYS: { key: keyof JournalRatings; label: string; color: string }[] = [
   { key: "mood", label: "Mood", color: "#13b57e" },
@@ -72,6 +90,18 @@ export default function JournalPage() {
 
   const journalInsights = data.insights.filter((i) => i.domain === "journal");
   const recentDates = Array.from({ length: 30 }, (_, i) => addDays(todayISO(), -i)).filter((d) => journalMap[d]);
+
+  // Impact: recovery on days with each tag vs without. Prefer the selected
+  // day's tags; otherwise surface the strongest patterns across all your tags.
+  const selectedImpacts = draft.tags
+    .map((t) => tagImpact(data.days, t.label))
+    .filter((x): x is TagImpact => x !== null);
+  const allTags = Array.from(new Set(Object.values(journalMap).flatMap((j) => j.tags.map((t) => t.label))));
+  const overallImpacts = allTags
+    .map((t) => tagImpact(data.days, t))
+    .filter((x): x is TagImpact => x !== null)
+    .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+  const impacts = (selectedImpacts.length ? selectedImpacts : overallImpacts).slice(0, 6);
 
   return (
     <div className="animate-fadeUp">
@@ -232,11 +262,47 @@ export default function JournalPage() {
         </div>
       </div>
 
+      <Section
+        title="Journal impact"
+        sub={selectedImpacts.length ? `How ${relativeDay(selected).toLowerCase()}'s tags line up with your recovery` : "How your tags line up with your recovery"}
+      >
+        {impacts.length ? (
+          <Card className="divide-y divide-black/[0.05] p-0">
+            {impacts.map((im) => {
+              const good = im.delta >= 0;
+              const c = good ? "#13b57e" : "#ef5a45";
+              return (
+                <div key={im.tag} className="flex items-center gap-3 px-4 py-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${c}1f`, color: c }}>
+                    {good ? <TrendingUp size={15} /> : <TrendingDown size={15} />}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-medium text-ink-100">{im.tag}</div>
+                    <div className="text-[11px] text-ink-500">
+                      recovery averages <span className="tabular text-ink-300">{im.withAvg}%</span> on these days · n = {im.n}
+                    </div>
+                  </div>
+                  <span className="tabular text-sm font-semibold" style={{ color: c }}>
+                    {good ? "+" : ""}{im.delta}
+                    <span className="ml-0.5 text-[10px] font-normal text-ink-500">vs other days</span>
+                  </span>
+                </div>
+              );
+            })}
+          </Card>
+        ) : (
+          <Card className="p-5 text-center text-xs leading-relaxed text-ink-400">
+            Log a tag on a few days and CURA will show how each one lines up with your recovery here. It needs at least
+            two days with a tag to compare.
+          </Card>
+        )}
+      </Section>
+
       <div className="mt-8">
         <Why summary="How does the journal power insights?">
-          Every tag becomes a variable the pattern engine can compare against your physiology — e.g. HRV, recovery and
-          sleep on days after you smoked vs days you didn&apos;t, always with the sample size shown. Associations are
-          reported observationally and never as proof of cause.
+          Every tag becomes a variable CURA can compare against your physiology — e.g. HRV, recovery and sleep on days
+          after you smoked vs days you didn&apos;t, always with the sample size shown. Associations are reported
+          observationally and never as proof of cause.
         </Why>
       </div>
     </div>

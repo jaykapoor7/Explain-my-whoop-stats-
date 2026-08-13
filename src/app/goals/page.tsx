@@ -76,16 +76,26 @@ export default function GoalsPage() {
                     <Check size={10} strokeWidth={3} /> on track
                   </span>
                 )}
-                <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-400">
-                  <span>target</span>
-                  <input
-                    type="number"
-                    value={g.target}
-                    onChange={(e) => setGoalTarget(g.id, Math.max(0, parseFloat(e.target.value) || 0))}
-                    className="tabular h-7 w-20 rounded-lg border border-black/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
-                  />
-                  <span>{g.unit}</span>
-                </div>
+                {(() => {
+                  // Sleep is stored in minutes but is far more natural to enter in hours.
+                  const inHours = g.unit === "min";
+                  return (
+                    <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-400">
+                      <span>target</span>
+                      <input
+                        type="number"
+                        step={inHours ? 0.5 : g.kind === "weight" ? 0.1 : 1}
+                        value={inHours ? g.target / 60 : g.target}
+                        onChange={(e) => {
+                          const v = Math.max(0, parseFloat(e.target.value) || 0);
+                          setGoalTarget(g.id, inHours ? Math.round(v * 60) : v);
+                        }}
+                        className="tabular h-7 w-20 rounded-lg border border-black/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
+                      />
+                      <span>{inHours ? "h" : g.unit}</span>
+                    </div>
+                  );
+                })()}
               </div>
               <div className="mt-2.5">
                 <ProgressBar

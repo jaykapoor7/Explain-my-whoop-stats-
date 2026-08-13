@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Check, ChevronDown, Footprints, Sparkles } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
-import { FitbitCard } from "@/components/connect";
+import { Landing } from "@/components/landing";
 import { HealthAgeCard } from "@/components/health-age";
 import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
@@ -59,6 +59,9 @@ export default function TodayPage() {
   if (!data.hydrated) return <SkeletonPage />;
 
   const t = data.today;
+  // No wearable data yet → the CURA landing (sign in) instead of an empty shell.
+  if (!t) return <Landing />;
+
   const goals = data.goals;
   const kcalGoal = goals.find((g) => g.kind === "calories")?.target ?? 2400;
   const proteinGoal = goals.find((g) => g.kind === "protein")?.target ?? 150;
@@ -73,12 +76,12 @@ export default function TodayPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
-        title={t ? relativeDay(t.day.date) : "Welcome"}
-        sub={t ? `${fmtDateLong(t.day.date)} — ${data.isLatest ? "here's how you're doing." : "how this day went."}` : "Your Health OS — connect your Fitbit to bring it to life."}
-        right={t ? <DaySwitcher /> : undefined}
+        title={relativeDay(t.day.date)}
+        sub={`${fmtDateLong(t.day.date)} — ${data.isLatest ? "here's how you're doing." : "how this day went."}`}
+        right={<DaySwitcher />}
       />
 
-      {t ? (
+      {t && (
         <>
           <Card className="mt-5">
             <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
@@ -146,10 +149,6 @@ export default function TodayPage() {
             </Card>
           </details>
         </>
-      ) : (
-        <div className="mt-5">
-          <FitbitCard autoSyncOnConnected />
-        </div>
       )}
 
       {t && (

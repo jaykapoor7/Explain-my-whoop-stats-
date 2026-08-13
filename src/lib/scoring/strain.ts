@@ -1,6 +1,6 @@
 import { Activity, DailySummary, StrainScore } from "../types";
 import { clamp } from "../format";
-import { build, term } from "./sleep";
+import { build, term, unavailable } from "./sleep";
 
 /**
  * StrainCalculator — deterministic mock on a 0..21 scale.
@@ -21,22 +21,34 @@ export function countedActivities(day: DailySummary): Activity[] {
 
 export function calcStrain(day: DailySummary): StrainScore {
   const counted = countedActivities(day);
-  const ambient = clamp((day.steps - 4000) / 4500, 0, 2.2);
+  // No workout AND no step data has come through yet → there's nothing to score,
+  // so show "no data" rather than a misleading 0.0.
+  if (counted.length === 0 && day.steps <= 0) {
+    return unavailable("strain", 21, "No movement yet", "Strain appears once your device records steps or a workout for the day.");
+  }
+
+  // Ambient load from all-day movement — scales smoothly from the first steps
+  // (so a light day reads light, never a flat 0.0) and is capped so walking
+  // alone can't dominate a real training day.
+  const ambient = clamp(day.steps / 2500, 0, 5);
   const terms = [
     ...counted.map((a) =>
-      term(a.type, a.load, `${a.durationMin}m · avg ${a.avgHr} bpm · ${a.calories} kcal`)
+      term(a.type, a.load, `${a.durationMin}m${a.avgHr > 0 ? ` · avg ${a.avgHr} bpm` : ""}${a.calories > 0 ? ` · ${a.calories} kcal` : ""}`)
     ),
-    term("Daily movement", ambient, `${day.steps.toLocaleString()} steps`),
+    ...(day.steps > 0 ? [term("Daily movement", ambient, `${day.steps.toLocaleString()} steps`)] : []),
   ];
   const total = clamp(counted.reduce((s, a) => s + a.load, 0) + ambient, 0, 21);
+  const rounded = Math.round(total * 10) / 10;
   const ignoredLow = day.activities.filter((a) => a.confidence === "low" && a.resolved !== "confirmed").length;
+  const lead = counted.length
+    ? `${counted.length} counted ${counted.length === 1 ? "activity" : "activities"} for ${rounded.toFixed(1)} load.`
+    : `A light day — daily movement only, for ${rounded.toFixed(1)} load.`;
   return build(
     "strain",
     21,
-    Math.round(total * 10) / 10,
+    rounded,
     terms,
     total >= 15 ? "All-out" : total >= 10 ? "Demanding" : total >= 6 ? "Moderate" : "Light",
-    `${counted.length} counted ${counted.length === 1 ? "activity" : "activities"} for ${(Math.round(total * 10) / 10).toFixed(1)} load.` +
-      (ignoredLow ? ` ${ignoredLow} unrecognized HR spike${ignoredLow > 1 ? "s" : ""} excluded pending your review.` : "")
+    lead + (ignoredLow ? ` ${ignoredLow} unrecognized HR spike${ignoredLow > 1 ? "s" : ""} excluded pending your review.` : "")
   );
 }

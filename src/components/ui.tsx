@@ -52,10 +52,10 @@ export function Section({ title, sub, action, children, className }: { title: st
       viewport={{ once: true, margin: "-50px" }}
       transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
     >
-      <div className="mb-3 flex items-end justify-between gap-3">
+      <div className="mb-3.5 flex items-end justify-between gap-3">
         <div>
-          <h2 className="font-display text-[15px] font-semibold tracking-tight text-ink-50">{title}</h2>
-          {sub && <p className="mt-0.5 text-xs text-ink-400">{sub}</p>}
+          <h2 className="font-display text-xl font-bold tracking-tight text-ink-50">{title}</h2>
+          {sub && <p className="mt-1 text-[13px] text-ink-400">{sub}</p>}
         </div>
         {action}
       </div>
@@ -318,8 +318,8 @@ export function PageHeader({ title, sub, right }: { title: string; sub?: string;
   return (
     <div className="flex flex-wrap items-end justify-between gap-3">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-ink-50">{title}</h1>
-        {sub && <p className="mt-1 text-sm text-ink-400">{sub}</p>}
+        <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[2.5rem]">{title}</h1>
+        {sub && <p className="mt-1.5 max-w-xl text-[15px] leading-snug text-ink-400">{sub}</p>}
       </div>
       {right}
     </div>

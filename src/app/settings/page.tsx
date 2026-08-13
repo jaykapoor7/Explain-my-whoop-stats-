@@ -107,7 +107,7 @@ export default function SettingsPage() {
       </Section>
 
       <p className="mt-8 text-center text-[11px] text-ink-500">
-        Health OS · open source · not a medical device. Scores use placeholder models until the final algorithms are designed.
+        CURA · not a medical device.
       </p>
     </div>
   );

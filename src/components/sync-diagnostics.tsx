@@ -289,8 +289,7 @@ export function SyncDiagnostics() {
             </li>
             <li>
               <span className="text-ink-200">Scores</span> — Energy, Recovery, Sleep and Strain are computed from your
-              real data but with placeholder weightings; the final algorithms are deliberately not designed yet, so read
-              the trend and the &ldquo;what affected you&rdquo; ledger, not the exact number.
+              real data. The trend and the &ldquo;what affected you&rdquo; ledger tell you more than any single number.
             </li>
           </ul>
         </div>

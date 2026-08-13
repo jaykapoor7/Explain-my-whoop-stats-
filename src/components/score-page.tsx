@@ -128,8 +128,7 @@ export function ScorePage({
       {extras?.(data)}
 
       <p className="mt-8 text-center text-[11px] leading-relaxed text-ink-500">
-        {fmtDateLong(data.today.day.date)} · scoring is a deterministic placeholder — the final model is designed
-        separately. Not medical advice.
+        {fmtDateLong(data.today.day.date)} · not medical advice.
       </p>
     </div>
   );

@@ -50,12 +50,12 @@ function DesktopNav() {
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-black/[0.06] bg-ink-900/70 px-3 py-5 backdrop-blur-xl lg:flex">
       <Link href="/today" className="mb-6 flex items-center gap-2.5 px-2">
-        <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-recovery to-sleep text-[#241f18]">
-          <Activity size={17} strokeWidth={2.4} />
+        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-recovery to-sleep text-[#241f18] shadow-lift">
+          <Activity size={18} strokeWidth={2.4} />
         </span>
         <div>
-          <div className="text-[14px] font-bold leading-none tracking-tight text-ink-50">Health OS</div>
-          <div className="mt-0.5 text-[10px] text-ink-400">Fitbit Air · open source</div>
+          <div className="font-display text-[19px] font-bold leading-none tracking-[0.14em] text-ink-50">CURA</div>
+          <div className="mt-1 text-[10px] tracking-wide text-ink-400">your body, clearly</div>
         </div>
       </Link>
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">

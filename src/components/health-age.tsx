@@ -118,8 +118,8 @@ export function HealthAgeCard() {
             rate, sleep duration, efficiency and consistency, daily steps, how often you train, and your average recovery
             — and compares each against rough age-expected values, nudging your calendar age up or down. Higher, steadier
             HRV, a low resting HR, consistent quality sleep and regular training read younger; erratic HRV, short or
-            irregular sleep and low activity read older. This is a deterministic estimate for motivation, not a validated
-            clinical measure — and never medical advice.
+            irregular sleep and low activity read older. This is an estimate for motivation, not a validated clinical
+            measure — and never medical advice.
           </Why>
         </>
       )}

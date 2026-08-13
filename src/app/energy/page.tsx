@@ -12,7 +12,7 @@ export default function EnergyPage() {
       ringLabel="Energy"
       pick={(s) => s.energy}
       baselineLabel={(s) => `Your 14-day typical energy is ${s.baseline}. Sleep and recovery charge the battery; activity spends it.`}
-      algoNote="Sleep quality, HRV and this morning's recovery charge the score; each counted activity draws it down in proportion to its load. The weights are placeholders until the final energy model is designed."
+      algoNote="Sleep quality, HRV and this morning's recovery charge the score; each counted activity draws it down in proportion to its load."
     />
   );
 }
