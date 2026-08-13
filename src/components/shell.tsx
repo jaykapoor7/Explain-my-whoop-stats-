@@ -164,7 +164,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <AutoSync />
       <DesktopNav />
       <MobileNav />
-      <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-4xl lg:pb-12 lg:pt-8 xl:mx-auto xl:pl-56">
+      <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-5xl lg:pb-12 lg:pt-8 xl:mx-auto xl:max-w-6xl xl:pl-56">
         {children}
       </main>
     </div>

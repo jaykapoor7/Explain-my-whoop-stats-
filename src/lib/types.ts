@@ -184,6 +184,7 @@ export interface PlannerTask {
   done: boolean;
   recurring?: "daily" | "weekly" | "weekdays";
   notes?: string;
+  todo?: boolean; // true = undated backlog item (lives in the to-do list, not a day)
 }
 
 // ---------------- Goals ----------------

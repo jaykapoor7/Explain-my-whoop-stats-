@@ -145,10 +145,6 @@ export default function TodayPage() {
               <ContributorLedger contributors={dayLedger(t)} />
             </Card>
           </details>
-
-          <Section title="Health Age" sub="How old your body reads vs the calendar">
-            <HealthAgeCard />
-          </Section>
         </>
       ) : (
         <div className="mt-5">
@@ -156,9 +152,33 @@ export default function TodayPage() {
         </div>
       )}
 
+      {t && (
+      <div className="mt-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5">
+      {/* Left column */}
+      <div className="space-y-8">
+      <Section className="mt-0" title="Health Age" sub="How old your body reads vs the calendar">
+        <HealthAgeCard />
+      </Section>
+
+      {data.insights[0] && (
+        <Section className="mt-0" title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
+          <Card className="flex items-start gap-3 p-4">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
+              <Sparkles size={15} />
+            </span>
+            <div>
+              <p className="text-sm font-medium text-ink-100">{data.insights[0].title}</p>
+              <p className="mt-1 text-xs leading-relaxed text-ink-400">{data.insights[0].detail}</p>
+            </div>
+          </Card>
+        </Section>
+      )}
+      </div>
+
+      {/* Right column */}
       {data.isLatest && (
-      <>
-      <Section title="Today's essentials">
+      <div className="mt-8 space-y-8 lg:mt-0">
+      <Section className="mt-0" title="Today's essentials">
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href="/nutrition">
             <Card className="p-4 transition-all hover:-translate-y-0.5 hover:shadow-lift">
@@ -241,7 +261,7 @@ export default function TodayPage() {
         </div>
       </Section>
 
-      <Section title="Plan" action={<Link href="/planner" className="text-xs font-medium text-ink-300 hover:text-ink-100">Planner →</Link>}>
+      <Section className="mt-0" title="Plan" action={<Link href="/planner" className="text-xs font-medium text-ink-300 hover:text-ink-100">Planner →</Link>}>
         <Card className="p-4">
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] font-semibold text-ink-100">Today</span>
@@ -261,21 +281,9 @@ export default function TodayPage() {
           </div>
         </Card>
       </Section>
-      </>
+      </div>
       )}
-
-      {data.insights[0] && (
-        <Section title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
-          <Card className="flex items-start gap-3 p-4">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
-              <Sparkles size={15} />
-            </span>
-            <div>
-              <p className="text-sm font-medium text-ink-100">{data.insights[0].title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-ink-400">{data.insights[0].detail}</p>
-            </div>
-          </Card>
-        </Section>
+      </div>
       )}
     </div>
   );

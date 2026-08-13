@@ -22,19 +22,35 @@ export function calcRecovery(
   if (!sleepOk) {
     return unavailable("recovery", 100, "Awaiting sleep", "Recovery is calculated once last night's sleep has been recorded and processed.");
   }
-  const hrvDelta = day.hrv.rmssdMs - baseline.hrvMs;
+  const clampV = (v: number, lo: number, hi: number) => clamp(v, lo, hi);
+  // HRV is the primary autonomic signal — measured as % deviation from your
+  // own baseline so it reads the same whether your typical HRV is 40 or 90 ms.
+  const hrvPct = baseline.hrvMs > 0 ? (day.hrv.rmssdMs - baseline.hrvMs) / baseline.hrvMs : 0;
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
+
   const terms: Contributor[] = [];
-  if (hasHrv(day)) terms.push(term("HRV vs baseline", hrvDelta * 1.1, `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`));
-  if (hasRhr(day)) terms.push(term("Resting HR", -rhrDelta * 2.2, `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`));
-  if (sleepOk) {
-    terms.push(term("Sleep", (sleep.score - 65) * 0.45, `Last night scored ${Math.round(sleep.score)}`));
-    terms.push(term("Sleep consistency", (day.sleep.consistencyPct - 78) * 0.12, `${day.sleep.consistencyPct}% regular timing`));
-  }
-  terms.push(term("Yesterday's strain", -(prevStrain - 10) * 1.4, `${prevStrain.toFixed(1)} load yesterday`));
-  const score = clamp(58 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  if (hasHrv(day))
+    terms.push(term("HRV", clampV(hrvPct * 55, -26, 24),
+      `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical (${signedPct(hrvPct)})`));
+  if (hasRhr(day))
+    terms.push(term("Resting HR", clampV(-rhrDelta * 2.3, -22, 16),
+      `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`));
+  terms.push(term("Sleep quality", clampV((sleep.score - 65) * 0.42, -18, 15),
+    `Last night scored ${Math.round(sleep.score)}/100`));
+  terms.push(term("Sleep debt", clampV(-day.sleep.debtMin / 22, -8, 2),
+    day.sleep.debtMin > 0 ? `${fmtShort(day.sleep.debtMin)} accrued shortfall` : "well rested"));
+  // Acute vs chronic training load: yesterday's strain measured against your
+  // rolling-two-week typical, not a fixed number — spiking above your norm costs
+  // recovery, backing off returns some.
+  const loadGap = prevStrain - baseline.strain;
+  terms.push(term("Training load", clampV(-loadGap * 1.5, -20, 10),
+    `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`));
+
+  const score = clamp(55 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 67 ? "Primed" : score >= 34 ? "Adequate" : "Compromised";
-  const top = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points))[0];
+  const ranked = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
+  const topHurt = [...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0];
+  const topHelp = ranked.find((t) => t.points > 0);
   return build(
     "recovery",
     100,
@@ -42,9 +58,12 @@ export function calcRecovery(
     terms,
     status,
     status === "Primed"
-      ? `Your body absorbed yesterday's load — biggest driver: ${top.label.toLowerCase()}.`
+      ? `Your body absorbed yesterday's load and is ready for more${topHelp ? ` — led by ${topHelp.label.toLowerCase()}` : ""}.`
       : status === "Adequate"
-        ? `Partial recovery. The main thing holding you back is ${[...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0]?.label.toLowerCase() ?? "accumulated load"}.`
-        : `Your body is still repairing. Ease off — ${[...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0]?.label.toLowerCase() ?? "load"} hit hardest.`
+        ? `Partial recovery — you can train, but keep it moderate. Biggest drag: ${topHurt?.label.toLowerCase() ?? "accumulated load"}.`
+        : `Your body is still repairing. Prioritise rest today — ${topHurt?.label.toLowerCase() ?? "load"} hit hardest.`
   );
 }
+
+const fmtShort = (min: number) => (min >= 60 ? `${Math.floor(min / 60)}h ${Math.round(min % 60)}m` : `${Math.round(min)}m`);
+const signedPct = (frac: number) => `${frac >= 0 ? "+" : ""}${Math.round(frac * 100)}%`;

@@ -30,6 +30,11 @@ export interface HealthAgeResult {
 }
 
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN);
+const std = (xs: number[]) => {
+  if (xs.length < 2) return NaN;
+  const m = mean(xs);
+  return Math.sqrt(mean(xs.map((x) => (x - m) ** 2)));
+};
 
 // Rough adult age-expected references (placeholders, not clinical).
 const expectedHrv = (age: number) => clamp(68 - (age - 20) * 0.85, 18, 80); // ms, declines with age
@@ -48,11 +53,20 @@ export function calcHealthAge(days: ScoredDay[], actualAge: number | undefined):
   };
   if (!actualAge) return { ...base, reason: "set-age" };
 
-  const recent = days.slice(-21).map((s) => s.day);
-  const hrv = mean(recent.filter((d) => d.hrv.rmssdMs > 0).map((d) => d.hrv.rmssdMs));
+  const recentDays = days.slice(-28);
+  const recent = recentDays.map((s) => s.day);
+  const hrvSeries = recent.filter((d) => d.hrv.rmssdMs > 0).map((d) => d.hrv.rmssdMs);
+  const hrv = mean(hrvSeries);
+  const hrvCv = isFinite(std(hrvSeries)) && hrv > 0 ? std(hrvSeries) / hrv : NaN; // coefficient of variation
   const rhr = mean(recent.filter((d) => d.rhr.bpm > 0).map((d) => d.rhr.bpm));
   const sleepMin = mean(recent.filter((d) => d.sleep.asleepMin > 0).map((d) => d.sleep.asleepMin));
+  const sleepEff = mean(recent.filter((d) => d.sleep.efficiencyPct > 0).map((d) => d.sleep.efficiencyPct));
+  const consistency = mean(recent.filter((d) => d.sleep.consistencyPct > 0).map((d) => d.sleep.consistencyPct));
   const steps = mean(recent.filter((d) => d.steps > 0).map((d) => d.steps));
+  const recoveryAvg = mean(recentDays.filter((s) => s.recovery.available !== false).map((s) => s.recovery.score));
+  // Structured training: share of days with a real counted workout.
+  const trainingDays = recent.filter((d) => d.activities.some((a) => a.confidence !== "low" && a.durationMin >= 15)).length;
+  const trainingRate = recent.length ? trainingDays / recent.length : NaN; // 0..1
   const nCore = recent.filter((d) => d.hrv.rmssdMs > 0 || d.rhr.bpm > 0).length;
   if (nCore < 5) return { ...base, actualAge, reason: "need-data" };
 
@@ -64,13 +78,22 @@ export function calcHealthAge(days: ScoredDay[], actualAge: number | undefined):
   };
 
   let adj = 0;
+  // --- Cardiovascular / autonomic ---
   if (isFinite(hrv)) adj += push("HRV", -(hrv - expectedHrv(actualAge)) * 0.11, `${Math.round(hrv)} ms vs ~${Math.round(expectedHrv(actualAge))} expected for your age`);
+  if (isFinite(hrvCv)) adj += push("HRV stability", (hrvCv - 0.12) * 26, `${Math.round(hrvCv * 100)}% night-to-night variation`);
   if (isFinite(rhr)) adj += push("Resting heart rate", (rhr - expectedRhr(actualAge)) * 0.32, `${Math.round(rhr)} bpm vs ~${Math.round(expectedRhr(actualAge))} expected`);
+  // --- Sleep ---
   if (isFinite(sleepMin)) {
     const h = sleepMin / 60;
-    adj += push("Sleep", (Math.abs(h - 7.75) - 0.6) * 1.1, `${h.toFixed(1)}h average per night`);
+    adj += push("Sleep duration", (Math.abs(h - 7.75) - 0.6) * 1.1, `${h.toFixed(1)}h average per night`);
   }
-  if (isFinite(steps)) adj += push("Daily activity", -((steps - 7000) / 3500) * 1.1, `${Math.round(steps).toLocaleString()} steps/day`);
+  if (isFinite(sleepEff)) adj += push("Sleep efficiency", -(sleepEff - 88) * 0.09, `${Math.round(sleepEff)}% asleep in bed`);
+  if (isFinite(consistency)) adj += push("Sleep consistency", -(consistency - 80) * 0.05, `${Math.round(consistency)}% regular timing`);
+  // --- Activity / fitness ---
+  if (isFinite(steps)) adj += push("Daily activity", -((steps - 7000) / 3500) * 1.0, `${Math.round(steps).toLocaleString()} steps/day`);
+  if (isFinite(trainingRate)) adj += push("Structured training", -(trainingRate - 0.3) * 4.5, `${trainingDays} workout day${trainingDays === 1 ? "" : "s"} in ${recent.length}`);
+  // --- Recovery capacity ---
+  if (isFinite(recoveryAvg)) adj += push("Recovery capacity", -(recoveryAvg - 60) * 0.05, `${Math.round(recoveryAvg)}% average recovery`);
 
   const physioAge = Math.round(clamp(actualAge + adj, 13, 100));
   const delta = physioAge - actualAge;
