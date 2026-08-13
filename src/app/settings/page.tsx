@@ -67,8 +67,8 @@ export default function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Data source" sub="Google Health API (successor to the Fitbit Web API) — Google OAuth 2.0, tokens in a secure cookie, data stored only on this device">
-        <FitbitCard autoSyncOnConnected />
+      <Section title="Data source" sub="Sign in with Google to connect your Fitbit / Google Health data; it then syncs to every device you sign in on">
+        <FitbitCard autoSyncOnConnected advanced />
       </Section>
 
       <Section title="Sync diagnostics" sub="Check what the last sync actually pulled from Fitbit, and which numbers are real vs estimated">
@@ -81,10 +81,10 @@ export default function SettingsPage() {
             <ShieldCheck size={16} />
           </span>
           <p className="text-xs leading-relaxed text-ink-400">
-            All of your edits — journal, medication logs, meals, tasks — live in this browser&apos;s local storage and
-            never leave your device in this build. Medication and journal data are treated as sensitive: excluded from
-            any future analytics by default, and never used to train models. No secrets or personal data are committed
-            to the repository; credentials will use environment variables.
+            When you&apos;re signed in, your data is stored in your own account&apos;s database so it syncs across your
+            devices; signed out, it stays only in this browser. Medication and journal data are treated as sensitive:
+            excluded from any future analytics by default, and never used to train models. Google tokens are encrypted
+            at rest and no secrets are committed to the repository — credentials use environment variables.
           </p>
         </Card>
       </Section>

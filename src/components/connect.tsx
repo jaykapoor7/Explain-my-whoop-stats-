@@ -73,7 +73,7 @@ export function useFitbit() {
 }
 
 /** Full connect card: one-tap connect, self-host setup, device pairing + sync. */
-export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnected?: boolean }) {
+export function FitbitCard({ autoSyncOnConnected = false, advanced = false }: { autoSyncOnConnected?: boolean; advanced?: boolean }) {
   const { status, busy, message, sync, saveCreds, disconnect } = useFitbit();
   const account = useAccount();
   const lastSync = useApp((s) => s.lastSync);
@@ -128,19 +128,21 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
             <div className="mt-3">
               <button
                 onClick={() => (window.location.href = "/api/fitbit/connect")}
-                disabled={!oneTap}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-recovery px-4 py-3 text-sm font-semibold text-[#241f18] shadow-lift transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-recovery px-4 py-3 text-sm font-semibold text-[#241f18] shadow-lift transition hover:brightness-[1.03] sm:w-auto"
               >
                 <LogIn size={15} /> Sign in with Google
               </button>
-              <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-500">
-                <Smartphone size={13} className="mt-px shrink-0" />
-                Sign in with the same Google account on any device and everything is already there. Or, from a
-                connected device, use <span className="font-medium text-ink-400">Add a device</span> to scan a QR.
-              </p>
+              <div className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-500">
+                <Smartphone size={13} className="mt-0.5 shrink-0" />
+                <p>
+                  Sign in with the same Google account on any device and everything is already there. Or, from a
+                  connected device, use <span className="font-medium text-ink-400">Add a device</span> to scan a QR.
+                </p>
+              </div>
 
-              {/* Self-hosting: bring-your-own Google app, tucked away for those who need it. */}
-              {!oneTap && (
+              {/* Self-hosting: bring-your-own Google app. Only surfaced in Settings
+                  (advanced), never on the landing / connect gates. */}
+              {advanced && !oneTap && (
                 <div className="mt-3 rounded-xl border border-black/[0.07] bg-black/[0.02]">
                   <button
                     onClick={() => setShowSetup((v) => !v)}
