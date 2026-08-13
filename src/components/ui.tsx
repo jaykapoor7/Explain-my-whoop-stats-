@@ -64,7 +64,7 @@ export function Section({ title, sub, action, children, className }: { title: st
   );
 }
 
-/** Big score ring with arc fill; the visual anchor of every score page. */
+/** Big score ring with a gradient arc, soft halo glow and a leading-edge dot. */
 export function ScoreRing({
   score,
   scale = 100,
@@ -80,24 +80,37 @@ export function ScoreRing({
   label?: string;
   sublabel?: string;
 }) {
-  const stroke = size >= 120 ? 11 : 8;
+  const big = size >= 120;
+  const stroke = big ? 12 : 8.5;
   const r = (size - stroke) / 2;
+  const cx = size / 2;
   const c = 2 * Math.PI * r;
   const frac = Math.max(0.015, Math.min(1, score / scale));
-  const gid = `ring-${color.replace(/[^a-z0-9]/gi, "")}-${size}`;
+  const key = color.replace(/[^a-z0-9]/gi, "");
+  const gid = `ring-${key}-${size}`;
+  // Leading edge of the arc, in the SVG's own (pre-rotation) coordinates.
+  const theta = frac * 2 * Math.PI;
+  const dotX = cx + r * Math.cos(theta);
+  const dotY = cx + r * Math.sin(theta);
   return (
-    <div className="relative shrink-0" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90">
+    <div className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
+      {/* soft coloured halo behind the ring */}
+      <div
+        className="pointer-events-none absolute rounded-full"
+        style={{ inset: size * 0.14, background: color, filter: `blur(${size * 0.16}px)`, opacity: 0.18 }}
+      />
+      <svg width={size} height={size} className="relative" style={{ transform: "rotate(-90deg)" }}>
         <defs>
           <linearGradient id={gid} x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor={color} stopOpacity="0.6" />
+            <stop offset="0%" stopColor={color} stopOpacity="0.5" />
+            <stop offset="55%" stopColor={color} stopOpacity="0.92" />
             <stop offset="100%" stopColor={color} />
           </linearGradient>
         </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth={stroke} />
+        <circle cx={cx} cy={cx} r={r} fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth={stroke} />
         <motion.circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={cx}
+          cy={cx}
           r={r}
           fill="none"
           stroke={`url(#${gid})`}
@@ -106,9 +119,23 @@ export function ScoreRing({
           strokeDasharray={c}
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: c * (1 - frac) }}
-          transition={{ duration: 1.2, ease: [0.22, 0.61, 0.36, 1] }}
-          style={{ filter: `drop-shadow(0 0 ${size >= 120 ? 7 : 4}px ${color}66)` }}
+          transition={{ duration: 1.25, ease: [0.22, 0.61, 0.36, 1] }}
+          style={{ filter: `drop-shadow(0 0 ${big ? 8 : 4}px ${color}5c)` }}
         />
+        {big && (
+          <motion.circle
+            cx={dotX}
+            cy={dotY}
+            r={stroke / 2 - 1.5}
+            fill="#fff"
+            stroke={color}
+            strokeWidth={2}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 1.25, duration: 0.4 }}
+            style={{ filter: `drop-shadow(0 0 5px ${color})` }}
+          />
+        )}
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <CountUp

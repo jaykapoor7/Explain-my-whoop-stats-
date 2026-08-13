@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, Footprints, Sparkles } from "lucide-react";
+import { Check, ChevronDown, Footprints, Sparkles } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { FitbitCard } from "@/components/connect";
 import { HealthAgeCard } from "@/components/health-age";
@@ -105,44 +105,46 @@ export default function TodayPage() {
             <Why summary="Explain my day">{explainDay(t)}</Why>
           </Card>
 
-          <Section title="What affected you" sub="The signed ledger behind today's state">
-            <Card>
+          <div className="mt-4 flex gap-3">
+            <DialTile
+              href="/recovery"
+              label="Recovery"
+              score={t.recovery.score}
+              color={DOMAIN_COLOR.recovery}
+              available={t.recovery.available !== false}
+              sub={t.recovery.status}
+              delta={t.recovery.deltaVsYesterday}
+            />
+            <DialTile
+              href="/strain"
+              label="Strain"
+              score={t.strain.score}
+              scale={t.strain.scale}
+              color={DOMAIN_COLOR.strain}
+              available={t.strain.available !== false}
+              sub={t.strain.status}
+              delta={t.strain.deltaVsYesterday}
+            />
+            <DialTile
+              href="/sleep"
+              label="Sleep"
+              score={t.sleep.score}
+              color={DOMAIN_COLOR.sleep}
+              available={t.sleep.available !== false}
+              sub={t.sleep.available === false ? undefined : fmtDuration(t.day.sleep.asleepMin)}
+              delta={t.sleep.deltaVsYesterday}
+            />
+          </div>
+
+          <details className="group mt-4">
+            <summary className="flex cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-black/[0.02] px-4 py-3 text-[13px] font-medium text-ink-200 transition-colors hover:bg-black/[0.035] [&::-webkit-details-marker]:hidden">
+              <span className="flex-1">What affected you today</span>
+              <ChevronDown size={15} className="text-ink-400 transition-transform group-open:rotate-180" />
+            </summary>
+            <Card className="mt-2">
               <ContributorLedger contributors={dayLedger(t)} />
             </Card>
-          </Section>
-
-          <Section title="Your day at a glance" sub="The three pillars behind your energy">
-            <div className="flex gap-3">
-              <DialTile
-                href="/recovery"
-                label="Recovery"
-                score={t.recovery.score}
-                color={DOMAIN_COLOR.recovery}
-                available={t.recovery.available !== false}
-                sub={t.recovery.status}
-                delta={t.recovery.deltaVsYesterday}
-              />
-              <DialTile
-                href="/strain"
-                label="Strain"
-                score={t.strain.score}
-                scale={t.strain.scale}
-                color={DOMAIN_COLOR.strain}
-                available={t.strain.available !== false}
-                sub={t.strain.status}
-                delta={t.strain.deltaVsYesterday}
-              />
-              <DialTile
-                href="/sleep"
-                label="Sleep"
-                score={t.sleep.score}
-                color={DOMAIN_COLOR.sleep}
-                available={t.sleep.available !== false}
-                sub={t.sleep.available === false ? undefined : fmtDuration(t.day.sleep.asleepMin)}
-                delta={t.sleep.deltaVsYesterday}
-              />
-            </div>
-          </Section>
+          </details>
 
           <Section title="Health Age" sub="How old your body reads vs the calendar">
             <HealthAgeCard />
