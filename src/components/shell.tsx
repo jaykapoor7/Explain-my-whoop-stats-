@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
+import { AccountProvider, AccountChip } from "@/components/account";
 
 const NAV = [
   { href: "/today", label: "Today", icon: Sun, color: "#211c14" },
@@ -82,6 +83,9 @@ function DesktopNav() {
           );
         })}
       </nav>
+      <div className="mt-2 shrink-0 pt-2">
+        <AccountChip />
+      </div>
     </aside>
   );
 }
@@ -137,6 +141,7 @@ function MobileNav() {
                   <X size={18} />
                 </button>
               </div>
+              <div className="mb-4"><AccountChip /></div>
               <div className="grid grid-cols-4 gap-3">
                 {rest.map(({ href, label, icon: Icon, color }) => (
                   <Link
@@ -160,13 +165,15 @@ function MobileNav() {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div className="min-h-screen">
-      <AutoSync />
-      <DesktopNav />
-      <MobileNav />
-      <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-5xl lg:pb-12 lg:pt-8 xl:mx-auto xl:max-w-6xl xl:pl-56">
-        {children}
-      </main>
-    </div>
+    <AccountProvider>
+      <div className="min-h-screen">
+        <AutoSync />
+        <DesktopNav />
+        <MobileNav />
+        <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-5xl lg:pb-12 lg:pt-8 xl:mx-auto xl:max-w-6xl xl:pl-56">
+          {children}
+        </main>
+      </div>
+    </AccountProvider>
   );
 }

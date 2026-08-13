@@ -32,6 +32,7 @@ export const COOKIES = {
   token: "hos_gh_token",
   state: "hos_gh_state",
   verifier: "hos_gh_verifier",
+  session: "hos_session",
 };
 
 export interface ClientCreds {
@@ -43,6 +44,7 @@ export interface TokenSet {
   access_token: string;
   refresh_token: string;
   expires_at: number; // epoch ms
+  id_token?: string; // present on the initial sign-in exchange (Google OIDC)
 }
 
 const b64url = (b: Buffer) => b.toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -54,8 +56,13 @@ export function pkcePair() {
   return { verifier, challenge };
 }
 
-/** Read scopes for activity/sleep + weight (googlehealth.* — all Restricted). */
+/** Identity (OIDC) + health read scopes. The identity scopes make one Google
+ * tap serve as both sign-in and the health-data connection. The googlehealth.*
+ * scopes are Restricted (Google verification needed for public use). */
 export const SCOPES = [
+  "openid",
+  "email",
+  "profile",
   "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
   "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
   "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
@@ -105,12 +112,13 @@ async function tokenRequest(body: URLSearchParams, previousRefresh?: string): Pr
     body,
   });
   if (!res.ok) throw new Error(`Google token endpoint ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  const j = (await res.json()) as { access_token: string; refresh_token?: string; expires_in: number };
+  const j = (await res.json()) as { access_token: string; refresh_token?: string; expires_in: number; id_token?: string };
   return {
     access_token: j.access_token,
     // Google only returns refresh_token on the initial consent grant.
     refresh_token: j.refresh_token ?? previousRefresh ?? "",
     expires_at: Date.now() + (j.expires_in - 60) * 1000,
+    id_token: j.id_token,
   };
 }
 

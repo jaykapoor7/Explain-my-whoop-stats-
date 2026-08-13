@@ -42,8 +42,11 @@ interface AppState {
   settings: Settings;
   hydrated: boolean;
   selectedDate: string | null; // day being viewed (null = latest); ephemeral
+  cloudUpdatedAt: number; // last time this state matched the cloud (0 = never)
 
   setSelectedDate: (d: string | null) => void;
+  hydrateFromCloud: (data: Record<string, unknown>, updatedAt: number) => void;
+  markCloudSynced: (updatedAt: number) => void;
   setWearableDays: (days: DailySummary[], syncedAt: string) => void;
   resolveActivity: (id: string, res: "confirmed" | "ignored" | "edited", newType?: string) => void;
   addMeal: (meal: Meal) => void;
@@ -80,8 +83,35 @@ export const useApp = create<AppState>()(
       settings: DEFAULT_SETTINGS,
       hydrated: false,
       selectedDate: null,
+      cloudUpdatedAt: 0,
 
       setSelectedDate: (d) => set({ selectedDate: d }),
+      markCloudSynced: (updatedAt) => set({ cloudUpdatedAt: updatedAt }),
+      hydrateFromCloud: (data, updatedAt) =>
+        set((s) => {
+          const d = data as Partial<AppState>;
+          // Wearable days are the same Google-sourced truth on every device —
+          // union by date so a fresh device never loses what it already pulled.
+          const byDate = new Map<string, DailySummary>();
+          for (const day of s.wearableDays) byDate.set(day.date, day);
+          for (const day of (d.wearableDays ?? [])) byDate.set(day.date, day);
+          const merged = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-120);
+          return {
+            wearableDays: merged,
+            lastSync: d.lastSync ?? s.lastSync,
+            activityResolutions: d.activityResolutions ?? s.activityResolutions,
+            activityTypeEdits: d.activityTypeEdits ?? s.activityTypeEdits,
+            meals: d.meals ?? s.meals,
+            medications: d.medications ?? s.medications,
+            medOverrides: d.medOverrides ?? s.medOverrides,
+            journal: d.journal ?? s.journal,
+            tasks: d.tasks ?? s.tasks,
+            taskDone: d.taskDone ?? s.taskDone,
+            goalTargets: d.goalTargets ?? s.goalTargets,
+            settings: { ...s.settings, ...(d.settings ?? {}) },
+            cloudUpdatedAt: updatedAt,
+          };
+        }),
       setWearableDays: (incoming, syncedAt) =>
         set((s) => {
           // merge by date: new sync wins for wearable fields
@@ -137,4 +167,18 @@ export const useApp = create<AppState>()(
 
 export function applyGoalTargets(goals: Goal[], targets: Record<string, number>): Goal[] {
   return goals.map((g) => (targets[g.id] !== undefined ? { ...g, target: targets[g.id] } : g));
+}
+
+/** Fields mirrored to the cloud snapshot for signed-in users. */
+export const SYNC_KEYS = [
+  "wearableDays", "lastSync", "activityResolutions", "activityTypeEdits",
+  "meals", "medications", "medOverrides", "journal", "tasks", "taskDone",
+  "goalTargets", "settings",
+] as const;
+
+export function collectSyncState(s: AppState): Record<string, unknown> {
+  const src = s as unknown as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of SYNC_KEYS) out[k] = src[k];
+  return out;
 }

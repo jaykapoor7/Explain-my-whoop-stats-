@@ -1,9 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Copy, Loader2, Plug, RefreshCw, Smartphone, TriangleAlert, Watch } from "lucide-react";
+import { CheckCircle2, ChevronDown, Copy, Loader2, LogIn, Plug, RefreshCw, Smartphone, TriangleAlert, Watch } from "lucide-react";
 import { Card } from "@/components/ui";
 import { AddDeviceButton } from "@/components/device-pairing";
+import { useAccount } from "@/components/account";
 import { useApp } from "@/lib/data/store";
 import { syncWearable } from "@/lib/data/provider";
 
@@ -74,6 +75,7 @@ export function useFitbit() {
 /** Full connect card: one-tap connect, self-host setup, device pairing + sync. */
 export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnected?: boolean }) {
   const { status, busy, message, sync, saveCreds, disconnect } = useFitbit();
+  const account = useAccount();
   const lastSync = useApp((s) => s.lastSync);
   const connectedData = useApp((s) => s.wearableDays.length > 0);
   const [clientId, setClientId] = useState("");
@@ -114,8 +116,11 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-ink-400">
-            Sleep, HRV, resting HR, workouts, steps, calories and weight via the Google Health API (the successor to
-            the Fitbit Web API) — synced on demand, stored only in this browser.
+            {account.signedIn && account.user?.email ? (
+              <>Signed in as <span className="font-medium text-ink-200">{account.user.email}</span>. </>
+            ) : null}
+            Sleep, HRV, resting HR, workouts, steps, calories and weight via the Google Health API — signing in with
+            Google both creates your account and connects your data, which then syncs to every device you sign in on.
           </p>
 
           {/* --- Not connected: connect this device --- */}
@@ -126,11 +131,12 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                 disabled={!oneTap}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-recovery px-4 py-3 text-sm font-semibold text-[#241f18] shadow-lift transition hover:brightness-[1.03] disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
               >
-                <Plug size={15} /> Connect with Google
+                <LogIn size={15} /> Sign in with Google
               </button>
               <p className="mt-2 flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-500">
                 <Smartphone size={13} className="mt-px shrink-0" />
-                Already connected on another device? Open Health OS there → <span className="font-medium text-ink-400">Add a device</span> → scan the code. No setup to repeat.
+                Sign in with the same Google account on any device and everything is already there. Or, from a
+                connected device, use <span className="font-medium text-ink-400">Add a device</span> to scan a QR.
               </p>
 
               {/* Self-hosting: bring-your-own Google app, tucked away for those who need it. */}
@@ -207,9 +213,15 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
                 <RefreshCw size={13} className={busy === "sync" ? "animate-spin" : ""} /> Sync now
               </button>
               <AddDeviceButton />
-              <button onClick={disconnect} className="rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.06]">
-                Disconnect
-              </button>
+              {account.signedIn ? (
+                <button onClick={() => account.signOut()} className="rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.06]">
+                  Sign out
+                </button>
+              ) : (
+                <button onClick={disconnect} className="rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.06]">
+                  Disconnect
+                </button>
+              )}
               {lastSync && <span className="text-[11px] text-ink-500">last sync {new Date(lastSync).toLocaleString()}</span>}
             </div>
           )}

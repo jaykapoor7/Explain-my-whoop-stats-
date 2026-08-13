@@ -25,6 +25,9 @@ yarn-error.log*
 # local env files
 .env*.local
 
+# local file-store fallback (used when DATABASE_URL is unset)
+/.data
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
