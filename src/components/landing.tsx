@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Activity, HeartPulse, LineChart, LogIn, Moon, NotebookPen, Sparkles } from "lucide-react";
 import { useAccount } from "@/components/account";
 
@@ -54,6 +55,14 @@ export function Landing() {
           </div>
         ))}
       </div>
+
+      <footer className="mt-8 text-center text-[11px] text-ink-500">
+        <Link href="/privacy" className="hover:text-ink-300">Privacy</Link>
+        <span className="mx-1.5">·</span>
+        <Link href="/terms" className="hover:text-ink-300">Terms</Link>
+        <span className="mx-1.5">·</span>
+        <span>Not a medical device</span>
+      </footer>
     </div>
   );
 }

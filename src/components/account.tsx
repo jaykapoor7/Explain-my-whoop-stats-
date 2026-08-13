@@ -12,6 +12,7 @@ interface AccountState {
   syncing: boolean;
   signIn: () => void;
   signOut: () => Promise<void>;
+  deleteAccount: () => Promise<void>;
   refresh: () => Promise<void>;
 }
 
@@ -106,8 +107,16 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     useApp.getState().resetAll();
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    await fetch("/api/account/delete", { method: "POST" }).catch(() => {});
+    setSignedIn(false);
+    setUser(null);
+    lastSig.current = "";
+    useApp.getState().resetAll();
+  }, []);
+
   return (
-    <Ctx.Provider value={{ loading, signedIn, user, syncing, signIn, signOut, refresh }}>
+    <Ctx.Provider value={{ loading, signedIn, user, syncing, signIn, signOut, deleteAccount, refresh }}>
       {children}
     </Ctx.Provider>
   );

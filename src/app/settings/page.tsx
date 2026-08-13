@@ -1,14 +1,17 @@
 "use client";
 
-import { RotateCcw, ShieldCheck } from "lucide-react";
+import Link from "next/link";
+import { RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
+import { useAccount } from "@/components/account";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { cn } from "@/lib/format";
 
 export default function SettingsPage() {
   const { settings, setSettings, resetAll, hydrated } = useApp();
+  const account = useAccount();
   if (!hydrated) return <SkeletonPage />;
 
   return (
@@ -104,10 +107,29 @@ export default function SettingsPage() {
             <RotateCcw size={13} /> Reset
           </button>
         </Card>
+
+        {account.signedIn && (
+          <Card className="mt-3 flex flex-wrap items-center justify-between gap-3 p-4">
+            <div>
+              <p className="text-sm font-semibold text-ink-100">Delete account</p>
+              <p className="mt-0.5 text-xs text-ink-400">Permanently erases your profile, connection and cloud data everywhere.</p>
+            </div>
+            <button
+              onClick={() => {
+                if (confirm("Permanently delete your account and all cloud data? This cannot be undone.")) account.deleteAccount();
+              }}
+              className="flex items-center gap-1.5 rounded-full border border-bad/40 bg-bad/15 px-4 py-2 text-xs font-semibold text-[#ff9b9b] hover:bg-bad/25"
+            >
+              <Trash2 size={13} /> Delete
+            </button>
+          </Card>
+        )}
       </Section>
 
       <p className="mt-8 text-center text-[11px] text-ink-500">
-        CURA · not a medical device.
+        CURA · not a medical device ·{" "}
+        <Link href="/privacy" className="hover:text-ink-300">Privacy</Link> ·{" "}
+        <Link href="/terms" className="hover:text-ink-300">Terms</Link>
       </p>
     </div>
   );
