@@ -26,8 +26,8 @@ export function calcEnergy(
   const cl = (v: number, lo: number, hi: number) => clamp(v, lo, hi);
   // --- What charged the battery overnight ---
   const charging: Contributor[] = [];
-  if (sleepOk) charging.push(term("Sleep", cl((sleep.score - 60) * 0.34, -20, 18), `Last night scored ${Math.round(sleep.score)}/100`));
-  if (recoveryOk) charging.push(term("Recovery base", cl((recovery.score - 55) * 0.26, -16, 14), `Woke at ${Math.round(recovery.score)}% recovery`));
+  if (sleepOk) charging.push(term("Sleep", cl((sleep.score - 60) * 0.3, -16, 16), `Last night scored ${Math.round(sleep.score)}/100`));
+  if (recoveryOk) charging.push(term("Recovery base", cl((recovery.score - 55) * 0.24, -14, 14), `Woke at ${Math.round(recovery.score)}% recovery`));
   if (hasHrv(day)) {
     const hrvPct = baseline.hrvMs > 0 ? (day.hrv.rmssdMs - baseline.hrvMs) / baseline.hrvMs : 0;
     charging.push(term("HRV", cl(hrvPct * 30, -14, 12), `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`));
@@ -36,8 +36,10 @@ export function calcEnergy(
   if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.5) {
     charging.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", cl(-rhrDelta * 1.5, -12, 10), `${day.rhr.bpm} bpm this morning`));
   }
-  if (sleepOk && day.sleep.debtMin > 45) {
-    charging.push(term("Sleep debt", cl(-day.sleep.debtMin / 30, -8, 0), `${fmtShort(day.sleep.debtMin)} shortfall carried in`));
+  // Debt is already reflected in the sleep + recovery scores above; keep this a
+  // light extra nudge only when the shortfall is large, so it isn't triple-counted.
+  if (sleepOk && day.sleep.debtMin > 120) {
+    charging.push(term("Sleep debt", cl(-(day.sleep.debtMin - 120) / 45, -4, 0), `${fmtShort(day.sleep.debtMin)} shortfall carried in`));
   }
 
   // --- What today's activity has already spent ---
@@ -46,7 +48,7 @@ export function calcEnergy(
   );
 
   const terms = [...charging, ...spend];
-  const score = clamp(56 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = clamp(58 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
   const chargedInto = Math.round(charging.reduce((a, c) => a + Math.max(0, c.points), 0));

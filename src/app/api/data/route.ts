@@ -11,11 +11,15 @@ const MAX_BYTES = 5 * 1024 * 1024; // generous cap for a personal snapshot
 export async function GET(req: NextRequest) {
   const session = getSession(req);
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  // Durable = a real database is configured. Without it the file fallback is
+  // read-only/ephemeral on serverless, so cross-device sync can't work — the
+  // client uses this to tell the user the truth instead of a false "synced".
+  const durable = !!process.env.DATABASE_URL;
   try {
     const snap = await db().getSnapshot(session.sub);
-    return NextResponse.json(snap ?? { data: null, updatedAt: 0 });
+    return NextResponse.json({ ...(snap ?? { data: null, updatedAt: 0 }), durable });
   } catch {
-    return NextResponse.json({ error: "storage" }, { status: 500 });
+    return NextResponse.json({ error: "storage", durable }, { status: 500 });
   }
 }
 

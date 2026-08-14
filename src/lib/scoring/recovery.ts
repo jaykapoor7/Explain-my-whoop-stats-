@@ -35,9 +35,9 @@ export function calcRecovery(
   if (hasRhr(day))
     terms.push(term("Resting HR", clampV(-rhrDelta * 2.3, -22, 16),
       `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`));
-  terms.push(term("Sleep quality", clampV((sleep.score - 65) * 0.42, -18, 15),
+  terms.push(term("Sleep quality", clampV((sleep.score - 60) * 0.4, -15, 15),
     `Last night scored ${Math.round(sleep.score)}/100`));
-  terms.push(term("Sleep debt", clampV(-day.sleep.debtMin / 22, -8, 2),
+  terms.push(term("Sleep debt", clampV(-day.sleep.debtMin / 45, -4, 2),
     day.sleep.debtMin > 0 ? `${fmtShort(day.sleep.debtMin)} accrued shortfall` : "well rested"));
   // Acute vs chronic training load: yesterday's strain measured against your
   // rolling-two-week typical, not a fixed number — spiking above your norm costs
@@ -46,7 +46,7 @@ export function calcRecovery(
   terms.push(term("Training load", clampV(-loadGap * 1.5, -20, 10),
     `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`));
 
-  const score = clamp(55 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = clamp(58 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 67 ? "Primed" : score >= 34 ? "Adequate" : "Compromised";
   const ranked = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   const topHurt = [...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0];

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Cloud, LogIn, Loader2 } from "lucide-react";
+import { Cloud, CloudOff, LogIn, Loader2 } from "lucide-react";
 import { useApp, collectSyncState } from "@/lib/data/store";
 
 export interface AccountUser { sub: string; email?: string; name?: string; picture?: string; }
@@ -10,6 +10,8 @@ interface AccountState {
   signedIn: boolean;
   user: AccountUser | null;
   syncing: boolean;
+  /** false = no database on this deployment, so cross-device sync can't work. */
+  syncDurable: boolean;
   signIn: () => void;
   signOut: () => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -26,6 +28,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   const [signedIn, setSignedIn] = useState(false);
   const [user, setUser] = useState<AccountUser | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncDurable, setSyncDurable] = useState(true); // optimistic until the server says otherwise
 
   const lastSig = useRef<string>("");   // signature of what the cloud has
   const applying = useRef(false);       // true while importing a cloud snapshot
@@ -78,7 +81,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
       setSyncing(true);
       try {
         const r = await fetch("/api/data", { cache: "no-store" });
-        const j = (await r.json()) as { data: string | null; updatedAt: number };
+        const j = (await r.json()) as { data: string | null; updatedAt: number; durable?: boolean };
+        setSyncDurable(j.durable !== false);
         const st = useApp.getState();
         const localTs = st.cloudUpdatedAt;
         // A device with nothing logged yet should always adopt the cloud copy
@@ -162,7 +166,7 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <Ctx.Provider value={{ loading, signedIn, user, syncing, signIn, signOut, deleteAccount, refresh }}>
+    <Ctx.Provider value={{ loading, signedIn, user, syncing, syncDurable, signIn, signOut, deleteAccount, refresh }}>
       {children}
     </Ctx.Provider>
   );
@@ -175,7 +179,7 @@ function initials(u: AccountUser) {
 
 /** Compact account row for the sidebar footer / mobile menu. */
 export function AccountChip({ compact = false }: { compact?: boolean }) {
-  const { loading, signedIn, user, syncing, signIn } = useAccount();
+  const { loading, signedIn, user, syncing, syncDurable, signIn } = useAccount();
   if (loading) return <div className="skeleton h-10 rounded-xl" />;
 
   if (!signedIn) {
@@ -201,7 +205,7 @@ export function AccountChip({ compact = false }: { compact?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-semibold text-ink-100">{u.name || "Signed in"}</div>
           <div className="flex items-center gap-1 text-[10px] text-ink-500">
-            {syncing ? <><Loader2 size={9} className="animate-spin" /> syncing…</> : <><Cloud size={9} /> synced</>}
+            {syncing ? <><Loader2 size={9} className="animate-spin" /> syncing…</> : syncDurable ? <><Cloud size={9} /> synced</> : <><CloudOff size={9} className="text-warn" /> <span className="text-warn">this device only</span></>}
           </div>
         </div>
       )}

@@ -41,29 +41,32 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
   const durGap = s.asleepMin - s.needMin;
   const terms: Contributor[] = [
     // Meeting your sleep need is the biggest lever; being short hurts more than
-    // being long helps (diminishing returns past your need).
-    term("Sleep duration", durGap >= 0 ? Math.min(14, durGap / 6) : Math.max(-26, durGap / 6.5),
+    // being long helps (diminishing returns past your need). Gentle slopes so a
+    // slightly-short night reads "fair", not "poor".
+    term("Sleep duration", durGap >= 0 ? Math.min(12, durGap / 7) : Math.max(-16, durGap / 10),
       `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need`),
-    // Deep sleep — physical repair, hormone release.
-    term("Deep sleep", clamp((deep - s.asleepMin * 0.18) / 7, -8, 9),
+    // Deep sleep — physical repair, hormone release (share-based, so a short
+    // night isn't penalised twice on absolute minutes).
+    term("Deep sleep", clamp((deep - s.asleepMin * 0.18) / 9, -5, 7),
       `${Math.round(deep)}m (${pct(deep, s.asleepMin)}% of sleep)`),
     // REM — memory, mood, cognitive recovery.
-    term("REM sleep", clamp((rem - s.asleepMin * 0.21) / 8, -7, 9),
+    term("REM sleep", clamp((rem - s.asleepMin * 0.21) / 10, -5, 7),
       `${Math.round(rem)}m (${pct(rem, s.asleepMin)}% of sleep)`),
     // How much of your time in bed was actually asleep.
-    term("Efficiency", clamp((s.efficiencyPct - 86) * 1.0, -16, 11),
+    term("Efficiency", clamp((s.efficiencyPct - 84) * 0.8, -12, 12),
       `${s.efficiencyPct}% of time in bed asleep`),
     // Fragmentation — frequent or long wake-ups blunt restoration.
-    term("Restfulness", clamp(-(s.awakenings - 2) * 1.6 - Math.max(0, s.stages.awake - 30) * 0.12, -12, 3),
+    term("Restfulness", clamp(-(s.awakenings - 2) * 1.4 - Math.max(0, s.stages.awake - 35) * 0.1, -8, 3),
       `${s.awakenings} wake-ups, ${Math.round(s.stages.awake)}m awake`),
     // Going to bed and waking at consistent times strengthens your rhythm.
-    term("Timing consistency", clamp((s.consistencyPct - 80) * 0.16, -9, 7),
+    term("Timing consistency", clamp((s.consistencyPct - 80) * 0.14, -7, 6),
       `${s.consistencyPct}% regular bed/wake times`),
-    // Carrying a rolling shortfall vs your need drags the score down.
-    term("Sleep debt", clamp(-s.debtMin / 20, -8, 2),
+    // Carrying a rolling shortfall vs your need nudges the score down (kept
+    // small — recovery/energy also see debt, so this must not dominate).
+    term("Sleep debt", clamp(-s.debtMin / 45, -4, 2),
       s.debtMin > 0 ? `${fmtShort(s.debtMin)} rolling shortfall` : "no accrued debt"),
   ];
-  const score = clamp(60 + terms.reduce((a, c) => a + c.points, 0), 5, 99);
+  const score = clamp(62 + terms.reduce((a, c) => a + c.points, 0), 5, 99);
   return {
     raw: build("sleep", 100, score, terms, sleepStatus(score), sleepExplain(terms, s, deepRem)),
     features: { deepRemMin: deepRem },
