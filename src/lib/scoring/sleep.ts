@@ -81,15 +81,25 @@ function sleepStatus(v: number): string {
   return v >= 85 ? "Excellent" : v >= 70 ? "Solid" : v >= 55 ? "Fair" : "Poor";
 }
 
+/** Lowercase a factor label for mid-sentence use, but keep acronyms uppercase. */
+export function lc(label: string): string {
+  return label
+    .toLowerCase()
+    .replace(/\bhrv\b/g, "HRV")
+    .replace(/\brhr\b/g, "RHR")
+    .replace(/\bhr\b/g, "HR")
+    .replace(/\brem\b/g, "REM");
+}
+
 function sleepExplain(terms: Contributor[], s: DailySummary["sleep"], deepRem: number): string {
   const ranked = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   const help = ranked.find((t) => t.points > 0);
   const hurt = ranked.find((t) => t.points < 0);
   const restorePct = pct(deepRem, s.asleepMin);
   const lead = `${(s.asleepMin / 60).toFixed(1)}h asleep at ${s.efficiencyPct}% efficiency, ${restorePct}% of it restorative (deep + REM).`;
-  if (help && hurt) return `${lead} Boosted most by ${help.label.toLowerCase()}, held back by ${hurt.label.toLowerCase()}.`;
-  if (hurt) return `${lead} Mainly held back by ${hurt.label.toLowerCase()}.`;
-  if (help) return `${lead} A strong night — led by ${help.label.toLowerCase()}.`;
+  if (help && hurt) return `${lead} Boosted most by ${lc(help.label)}, held back by ${lc(hurt.label)}.`;
+  if (hurt) return `${lead} Mainly held back by ${lc(hurt.label)}.`;
+  if (help) return `${lead} A strong night — led by ${lc(help.label)}.`;
   return lead;
 }
 

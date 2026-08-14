@@ -1,6 +1,6 @@
 import { Contributor, DailySummary, PersonalBaseline, RecoveryScore, ScoreResult } from "../types";
 import { clamp } from "../format";
-import { build, hasHrv, hasRhr, term, unavailable } from "./sleep";
+import { build, hasHrv, hasRhr, lc, term, unavailable } from "./sleep";
 
 /**
  * RecoveryCalculator — deterministic mock, 0..100.
@@ -58,10 +58,10 @@ export function calcRecovery(
     terms,
     status,
     status === "Primed"
-      ? `Your body absorbed yesterday's load and is ready for more${topHelp ? ` — led by ${topHelp.label.toLowerCase()}` : ""}.`
+      ? `Your body absorbed yesterday's load and is ready for more${topHelp ? ` — led by ${lc(topHelp.label)}` : ""}.`
       : status === "Adequate"
-        ? `Partial recovery — you can train, but keep it moderate. Biggest drag: ${topHurt?.label.toLowerCase() ?? "accumulated load"}.`
-        : `Your body is still repairing. Prioritise rest today — ${topHurt?.label.toLowerCase() ?? "load"} hit hardest.`
+        ? `Partial recovery — you can train, but keep it moderate. Biggest drag: ${lc(topHurt?.label ?? "accumulated load")}.`
+        : `Your body is still repairing. Prioritise rest today — ${lc(topHurt?.label ?? "load")} hit hardest.`
   );
 }
 
