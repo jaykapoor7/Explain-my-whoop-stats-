@@ -1,4 +1,5 @@
 import "server-only";
+import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { Pool, type Pool as PgPool } from "pg";
@@ -22,6 +23,19 @@ export interface UserRow {
   picture?: string;
 }
 
+// ---- Social (friend groups / leaderboards) ----
+export interface Group { id: string; name: string; code: string; ownerSub: string; }
+export interface PublishScores { recovery: number | null; sleep: number | null; strain: number | null; sleepHours: number | null; day: string; }
+export interface MemberScore extends PublishScores { sub: string; name?: string; picture?: string; }
+
+const code6 = () => {
+  const a = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // no ambiguous chars
+  let s = "";
+  for (let i = 0; i < 6; i++) s += a[crypto.randomInt(a.length)];
+  return s;
+};
+const newId = () => crypto.randomBytes(9).toString("base64url");
+
 export interface Store {
   upsertUser(u: UserRow): Promise<void>;
   getUser(sub: string): Promise<UserRow | null>;
@@ -30,6 +44,16 @@ export interface Store {
   getSnapshot(sub: string): Promise<{ data: string; updatedAt: number } | null>;
   saveSnapshot(sub: string, data: string, updatedAt: number): Promise<void>;
   deleteUser(sub: string): Promise<void>;
+  // social
+  createGroup(ownerSub: string, name: string): Promise<Group>;
+  findGroupByCode(code: string): Promise<Group | null>;
+  getGroup(id: string): Promise<Group | null>;
+  addMember(groupId: string, sub: string): Promise<void>;
+  removeMember(groupId: string, sub: string): Promise<void>;
+  isMember(groupId: string, sub: string): Promise<boolean>;
+  listGroups(sub: string): Promise<Group[]>;
+  memberScores(groupId: string): Promise<MemberScore[]>;
+  publishScores(sub: string, s: PublishScores): Promise<void>;
 }
 
 // ---------------- Postgres ----------------
@@ -57,6 +81,19 @@ class PgStore implements Store {
       CREATE TABLE IF NOT EXISTS snapshots (
         sub text PRIMARY KEY REFERENCES users(sub) ON DELETE CASCADE,
         data text NOT NULL, updated_at bigint NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS social_groups (
+        id text PRIMARY KEY, name text NOT NULL, code text UNIQUE NOT NULL,
+        owner_sub text NOT NULL, created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE IF NOT EXISTS social_members (
+        group_id text NOT NULL REFERENCES social_groups(id) ON DELETE CASCADE,
+        sub text NOT NULL, joined_at timestamptz NOT NULL DEFAULT now(),
+        PRIMARY KEY (group_id, sub)
+      );
+      CREATE TABLE IF NOT EXISTS social_scores (
+        sub text PRIMARY KEY, recovery int, sleep int, strain real,
+        sleep_hours real, day text, updated_at timestamptz NOT NULL DEFAULT now()
       );
     `);
   }
@@ -102,7 +139,83 @@ class PgStore implements Store {
   }
   async deleteUser(sub: string) {
     await this.ready;
+    await this.pool.query("DELETE FROM social_members WHERE sub=$1", [sub]);
+    await this.pool.query("DELETE FROM social_scores WHERE sub=$1", [sub]);
     await this.pool.query("DELETE FROM users WHERE sub=$1", [sub]);
+  }
+  async createGroup(ownerSub: string, name: string) {
+    await this.ready;
+    for (let i = 0; i < 6; i++) {
+      const g: Group = { id: newId(), name: name.slice(0, 40), code: code6(), ownerSub };
+      try {
+        await this.pool.query("INSERT INTO social_groups (id, name, code, owner_sub) VALUES ($1,$2,$3,$4)", [g.id, g.name, g.code, g.ownerSub]);
+        await this.pool.query("INSERT INTO social_members (group_id, sub) VALUES ($1,$2) ON CONFLICT DO NOTHING", [g.id, ownerSub]);
+        return g;
+      } catch { /* code collision — retry */ }
+    }
+    throw new Error("could not create group");
+  }
+  async findGroupByCode(code: string) {
+    await this.ready;
+    const r = await this.pool.query("SELECT id, name, code, owner_sub FROM social_groups WHERE code=$1", [code.toUpperCase()]);
+    const row = r.rows[0];
+    return row ? { id: row.id, name: row.name, code: row.code, ownerSub: row.owner_sub } : null;
+  }
+  async getGroup(id: string) {
+    await this.ready;
+    const r = await this.pool.query("SELECT id, name, code, owner_sub FROM social_groups WHERE id=$1", [id]);
+    const row = r.rows[0];
+    return row ? { id: row.id, name: row.name, code: row.code, ownerSub: row.owner_sub } : null;
+  }
+  async addMember(groupId: string, sub: string) {
+    await this.ready;
+    await this.pool.query("INSERT INTO social_members (group_id, sub) VALUES ($1,$2) ON CONFLICT DO NOTHING", [groupId, sub]);
+  }
+  async removeMember(groupId: string, sub: string) {
+    await this.ready;
+    await this.pool.query("DELETE FROM social_members WHERE group_id=$1 AND sub=$2", [groupId, sub]);
+    // If the group is now empty, clean it up.
+    const c = await this.pool.query("SELECT count(*)::int AS n FROM social_members WHERE group_id=$1", [groupId]);
+    if ((c.rows[0]?.n ?? 0) === 0) await this.pool.query("DELETE FROM social_groups WHERE id=$1", [groupId]);
+  }
+  async isMember(groupId: string, sub: string) {
+    await this.ready;
+    const r = await this.pool.query("SELECT 1 FROM social_members WHERE group_id=$1 AND sub=$2", [groupId, sub]);
+    return r.rows.length > 0;
+  }
+  async listGroups(sub: string) {
+    await this.ready;
+    const r = await this.pool.query(
+      `SELECT g.id, g.name, g.code, g.owner_sub FROM social_groups g
+       JOIN social_members m ON m.group_id = g.id WHERE m.sub=$1 ORDER BY g.created_at`,
+      [sub]
+    );
+    return r.rows.map((row) => ({ id: row.id, name: row.name, code: row.code, ownerSub: row.owner_sub }));
+  }
+  async memberScores(groupId: string) {
+    await this.ready;
+    const r = await this.pool.query(
+      `SELECT m.sub, u.name, u.picture, s.recovery, s.sleep, s.strain, s.sleep_hours, s.day
+       FROM social_members m
+       LEFT JOIN users u ON u.sub = m.sub
+       LEFT JOIN social_scores s ON s.sub = m.sub
+       WHERE m.group_id=$1`,
+      [groupId]
+    );
+    return r.rows.map((row) => ({
+      sub: row.sub, name: row.name ?? undefined, picture: row.picture ?? undefined,
+      recovery: row.recovery, sleep: row.sleep, strain: row.strain, sleepHours: row.sleep_hours, day: row.day,
+    }));
+  }
+  async publishScores(sub: string, s: PublishScores) {
+    await this.ready;
+    await this.pool.query(
+      `INSERT INTO social_scores (sub, recovery, sleep, strain, sleep_hours, day, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,now())
+       ON CONFLICT (sub) DO UPDATE SET recovery=EXCLUDED.recovery, sleep=EXCLUDED.sleep,
+         strain=EXCLUDED.strain, sleep_hours=EXCLUDED.sleep_hours, day=EXCLUDED.day, updated_at=now()`,
+      [sub, s.recovery, s.sleep, s.strain, s.sleepHours, s.day]
+    );
   }
 }
 
@@ -112,6 +225,8 @@ interface FileShape {
   users: Record<string, UserRow>;
   auth: Record<string, string>;
   snapshots: Record<string, { data: string; updatedAt: number }>;
+  groups?: Record<string, Group & { members: string[] }>;
+  scores?: Record<string, PublishScores>;
 }
 
 class FileStore implements Store {
@@ -134,7 +249,65 @@ class FileStore implements Store {
   async getGoogleAuth(sub: string) { return this.read().auth[sub] ?? null; }
   async getSnapshot(sub: string) { return this.read().snapshots[sub] ?? null; }
   async saveSnapshot(sub: string, data: string, updatedAt: number) { const d = this.read(); d.snapshots[sub] = { data, updatedAt }; this.write(d); }
-  async deleteUser(sub: string) { const d = this.read(); delete d.users[sub]; delete d.auth[sub]; delete d.snapshots[sub]; this.write(d); }
+  async deleteUser(sub: string) {
+    const d = this.read();
+    delete d.users[sub]; delete d.auth[sub]; delete d.snapshots[sub];
+    if (d.scores) delete d.scores[sub];
+    for (const g of Object.values(d.groups ?? {})) g.members = g.members.filter((m) => m !== sub);
+    this.write(d);
+  }
+  async createGroup(ownerSub: string, name: string) {
+    const d = this.read();
+    d.groups ??= {};
+    const codes = new Set(Object.values(d.groups).map((g) => g.code));
+    let code = code6(); while (codes.has(code)) code = code6();
+    const g: Group = { id: newId(), name: name.slice(0, 40), code, ownerSub };
+    d.groups[g.id] = { ...g, members: [ownerSub] };
+    this.write(d);
+    return g;
+  }
+  async findGroupByCode(code: string) {
+    const g = Object.values(this.read().groups ?? {}).find((x) => x.code === code.toUpperCase());
+    return g ? { id: g.id, name: g.name, code: g.code, ownerSub: g.ownerSub } : null;
+  }
+  async getGroup(id: string) {
+    const g = this.read().groups?.[id];
+    return g ? { id: g.id, name: g.name, code: g.code, ownerSub: g.ownerSub } : null;
+  }
+  async addMember(groupId: string, sub: string) {
+    const d = this.read(); const g = d.groups?.[groupId];
+    if (g && !g.members.includes(sub)) { g.members.push(sub); this.write(d); }
+  }
+  async removeMember(groupId: string, sub: string) {
+    const d = this.read(); const g = d.groups?.[groupId];
+    if (!g) return;
+    g.members = g.members.filter((m) => m !== sub);
+    if (g.members.length === 0) delete d.groups![groupId];
+    this.write(d);
+  }
+  async isMember(groupId: string, sub: string) {
+    return !!this.read().groups?.[groupId]?.members.includes(sub);
+  }
+  async listGroups(sub: string) {
+    return Object.values(this.read().groups ?? {})
+      .filter((g) => g.members.includes(sub))
+      .map((g) => ({ id: g.id, name: g.name, code: g.code, ownerSub: g.ownerSub }));
+  }
+  async memberScores(groupId: string) {
+    const d = this.read(); const g = d.groups?.[groupId];
+    if (!g) return [];
+    return g.members.map((sub) => {
+      const u = d.users[sub]; const s = d.scores?.[sub];
+      return {
+        sub, name: u?.name, picture: u?.picture,
+        recovery: s?.recovery ?? null, sleep: s?.sleep ?? null, strain: s?.strain ?? null,
+        sleepHours: s?.sleepHours ?? null, day: s?.day ?? "",
+      } as MemberScore;
+    });
+  }
+  async publishScores(sub: string, s: PublishScores) {
+    const d = this.read(); d.scores ??= {}; d.scores[sub] = s; this.write(d);
+  }
 }
 
 let instance: Store | null = null;
