@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Info, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { ManualEntry } from "@/components/manual-entry";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
@@ -76,6 +76,34 @@ export default function SettingsPage() {
           </p>
         </Card>
       )}
+
+      <Section title="Account" sub="One profile, synced across your laptop and phone.">
+        <Card className="p-5">
+          {account.signedIn ? (
+            <div className="flex flex-wrap items-center gap-3.5">
+              {account.user?.picture ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={account.user.picture} alt="" className="h-11 w-11 rounded-full" referrerPolicy="no-referrer" />
+              ) : (
+                <span className="flex h-11 w-11 items-center justify-center rounded-full bg-recovery/20 text-base font-bold text-recovery">{(account.user?.name || account.user?.email || "You").slice(0, 1).toUpperCase()}</span>
+              )}
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm font-semibold text-ink-50">{account.user?.name || "Signed in"}</div>
+                {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-good">
+                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</> : <><Cloud size={11} /> synced across your devices</>}
+                </div>
+              </div>
+              <button onClick={() => account.signOut()} className="flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.05]"><LogOut size={13} /> Sign out</button>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-[13px] leading-relaxed text-ink-400">Sign in with Google to use CURA on your laptop and phone with everything in sync — your data, connection and friends follow you.</p>
+              <button onClick={account.signIn} className="flex shrink-0 items-center gap-2 rounded-full bg-recovery px-5 py-2.5 text-xs font-semibold text-[#241f18]"><LogIn size={14} /> Sign in with Google</button>
+            </div>
+          )}
+        </Card>
+      </Section>
 
       <Section title="Profile">
         <Card className="px-5 py-1">
