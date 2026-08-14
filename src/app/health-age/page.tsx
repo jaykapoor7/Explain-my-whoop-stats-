@@ -58,6 +58,10 @@ export default function HealthAgePage() {
   const trendAll = healthAgeTrend(data.days, actualAge);
   const trend = trendAll.slice(-range);
   const recs = r.factors.filter((f) => f.years > 0).sort((a, b) => b.years - a.years).slice(0, 4);
+  // Keep the actual-age reference line inside the visible range.
+  const vals = trend.map((t) => t.value);
+  const lo = Math.floor(Math.min(...vals, r.actualAge)) - 1;
+  const hi = Math.ceil(Math.max(...vals, r.actualAge)) + 1;
 
   return (
     <div className="animate-fadeUp">
@@ -88,7 +92,7 @@ export default function HealthAgePage() {
       {trend.length > 1 && (
         <Section title="Trend" sub={`Your estimated Health Age over time · dashed line is your actual age (${r.actualAge})`} action={<RangeToggle range={range} setRange={setRange} options={[30, 90]} />}>
           <Card>
-            <TrendArea data={trend} color={accent} unit=" yr" name="Health Age" baseline={r.actualAge} domain={["auto", "auto"]} />
+            <TrendArea data={trend} color={accent} unit=" yr" name="Health Age" baseline={r.actualAge} domain={[lo, hi]} />
           </Card>
         </Section>
       )}
