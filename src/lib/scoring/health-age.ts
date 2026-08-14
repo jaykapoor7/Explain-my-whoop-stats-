@@ -36,9 +36,10 @@ const std = (xs: number[]) => {
   return Math.sqrt(mean(xs.map((x) => (x - m) ** 2)));
 };
 
-// Rough adult age-expected references (placeholders, not clinical).
-const expectedHrv = (age: number) => clamp(68 - (age - 20) * 0.85, 18, 80); // ms, declines with age
-const expectedRhr = (age: number) => clamp(58 + Math.max(0, age - 30) * 0.06, 55, 68); // bpm
+// Adult age-expected references — population medians for a healthy adult, so
+// a typical person sits near zero (not athlete targets that penalise everyone).
+const expectedHrv = (age: number) => clamp(52 - (age - 25) * 0.5, 24, 58); // ms rMSSD, declines with age
+const expectedRhr = (age: number) => clamp(62 + Math.max(0, age - 35) * 0.05, 60, 68); // bpm
 
 export function ageFromBirthYear(birthYear: number | undefined, today = new Date()): number | undefined {
   if (!birthYear) return undefined;
@@ -101,30 +102,31 @@ export function calcHealthAge(days: ScoredDay[], actualAge: number | undefined):
 
   const factors: AgeFactor[] = [];
   const push = (label: string, years: number, detail: string) => {
-    const y = clamp(years, -6, 6);
+    const y = clamp(years, -5, 5);
     if (Math.abs(y) >= 0.3) factors.push({ label, years: y, detail });
     return y;
   };
 
   let adj = 0;
   // --- Cardiovascular / autonomic ---
-  if (isFinite(hrv)) adj += push("HRV", -(hrv - expectedHrv(actualAge)) * 0.11, `${Math.round(hrv)} ms vs ~${Math.round(expectedHrv(actualAge))} expected for your age`);
-  if (isFinite(hrvCv)) adj += push("HRV stability", (hrvCv - 0.12) * 26, `${Math.round(hrvCv * 100)}% night-to-night variation`);
-  if (isFinite(rhr)) adj += push("Resting heart rate", (rhr - expectedRhr(actualAge)) * 0.32, `${Math.round(rhr)} bpm vs ~${Math.round(expectedRhr(actualAge))} expected`);
+  if (isFinite(hrv)) adj += push("HRV", -(hrv - expectedHrv(actualAge)) * 0.07, `${Math.round(hrv)} ms vs ~${Math.round(expectedHrv(actualAge))} typical for your age`);
+  if (isFinite(hrvCv)) adj += push("HRV stability", (hrvCv - 0.16) * 14, `${Math.round(hrvCv * 100)}% night-to-night variation`);
+  if (isFinite(rhr)) adj += push("Resting heart rate", (rhr - expectedRhr(actualAge)) * 0.22, `${Math.round(rhr)} bpm vs ~${Math.round(expectedRhr(actualAge))} typical`);
   // --- Sleep ---
   if (isFinite(sleepMin)) {
     const h = sleepMin / 60;
-    adj += push("Sleep duration", (Math.abs(h - 7.75) - 0.6) * 1.1, `${h.toFixed(1)}h average per night`);
+    adj += push("Sleep duration", (Math.abs(h - 7.5) * 0.9 - 0.4), `${h.toFixed(1)}h average per night`);
   }
-  if (isFinite(sleepEff)) adj += push("Sleep efficiency", -(sleepEff - 88) * 0.09, `${Math.round(sleepEff)}% asleep in bed`);
-  if (isFinite(consistency)) adj += push("Sleep consistency", -(consistency - 80) * 0.05, `${Math.round(consistency)}% regular timing`);
+  if (isFinite(sleepEff)) adj += push("Sleep efficiency", -(sleepEff - 85) * 0.07, `${Math.round(sleepEff)}% asleep in bed`);
+  if (isFinite(consistency)) adj += push("Sleep consistency", -(consistency - 78) * 0.04, `${Math.round(consistency)}% regular timing`);
   // --- Activity / fitness ---
-  if (isFinite(steps)) adj += push("Daily activity", -((steps - 7000) / 3500) * 1.0, `${Math.round(steps).toLocaleString()} steps/day`);
-  if (isFinite(trainingRate)) adj += push("Structured training", -(trainingRate - 0.3) * 4.5, `${trainingDays} workout day${trainingDays === 1 ? "" : "s"} in ${recent.length}`);
+  if (isFinite(steps)) adj += push("Daily activity", -((steps - 6500) / 4000) * 1.0, `${Math.round(steps).toLocaleString()} steps/day`);
+  if (isFinite(trainingRate)) adj += push("Structured training", -(trainingRate - 0.22) * 3.2, `${trainingDays} workout day${trainingDays === 1 ? "" : "s"} in ${recent.length}`);
   // --- Recovery capacity ---
-  if (isFinite(recoveryAvg)) adj += push("Recovery capacity", -(recoveryAvg - 60) * 0.05, `${Math.round(recoveryAvg)}% average recovery`);
+  if (isFinite(recoveryAvg)) adj += push("Recovery capacity", -(recoveryAvg - 58) * 0.045, `${Math.round(recoveryAvg)}% average recovery`);
 
-  const physioAge = Math.round(clamp(actualAge + adj, 13, 100));
+  // Keep the overall swing sane even if several factors line up the same way.
+  const physioAge = Math.round(clamp(actualAge + clamp(adj, -12, 12), 13, 100));
   const delta = physioAge - actualAge;
   factors.sort((a, b) => Math.abs(b.years) - Math.abs(a.years));
 
