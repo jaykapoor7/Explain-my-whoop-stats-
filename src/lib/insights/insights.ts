@@ -144,12 +144,12 @@ function trendInsight(days: ScoredDay[], key: string, betterWhenLower: boolean, 
   };
 }
 
-/** Pearson-correlation insight between two wearable metrics. */
-function corrInsight(days: ScoredDay[], aKey: string, bKey: string, lag: 0 | 1, id: string, domain: Insight["domain"], phrase: (dir: string, r: number) => { title: string; detail: string }): Insight | null {
+/** Pearson-correlation insight. `phrase` receives the direction of B when A is
+ * HIGHER, so the copy always reads consistently ("more A → higher/lower B"). */
+function corrInsight(days: ScoredDay[], aKey: string, bKey: string, lag: 0 | 1, id: string, domain: Insight["domain"], phrase: (bDir: "higher" | "lower") => { title: string; detail: string }): Insight | null {
   const c = correlate(days, aKey, bKey, lag);
   if (!c || Math.abs(c.r) < 0.32) return null;
-  const dir = c.r > 0 ? "more" : "less";
-  const p = phrase(dir, c.r);
+  const p = phrase(c.r > 0 ? "higher" : "lower");
   return { id, title: p.title, detail: `${p.detail} (r = ${fmtNum(c.r, 2)} across ${c.n} days — an association in your data, not proof of cause).`, n: c.n, strength: strengthOf(Math.abs(c.r)), domain };
 }
 
@@ -202,21 +202,21 @@ export function generateInsights(days: ScoredDay[]): Insight[] {
     trendInsight(days, "hrv", false, "trend-hrv", "recovery", "HRV"),
     trendInsight(days, "sleepMin", false, "trend-sleep", "sleep", "Sleep duration"),
     trendInsight(days, "steps", false, "trend-steps", "strain", "Daily activity"),
-    corrInsight(days, "strain", "recovery", 1, "corr-strain-rec", "recovery", (dir) => ({
-      title: `Harder days → ${dir === "more" ? "higher" : "lower"} recovery next morning`,
-      detail: `Days with ${dir} strain tended to be followed by ${dir === "more" ? "higher" : "lower"} recovery`,
+    corrInsight(days, "strain", "recovery", 1, "corr-strain-rec", "recovery", (b) => ({
+      title: `Harder days → ${b} recovery next morning`,
+      detail: `Days with more strain tended to be followed by ${b} recovery`,
     })),
-    corrInsight(days, "steps", "sleepMin", 0, "corr-steps-sleep", "sleep", (dir) => ({
-      title: `More movement → ${dir === "more" ? "more" : "less"} sleep`,
-      detail: `More active days tended to bring ${dir} sleep that night`,
+    corrInsight(days, "steps", "sleepMin", 0, "corr-steps-sleep", "sleep", (b) => ({
+      title: `More movement → ${b === "higher" ? "more" : "less"} sleep`,
+      detail: `More active days tended to bring ${b === "higher" ? "more" : "less"} sleep that night`,
     })),
-    corrInsight(days, "sleepMin", "energy", 0, "corr-sleep-energy", "energy", (dir) => ({
-      title: `Longer sleep → ${dir === "more" ? "higher" : "lower"} energy`,
-      detail: `Nights you slept more tended to bring ${dir === "more" ? "higher" : "lower"} next-day energy`,
+    corrInsight(days, "sleepMin", "energy", 0, "corr-sleep-energy", "energy", (b) => ({
+      title: `Longer sleep → ${b} energy`,
+      detail: `Nights you slept more tended to bring ${b} next-day energy`,
     })),
-    corrInsight(days, "deepMin", "recovery", 0, "corr-deep-rec", "recovery", (dir) => ({
-      title: `More deep sleep → ${dir === "more" ? "higher" : "lower"} recovery`,
-      detail: `Nights with ${dir} deep sleep tended to bring ${dir === "more" ? "higher" : "lower"} recovery`,
+    corrInsight(days, "deepMin", "recovery", 0, "corr-deep-rec", "recovery", (b) => ({
+      title: `More deep sleep → ${b} recovery`,
+      detail: `Nights with more deep sleep tended to bring ${b} recovery`,
     })),
     weekendInsight(days),
   ].filter((x): x is Insight => x !== null);
