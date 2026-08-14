@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Sparkles } from "lucide-react";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { ConnectGate } from "@/components/connect";
+import { IntelligenceInsights, StageBanner } from "@/components/intelligence";
 import { TrendArea } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { correlate } from "@/lib/insights/insights";
@@ -81,6 +81,8 @@ export default function TrendsPage() {
         }
       />
 
+      <StageBanner model={data.model} />
+
       <div className="mt-5 flex flex-wrap gap-1.5">
         {SERIES.map((s) => (
           <button
@@ -115,32 +117,8 @@ export default function TrendsPage() {
         </div>
       </Card>
 
-      <Section title="What appears to affect you" sub="Observed associations with sample sizes — never causation">
-        {data.insights.length ? (
-          <div className="space-y-3">
-            {data.insights.map((i) => (
-              <Card key={i.id} className="flex items-start gap-3 p-4">
-                <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
-                  <Sparkles size={15} />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-ink-100">{i.title}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-ink-400">{i.detail}</p>
-                </div>
-                <span
-                  className={cn(
-                    "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold",
-                    i.strength === "clear" ? "bg-good/15 text-good" : i.strength === "moderate" ? "bg-warn/15 text-warn" : "bg-black/[0.07] text-ink-300"
-                  )}
-                >
-                  {i.strength}
-                </span>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="p-5 text-sm text-ink-400">Not enough logged data yet — patterns appear once behaviors repeat.</Card>
-        )}
+      <Section title="What CURA is seeing" sub="Ranked by what matters — deviations, trends and patterns in your own data. Tap “why” to see the evidence.">
+        <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet — insights sharpen as your baseline fills in." />
       </Section>
 
       <Section title="Relationships" sub="Correlation between paired metrics over your full history">

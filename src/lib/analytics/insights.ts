@@ -86,8 +86,12 @@ export function generateAnalyticsInsights(ctx: InsightContext): AnalyticsInsight
     }
   }
 
-  // 2) Meaningful trends/trajectories per metric.
+  // 2) Meaningful trends/trajectories — headline metrics only, so we don't emit
+  // a near-duplicate card for every sleep sub-stage (they ride along as evidence
+  // elsewhere). Keeps the list to "what matters".
+  const TREND_METRICS: MetricKey[] = ["hrv", "rhr", "sleepMin", "sleepConsistency", "steps", "strainLoad"];
   for (const m of ctx.layered) {
+    if (!TREND_METRICS.includes(m.key)) continue;
     if (m.trend.movement === "insufficient") continue;
     const worthTrend = Math.abs(m.trend.zPerWeek) >= 0.6;
     const worthTraj = Math.abs(m.trajectory.zPerWeek) >= 0.4 && m.trajectory.drift !== "stable";

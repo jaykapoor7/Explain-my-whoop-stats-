@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Footprints, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Footprints } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
 import { HealthAgeCard } from "@/components/health-age";
+import { DailyStateCard, IntelligenceInsights, StageBanner } from "@/components/intelligence";
 import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
@@ -80,6 +81,13 @@ export default function TodayPage() {
         sub={`${fmtDateLong(t.day.date)} — ${data.isLatest ? "here's how you're doing." : "how this day went."}`}
         right={<DaySwitcher />}
       />
+
+      {data.isLatest && (
+        <>
+          <StageBanner model={data.model} />
+          <DailyStateCard model={data.model} />
+        </>
+      )}
 
       {t && (
         <>
@@ -164,17 +172,9 @@ export default function TodayPage() {
         <HealthAgeCard />
       </Section>
 
-      {data.insights[0] && (
+      {data.model.insights[0] && (
         <Section className="mt-0" title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
-          <Card className="flex items-start gap-3 p-4">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-black/[0.06] text-ink-200">
-              <Sparkles size={15} />
-            </span>
-            <div>
-              <p className="text-sm font-medium text-ink-100">{data.insights[0].title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-ink-400">{data.insights[0].detail}</p>
-            </div>
-          </Card>
+          <IntelligenceInsights insights={data.model.insights.slice(0, 2)} />
         </Section>
       )}
       </div>

@@ -1,10 +1,12 @@
 "use client";
 
 import { useMemo } from "react";
-import { Goal, JournalEntry, Medication, MedicationEvent, Meal, NutritionTotals, PlannerTask } from "../types";
+import { DailySummary, Goal, JournalEntry, Medication, MedicationEvent, Meal, NutritionTotals, PlannerTask } from "../types";
 import { applyGoalTargets, DEFAULT_GOALS, useApp } from "./store";
 import { computeScoredDays, nutritionTotals, ScoredDay } from "../scoring/engine";
 import { generateInsights, Insight } from "../insights/insights";
+import { analyzeUser, PersonalHealthModel } from "../analytics";
+import { ageFromBirthYear } from "../scoring/health-age";
 import { todayISO } from "../format";
 
 /**
@@ -40,6 +42,7 @@ export interface HealthData {
   connected: boolean; // has any wearable data
   lastSync: string | null;
   insights: Insight[];
+  model: PersonalHealthModel; // personal-baseline intelligence over the same days
   goals: Goal[];
   tasks: PlannerTask[];
   medications: Medication[];
@@ -54,7 +57,9 @@ export function useHealth(): HealthData {
   const s = useApp();
   const tISO = todayISO();
 
-  const days = useMemo<ScoredDay[]>(() => {
+  // The merged raw day stream (wearable + manual + the user's own logs), before
+  // scoring. Both the score engine and the analytics engine read from this.
+  const merged = useMemo<DailySummary[]>(() => {
     // Combine hand-entered days with synced days (a real sync wins per date),
     // so any wearable — or manual entry — produces scores.
     const byDate = new Map<string, (typeof s.wearableDays)[number]>();
@@ -62,7 +67,7 @@ export function useHealth(): HealthData {
     for (const d of s.wearableDays) byDate.set(d.date, d);
     const base = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
     if (!base.length) return [];
-    const merged = base.map((d) => ({
+    return base.map((d) => ({
       ...d,
       activities: d.activities.map((a) => {
         const res = s.activityResolutions[a.id];
@@ -73,8 +78,13 @@ export function useHealth(): HealthData {
       medicationEvents: deriveMedEvents(s.medications, d.date, s.medOverrides),
       journal: s.journal[d.date],
     }));
-    return computeScoredDays(merged);
   }, [s.wearableDays, s.manualDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
+
+  const days = useMemo<ScoredDay[]>(() => computeScoredDays(merged), [merged]);
+  const model = useMemo<PersonalHealthModel>(
+    () => analyzeUser(merged, { actualAge: ageFromBirthYear(s.settings.birthYear) }),
+    [merged, s.settings.birthYear]
+  );
 
   const insights = useMemo(() => generateInsights(days), [days]);
   const goals = useMemo(() => applyGoalTargets(DEFAULT_GOALS, s.goalTargets), [s.goalTargets]);
@@ -102,6 +112,7 @@ export function useHealth(): HealthData {
     connected: s.wearableDays.length > 0 || s.manualDays.length > 0,
     lastSync: s.lastSync,
     insights,
+    model,
     goals,
     tasks,
     medications: s.medications,
