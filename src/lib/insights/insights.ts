@@ -36,6 +36,9 @@ const METRICS: Metric[] = [
   { key: "energy", label: "next-day energy", unit: " pts", decimals: 0, get: (s) => (s.energy.available === false ? NaN : s.energy.score) },
   { key: "rhr", label: "resting heart rate", unit: " bpm", decimals: 1, get: (s) => (s.day.rhr.bpm > 0 ? s.day.rhr.bpm : NaN) },
   { key: "mood", label: "mood", unit: " /10", decimals: 1, get: (s) => s.day.journal?.ratings.mood ?? NaN },
+  { key: "steps", label: "daily steps", unit: " steps", decimals: 0, get: (s) => (s.day.steps > 0 ? s.day.steps : NaN) },
+  { key: "strain", label: "day strain", unit: "", decimals: 1, get: (s) => (s.strain.available === false ? NaN : s.strain.score) },
+  { key: "deepMin", label: "deep sleep", unit: " min", decimals: 0, get: (s) => (s.day.sleep.stages.deep > 0 ? s.day.sleep.stages.deep : NaN) },
 ];
 
 function metric(key: string): Metric {
@@ -113,14 +116,74 @@ const SPECS: Spec[] = [
   },
 ];
 
+function strengthOf(effect: number): Insight["strength"] {
+  return effect >= 0.7 ? "clear" : effect >= 0.45 ? "moderate" : "weak";
+}
+
+/** Direction of a metric over the last 7 vs the prior 7 available readings. */
+function trendInsight(days: ScoredDay[], key: string, betterWhenLower: boolean, id: string, domain: Insight["domain"], label: string): Insight | null {
+  const m = metric(key);
+  const vals = days.map((d) => m.get(d)).filter((v) => isFinite(v));
+  if (vals.length < 14) return null;
+  const recent = vals.slice(-7);
+  const prior = vals.slice(-14, -7);
+  const dr = mean(recent) - mean(prior);
+  const pooled = sd(vals);
+  if (pooled === 0) return null;
+  const effect = Math.abs(dr) / pooled;
+  if (effect < 0.35) return null;
+  const down = dr < 0;
+  const good = betterWhenLower ? down : !down;
+  return {
+    id,
+    title: `${label} trending ${down ? "down" : "up"}`,
+    detail: `Your ${m.label} averaged ${fmtNum(mean(recent), m.decimals)}${m.unit} over the last 7 days vs ${fmtNum(mean(prior), m.decimals)}${m.unit} the week before — ${good ? "a good sign, keep it going" : "worth keeping an eye on"}.`,
+    n: vals.length,
+    strength: strengthOf(effect),
+    domain,
+  };
+}
+
+/** Pearson-correlation insight between two wearable metrics. */
+function corrInsight(days: ScoredDay[], aKey: string, bKey: string, lag: 0 | 1, id: string, domain: Insight["domain"], phrase: (dir: string, r: number) => { title: string; detail: string }): Insight | null {
+  const c = correlate(days, aKey, bKey, lag);
+  if (!c || Math.abs(c.r) < 0.32) return null;
+  const dir = c.r > 0 ? "more" : "less";
+  const p = phrase(dir, c.r);
+  return { id, title: p.title, detail: `${p.detail} (r = ${fmtNum(c.r, 2)} across ${c.n} days — an association in your data, not proof of cause).`, n: c.n, strength: strengthOf(Math.abs(c.r)), domain };
+}
+
+/** Weekend vs weekday sleep. */
+function weekendInsight(days: ScoredDay[]): Insight | null {
+  const we: number[] = [], wd: number[] = [];
+  for (const s of days) {
+    if (s.day.sleep.asleepMin <= 0) continue;
+    const dow = new Date(s.day.date + "T00:00:00").getDay();
+    (dow === 0 || dow === 6 ? we : wd).push(s.day.sleep.asleepMin);
+  }
+  if (we.length < 4 || wd.length < 6) return null;
+  const diff = mean(we) - mean(wd);
+  if (Math.abs(diff) < 20) return null;
+  const more = diff > 0;
+  return {
+    id: "weekend-sleep",
+    title: `You sleep ${fmtNum(Math.abs(diff) / 60, 1)}h ${more ? "more" : "less"} on weekends`,
+    detail: `Across your data, weekend nights averaged ${fmtNum(mean(we) / 60, 1)}h vs ${fmtNum(mean(wd) / 60, 1)}h on weekdays. Big swings can leave you groggy on Mondays — a steadier schedule reads better.`,
+    n: we.length + wd.length,
+    strength: Math.abs(diff) >= 45 ? "clear" : "moderate",
+    domain: "sleep",
+  };
+}
+
 export function generateInsights(days: ScoredDay[]): Insight[] {
   const out: Insight[] = [];
+
+  // Behaviour → physiology associations (need enough logged days).
   for (const spec of SPECS) {
     const r = compare(days, spec.pred, spec.metricKey, spec.lag);
     if (!r || r.effect < 0.25) continue;
     const m = metric(spec.metricKey);
     const dir = r.diff > 0 ? "higher" : "lower";
-    const strength: Insight["strength"] = r.effect >= 0.7 ? "clear" : r.effect >= 0.45 ? "moderate" : "weak";
     const same = spec.lag === 0;
     const phr = spec.domain === "medication" ? "Logged doses were associated with" : `${spec.label} was associated with`;
     out.push({
@@ -128,11 +191,52 @@ export function generateInsights(days: ScoredDay[]): Insight[] {
       title: `${spec.label} → ${fmtNum(Math.abs(r.pct), 0)}% ${dir} ${m.label}`,
       detail: `Across ${r.nYes} logged ${spec.label.toLowerCase()} days, ${phr.toLowerCase()} ${fmtNum(Math.abs(r.diff), m.decimals)}${m.unit} ${dir} ${m.label}${same ? " that day" : " the following day"} compared with the other ${r.nNo} days. This is an observed association in your data, not proof of cause.`,
       n: r.nYes + r.nNo,
-      strength,
+      strength: strengthOf(r.effect),
       domain: spec.domain,
     });
   }
-  return out.sort((a, b) => rank(b) - rank(a));
+
+  // Wearable-only insights — these fire from Fitbit data even with no journal.
+  const wearable = [
+    trendInsight(days, "rhr", true, "trend-rhr", "recovery", "Resting heart rate"),
+    trendInsight(days, "hrv", false, "trend-hrv", "recovery", "HRV"),
+    trendInsight(days, "sleepMin", false, "trend-sleep", "sleep", "Sleep duration"),
+    trendInsight(days, "steps", false, "trend-steps", "strain", "Daily activity"),
+    corrInsight(days, "strain", "recovery", 1, "corr-strain-rec", "recovery", (dir) => ({
+      title: `Harder days → ${dir === "more" ? "higher" : "lower"} recovery next morning`,
+      detail: `Days with ${dir} strain tended to be followed by ${dir === "more" ? "higher" : "lower"} recovery`,
+    })),
+    corrInsight(days, "steps", "sleepMin", 0, "corr-steps-sleep", "sleep", (dir) => ({
+      title: `More movement → ${dir === "more" ? "more" : "less"} sleep`,
+      detail: `More active days tended to bring ${dir} sleep that night`,
+    })),
+    corrInsight(days, "sleepMin", "energy", 0, "corr-sleep-energy", "energy", (dir) => ({
+      title: `Longer sleep → ${dir === "more" ? "higher" : "lower"} energy`,
+      detail: `Nights you slept more tended to bring ${dir === "more" ? "higher" : "lower"} next-day energy`,
+    })),
+    corrInsight(days, "deepMin", "recovery", 0, "corr-deep-rec", "recovery", (dir) => ({
+      title: `More deep sleep → ${dir === "more" ? "higher" : "lower"} recovery`,
+      detail: `Nights with ${dir} deep sleep tended to bring ${dir === "more" ? "higher" : "lower"} recovery`,
+    })),
+    weekendInsight(days),
+  ].filter((x): x is Insight => x !== null);
+  out.push(...wearable);
+
+  // De-dupe by id and rank, but interleave domains so the list feels varied.
+  const seen = new Set<string>();
+  const ranked = out.filter((i) => (seen.has(i.id) ? false : seen.add(i.id))).sort((a, b) => rank(b) - rank(a));
+  const byDomain = new Map<string, Insight[]>();
+  for (const i of ranked) (byDomain.get(i.domain) ?? byDomain.set(i.domain, []).get(i.domain)!).push(i);
+  const result: Insight[] = [];
+  let added = true;
+  while (added) {
+    added = false;
+    for (const list of byDomain.values()) {
+      const next = list.shift();
+      if (next) { result.push(next); added = true; }
+    }
+  }
+  return result;
 }
 
 function rank(i: Insight): number {
