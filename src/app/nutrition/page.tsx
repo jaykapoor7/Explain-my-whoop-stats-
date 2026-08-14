@@ -2,13 +2,14 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { Card, EmptyState, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { MiniBars } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
+import { nutritionTotals } from "@/lib/scoring/engine";
 import { FOOD_DB } from "@/lib/foods";
-import { DOMAIN_COLOR, addDays, cn, fmtDate, fmtNum, todayISO } from "@/lib/format";
+import { DOMAIN_COLOR, addDays, cn, fmtDate, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { Meal, MealKind, NutritionFood } from "@/lib/types";
 
 const MEAL_LABEL: Record<MealKind, string> = { breakfast: "Breakfast", lunch: "Lunch", dinner: "Dinner", snack: "Snacks" };
@@ -168,18 +169,22 @@ export default function NutritionPage() {
   const allMeals = useApp((s) => s.meals);
   const [adding, setAdding] = useState(false);
   const [range, setRange] = useState<"day" | "week" | "month">("day");
+  const [selected, setSelected] = useState(todayISO());
 
   if (!data.hydrated) return <SkeletonPage />;
 
-  const t = data.today;
-  const tot = data.todayTotals;
+  const today = todayISO();
+  // Meals + totals for the day you're viewing — so you can log on past days too.
+  const dayMeals = allMeals.filter((m) => m.date === selected);
+  const tot = nutritionTotals({ meals: dayMeals });
+  const dayScored = data.days.find((d) => d.day.date === selected);
   const kcalGoal = data.goals.find((g) => g.kind === "calories")?.target ?? 2400;
   const proteinGoal = data.goals.find((g) => g.kind === "protein")?.target ?? 150;
   const carbsGoal = 280;
   const fatGoal = 80;
-  const burn = t ? t.day.activeCalories + t.day.restingCalories : 0;
+  const burn = dayScored ? dayScored.day.activeCalories + dayScored.day.restingCalories : 0;
   const remaining = kcalGoal - tot.kcal;
-  
+
 
   const rangeDays = range === "day" ? 7 : range === "week" ? 7 : 30;
   const byDate = new Map<string, number>();
@@ -205,8 +210,27 @@ export default function NutritionPage() {
         }
       />
 
-      <div className="mt-5">
-        <AnimatePresence>{adding && <AddFood date={todayISO()} onClose={() => setAdding(false)} />}</AnimatePresence>
+      {/* Date navigation — log meals on any past day */}
+      <div className="mt-4 flex items-center gap-2">
+        <button onClick={() => setSelected(addDays(selected, -1))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 hover:text-ink-100" aria-label="Previous day">
+          <ChevronLeft size={16} />
+        </button>
+        <div className="relative flex items-center gap-2 rounded-full border border-black/[0.08] px-3.5 py-2">
+          <CalendarDays size={14} className="text-ink-400" />
+          <span className="text-[13px] font-medium text-ink-100">{relativeDay(selected)}</span>
+          <span className="text-[11px] text-ink-500">{fmtDate(selected, { month: "short", day: "numeric" })}</span>
+          <input type="date" value={selected} max={today} onChange={(e) => e.target.value && setSelected(e.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label="Pick a date" />
+        </div>
+        <button onClick={() => setSelected(addDays(selected, 1))} disabled={selected >= today} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 hover:text-ink-100 disabled:opacity-30" aria-label="Next day">
+          <ChevronRight size={16} />
+        </button>
+        {selected !== today && (
+          <button onClick={() => setSelected(today)} className="rounded-full border border-black/[0.08] px-3 py-2 text-xs font-medium text-ink-300 hover:text-ink-100">Today</button>
+        )}
+      </div>
+
+      <div className="mt-4">
+        <AnimatePresence>{adding && <AddFood date={selected} onClose={() => setAdding(false)} />}</AnimatePresence>
       </div>
 
       <Card>
@@ -231,18 +255,18 @@ export default function NutritionPage() {
         <div className="mt-3 text-[11px] text-ink-500">
           Sugar {tot.sugar}g · Sodium {fmtNum(tot.sodium)}mg
         </div>
-        <Why summary="Intake vs expenditure today">
+        <Why summary="Intake vs expenditure">
           You&apos;ve eaten {fmtNum(tot.kcal)} kcal against roughly {burn ? `${fmtNum(burn)} kcal burned` : "connect Fitbit for burn"} (resting + activity),
           a net of {fmtNum(tot.kcal - burn)} kcal. Your calorie goal is {fmtNum(kcalGoal)} and your protein
           target is {proteinGoal}g — designed around your current weight goal.
         </Why>
       </Card>
 
-      <Section title="Today's meals">
-        {data.todayMeals.length ? (
+      <Section title={`${relativeDay(selected)}'s meals`}>
+        {dayMeals.length ? (
           <div className="space-y-3">
             {(Object.keys(MEAL_LABEL) as MealKind[]).map((kind) => {
-              const kindMeals = data.todayMeals.filter((m) => m.kind === kind);
+              const kindMeals = dayMeals.filter((m) => m.kind === kind);
               if (!kindMeals.length) return null;
               const kcal = kindMeals.reduce((s, m) => s + m.items.reduce((a, i) => a + i.food.kcal * i.servings, 0), 0);
               return (
