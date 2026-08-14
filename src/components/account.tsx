@@ -84,8 +84,8 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         // A device with nothing logged yet should always adopt the cloud copy
         // rather than overwrite it with an empty snapshot.
         const localEmpty =
-          st.wearableDays.length === 0 && st.meals.length === 0 && st.medications.length === 0 &&
-          st.tasks.length === 0 && Object.keys(st.journal).length === 0;
+          st.wearableDays.length === 0 && st.manualDays.length === 0 && st.meals.length === 0 &&
+          st.medications.length === 0 && st.tasks.length === 0 && Object.keys(st.journal).length === 0;
         if (j.data && (j.updatedAt > localTs || localEmpty)) {
           applying.current = true;
           const parsed = JSON.parse(j.data) as Record<string, unknown>;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Info, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
+import { ManualEntry } from "@/components/manual-entry";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { useAccount } from "@/components/account";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
@@ -113,6 +114,10 @@ export default function SettingsPage() {
 
       <Section title="Data source" sub="Sign in with Google to connect your Fitbit / Google Health data — it then syncs to every device you sign in on.">
         <FitbitCard autoSyncOnConnected advanced openAdvanced={notice?.kind === "setup"} />
+      </Section>
+
+      <Section title="Any wearable" sub="On Apple Watch, Garmin, Oura, Whoop or Samsung? Enter your daily numbers and CURA scores them the same way.">
+        <ManualEntry />
       </Section>
 
       <Section title="Sync diagnostics" sub="See exactly what the last sync pulled, and which numbers are measured vs estimated.">

@@ -36,6 +36,9 @@ export function Landing() {
             <p className="flex items-center gap-1.5 text-xs text-ink-500">
               <Moon size={12} /> Works with Fitbit &amp; Google Health · sign in on any device and everything follows you.
             </p>
+            <p className="text-xs text-ink-500">
+              On a different wearable? <Link href="/settings" className="font-medium text-recovery hover:underline">Add your numbers by hand →</Link>
+            </p>
           </div>
         </div>
       </section>

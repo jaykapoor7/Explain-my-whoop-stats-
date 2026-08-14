@@ -29,6 +29,7 @@ export const DEFAULT_GOALS: Goal[] = [
 
 interface AppState {
   wearableDays: DailySummary[];
+  manualDays: DailySummary[]; // hand-entered days (any wearable / no device)
   lastSync: string | null;
   activityResolutions: Record<string, "confirmed" | "ignored" | "edited">;
   activityTypeEdits: Record<string, string>;
@@ -48,6 +49,8 @@ interface AppState {
   hydrateFromCloud: (data: Record<string, unknown>, updatedAt: number) => void;
   markCloudSynced: (updatedAt: number) => void;
   setWearableDays: (days: DailySummary[], syncedAt: string) => void;
+  saveManualDay: (day: DailySummary) => void;
+  removeManualDay: (date: string) => void;
   resolveActivity: (id: string, res: "confirmed" | "ignored" | "edited", newType?: string) => void;
   addMeal: (meal: Meal) => void;
   removeMeal: (id: string) => void;
@@ -66,10 +69,18 @@ interface AppState {
 
 const DEFAULT_SETTINGS: Settings = { name: "You", weightUnit: "kg", showLowConfidence: true };
 
+/** Union two day lists by date (incoming wins), sorted, capped. */
+function mergeByDate(a: DailySummary[], b: DailySummary[]): DailySummary[] {
+  const m = new Map(a.map((d) => [d.date, d]));
+  for (const d of b) m.set(d.date, d);
+  return [...m.values()].sort((x, y) => x.date.localeCompare(y.date)).slice(-120);
+}
+
 export const useApp = create<AppState>()(
   persist(
     (set) => ({
       wearableDays: [],
+      manualDays: [],
       lastSync: null,
       activityResolutions: {},
       activityTypeEdits: {},
@@ -109,6 +120,7 @@ export const useApp = create<AppState>()(
             taskDone: d.taskDone ?? s.taskDone,
             goalTargets: d.goalTargets ?? s.goalTargets,
             settings: { ...s.settings, ...(d.settings ?? {}) },
+            manualDays: mergeByDate(s.manualDays, d.manualDays ?? []),
             cloudUpdatedAt: updatedAt,
           };
         }),
@@ -119,6 +131,9 @@ export const useApp = create<AppState>()(
           for (const d of incoming) map.set(d.date, d);
           return { wearableDays: [...map.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-120), lastSync: syncedAt };
         }),
+      saveManualDay: (day) =>
+        set((s) => ({ manualDays: [...s.manualDays.filter((d) => d.date !== day.date), day].sort((a, b) => a.date.localeCompare(b.date)).slice(-120) })),
+      removeManualDay: (date) => set((s) => ({ manualDays: s.manualDays.filter((d) => d.date !== date) })),
       resolveActivity: (id, res, newType) =>
         set((s) => ({
           activityResolutions: { ...s.activityResolutions, [id]: res },
@@ -138,6 +153,7 @@ export const useApp = create<AppState>()(
       resetAll: () =>
         set({
           wearableDays: [],
+          manualDays: [],
           lastSync: null,
           activityResolutions: {},
           activityTypeEdits: {},
@@ -171,7 +187,7 @@ export function applyGoalTargets(goals: Goal[], targets: Record<string, number>)
 
 /** Fields mirrored to the cloud snapshot for signed-in users. */
 export const SYNC_KEYS = [
-  "wearableDays", "lastSync", "activityResolutions", "activityTypeEdits",
+  "wearableDays", "manualDays", "lastSync", "activityResolutions", "activityTypeEdits",
   "meals", "medications", "medOverrides", "journal", "tasks", "taskDone",
   "goalTargets", "settings",
 ] as const;

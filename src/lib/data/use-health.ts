@@ -55,8 +55,14 @@ export function useHealth(): HealthData {
   const tISO = todayISO();
 
   const days = useMemo<ScoredDay[]>(() => {
-    if (!s.wearableDays.length) return [];
-    const merged = s.wearableDays.map((d) => ({
+    // Combine hand-entered days with synced days (a real sync wins per date),
+    // so any wearable — or manual entry — produces scores.
+    const byDate = new Map<string, (typeof s.wearableDays)[number]>();
+    for (const d of s.manualDays) byDate.set(d.date, d);
+    for (const d of s.wearableDays) byDate.set(d.date, d);
+    const base = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
+    if (!base.length) return [];
+    const merged = base.map((d) => ({
       ...d,
       activities: d.activities.map((a) => {
         const res = s.activityResolutions[a.id];
@@ -68,7 +74,7 @@ export function useHealth(): HealthData {
       journal: s.journal[d.date],
     }));
     return computeScoredDays(merged);
-  }, [s.wearableDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
+  }, [s.wearableDays, s.manualDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
 
   const insights = useMemo(() => generateInsights(days), [days]);
   const goals = useMemo(() => applyGoalTargets(DEFAULT_GOALS, s.goalTargets), [s.goalTargets]);
@@ -93,7 +99,7 @@ export function useHealth(): HealthData {
     today: viewed,
     viewDate: viewed?.day.date,
     isLatest,
-    connected: s.wearableDays.length > 0,
+    connected: s.wearableDays.length > 0 || s.manualDays.length > 0,
     lastSync: s.lastSync,
     insights,
     goals,
