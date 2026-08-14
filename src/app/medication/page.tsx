@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Clock, Pill, Plus, ShieldAlert, Trash2, X } from "lucide-react";
-import { Card, EmptyState, PageHeader, ProgressBar, Section, SkeletonPage, StatusPill } from "@/components/ui";
+import { CalendarCheck, Check, CheckCircle2, Clock, Pill, Plus, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
+import { Card, PageHeader, ProgressBar, Section, SkeletonPage, StatusPill } from "@/components/ui";
 import { useHealth, deriveMedEvents } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { addDays, cn, fmtDate, fmtTime, todayISO } from "@/lib/format";
@@ -123,11 +123,36 @@ export default function MedicationPage() {
       </div>
 
       {medications.length === 0 ? (
-        <EmptyState
-          icon={<Pill size={20} />}
-          title="No medications yet"
-          body="Add a medication to get a daily schedule, adherence tracking, and — over time — observational associations with your sleep, recovery and mood."
-        />
+        <div className="mt-1">
+          <div className="relative overflow-hidden rounded-3xl border border-black/[0.05] p-8 text-center sm:p-12" style={{ background: `linear-gradient(135deg, ${ACCENT}12, ${ACCENT}03 50%, transparent)` }}>
+            <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl" style={{ background: `${ACCENT}1f`, color: ACCENT }}>
+              <Pill size={22} />
+            </span>
+            <h3 className="mt-4 font-display text-lg font-bold text-ink-50">Track your medications</h3>
+            <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
+              Add what you take and CURA builds a daily schedule, tracks how consistently you take it, and — over time —
+              shows how it lines up with your sleep, recovery and mood.
+            </p>
+            <button onClick={() => setAdding(true)} className="mt-5 inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-semibold text-[#241f18]" style={{ background: ACCENT }}>
+              <Plus size={14} /> Add your first medication
+            </button>
+          </div>
+          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+            {[
+              { icon: CalendarCheck, title: "Daily schedule", body: "Every dose, laid out by time with with-food reminders." },
+              { icon: CheckCircle2, title: "Adherence", body: "See your 14-day streak and how many doses you've kept." },
+              { icon: Sparkles, title: "Patterns", body: "Observed links between a med and your recovery or sleep." },
+            ].map((f) => (
+              <div key={f.title} className="card p-4">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ background: `${ACCENT}17`, color: ACCENT }}>
+                  <f.icon size={17} />
+                </span>
+                <h4 className="mt-2.5 text-[13px] font-semibold text-ink-100">{f.title}</h4>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-400">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </div>
       ) : (
         <>
           {denom > 0 && (

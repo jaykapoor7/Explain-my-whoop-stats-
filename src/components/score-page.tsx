@@ -83,7 +83,7 @@ export function ScorePage({
     <div className="animate-fadeUp">
       <PageHeader title={title} sub={question} right={<DaySwitcher />} />
 
-      <Card className="mt-5">
+      <Card className="mt-5 overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}12, ${color}03 45%, transparent)` }}>
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
           <ScoreRing score={score.score} scale={score.scale} color={color} label={ringLabel} />
           <div className="w-full min-w-0 flex-1 text-center sm:text-left">
