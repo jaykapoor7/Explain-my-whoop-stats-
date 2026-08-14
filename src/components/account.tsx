@@ -112,6 +112,37 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     return () => { disposed = true; unsub(); if (timer.current) clearTimeout(timer.current); };
   }, [signedIn, push]);
 
+  // Pull newer cloud data when the tab regains focus / periodically, so a
+  // change made on another device (e.g. logging a med on your laptop) shows up
+  // here without a manual reload. Skips if this device has unpushed edits.
+  const pullRemote = useCallback(async () => {
+    if (applying.current || !useApp.getState().hydrated) return;
+    const cur = JSON.stringify(collectSyncState(useApp.getState()));
+    if (cur !== lastSig.current) return; // local has pending changes; let the push win
+    const r = await fetch("/api/data", { cache: "no-store" }).catch(() => null);
+    if (!r?.ok) return;
+    const j = (await r.json()) as { data: string | null; updatedAt: number };
+    if (j.data && j.updatedAt > useApp.getState().cloudUpdatedAt) {
+      applying.current = true;
+      useApp.getState().hydrateFromCloud(JSON.parse(j.data), j.updatedAt);
+      lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
+      applying.current = false;
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!signedIn) return;
+    const onVis = () => { if (document.visibilityState === "visible") pullRemote(); };
+    window.addEventListener("focus", pullRemote);
+    document.addEventListener("visibilitychange", onVis);
+    const iv = setInterval(pullRemote, 45000);
+    return () => {
+      window.removeEventListener("focus", pullRemote);
+      document.removeEventListener("visibilitychange", onVis);
+      clearInterval(iv);
+    };
+  }, [signedIn, pullRemote]);
+
   const signIn = useCallback(() => { window.location.href = "/api/fitbit/connect"; }, []);
 
   const signOut = useCallback(async () => {
