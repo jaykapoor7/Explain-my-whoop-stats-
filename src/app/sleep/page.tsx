@@ -1,8 +1,10 @@
 "use client";
 
+import { Moon } from "lucide-react";
 import { ScorePage } from "@/components/score-page";
 import { Card, Delta, Section } from "@/components/ui";
 import { Hypnogram, SleepStagesBar } from "@/components/charts";
+import { sleepCoach } from "@/lib/scoring/sleep-coach";
 import { DOMAIN_COLOR, fmtDuration, fmtTime } from "@/lib/format";
 
 function Fact({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -31,8 +33,34 @@ export default function SleepPage() {
         const en = data.today!.energy;
         const sleepPtsRec = rec.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
         const sleepPtsEn = en.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
+        const coach = sleepCoach(data.days.map((d) => d.day));
         return (
           <>
+            {coach.available && (
+              <Section title="Sleep coach" sub="Your personal sleep need, debt and tonight's bedtime">
+                <Card className="p-5">
+                  <div className="flex flex-col gap-5 sm:flex-row sm:items-center">
+                    <div className="flex items-center gap-4 sm:min-w-[220px] sm:border-r sm:border-black/[0.06] sm:pr-6">
+                      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${DOMAIN_COLOR.sleep}1f`, color: DOMAIN_COLOR.sleep }}>
+                        <Moon size={24} />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Suggested bedtime</div>
+                        <div className="tabular text-[2rem] font-bold leading-tight text-ink-50">{fmtTime(coach.suggestedBedtime)}</div>
+                        <div className="text-[11px] text-ink-400">to wake by {fmtTime(coach.suggestedWake)}</div>
+                      </div>
+                    </div>
+                    <div className="grid flex-1 grid-cols-3 gap-2.5">
+                      <Fact label="Tonight's need" value={fmtDuration(coach.tonightNeedMin)} hint={`${coach.efficiencyPct}% efficient`} />
+                      <Fact label="Sleep debt" value={fmtDuration(coach.debtMin)} hint={coach.debtMin > 0 ? "to pay back" : "all clear"} />
+                      <Fact label="Baseline need" value={fmtDuration(coach.baselineNeedMin)} hint="your typical" />
+                    </div>
+                  </div>
+                  <p className="mt-4 text-xs leading-relaxed text-ink-400">{coach.rationale}</p>
+                </Card>
+              </Section>
+            )}
+
             <Section title="Last night" sub={`${fmtTime(s.bedtime.slice(11, 16))} → ${fmtTime(s.wake.slice(11, 16))}`}>
               <Card>
                 {s.segments && s.segments.length > 3 && (

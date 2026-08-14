@@ -1,5 +1,6 @@
 import { DailySummary, NutritionTotals, PersonalBaseline, ScoreResult } from "../types";
 import { calcSleep } from "./sleep";
+import { personalSleepNeed, sleepDebtMin } from "./sleep-coach";
 import { calcStrain, countedActivities } from "./strain";
 import { calcRecovery } from "./recovery";
 import { calcEnergy } from "./energy";
@@ -58,7 +59,16 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
 export function computeScoredDays(days: DailySummary[]): ScoredDay[] {
   const out: ScoredDay[] = [];
   for (let i = 0; i < days.length; i++) {
-    const day = days[i];
+    const raw = days[i];
+    // Fill in a personalised sleep need + rolling debt from history, so the
+    // Sleep score's debt term and the coach read real numbers (connectors only
+    // ship placeholders).
+    const need = personalSleepNeed(days.slice(0, i + 1));
+    const debt = sleepDebtMin(days.slice(0, i + 1), need);
+    const day: DailySummary =
+      raw.sleep.asleepMin > 0 || raw.sleep.inBedMin > 0
+        ? { ...raw, sleep: { ...raw.sleep, needMin: need, debtMin: debt } }
+        : raw;
     const baseline = baselineAt(days, i, out);
     const sleep = calcSleep(day).raw;
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
