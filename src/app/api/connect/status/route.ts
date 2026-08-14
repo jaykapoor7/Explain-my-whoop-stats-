@@ -13,7 +13,7 @@ export function GET(req: NextRequest) {
     tagline: p.tagline,
     configured: !!providerCreds(p.id).clientId,
     connected: !!decodeTokens(req.cookies.get(providerCookie(p.id))?.value),
-    mapped: p.id === "oura", // which have a finished data mapping
+    mapped: true, // all four connectors have a finished data mapping
   }));
   return NextResponse.json({ providers });
 }

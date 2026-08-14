@@ -1,6 +1,9 @@
 import "server-only";
 import type { DailySummary } from "../types";
 import { ouraFetchDays } from "./oura";
+import { whoopFetchDays } from "./whoop";
+import { fitbitFetchDays } from "./fitbit";
+import { polarFetchDays } from "./polar";
 
 /**
  * Multi-provider wearable connectors. Each provider is a standard OAuth 2.0
@@ -59,7 +62,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
     scopes: "read:recovery read:sleep read:cycles read:workout offline",
     pkce: false,
     tokenAuth: "body",
-    fetchDays: async () => [], // mapper added in a follow-up
+    fetchDays: whoopFetchDays,
   },
   fitbit: {
     id: "fitbit",
@@ -71,7 +74,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
     scopes: "sleep heartrate activity profile",
     pkce: true,
     tokenAuth: "basic",
-    fetchDays: async () => [],
+    fetchDays: fitbitFetchDays,
   },
   polar: {
     id: "polar",
@@ -83,7 +86,7 @@ export const PROVIDERS: Record<string, ProviderDef> = {
     scopes: "accesslink.read_all",
     pkce: false,
     tokenAuth: "basic",
-    fetchDays: async () => [],
+    fetchDays: polarFetchDays,
   },
 };
 
