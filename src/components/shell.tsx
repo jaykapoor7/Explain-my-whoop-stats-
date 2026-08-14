@@ -5,16 +5,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Activity,
   MessageCircle,
-  BatteryCharging,
   CalendarDays,
-  Flame,
-  Gauge,
   Grid2x2,
-  HeartPulse,
   LineChart,
-  Moon,
   NotebookPen,
   Pill,
   Settings,
@@ -26,35 +20,31 @@ import {
 import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
 import { AccountProvider, AccountChip } from "@/components/account";
+import { Logo } from "@/components/logo";
 
+// The daily metrics (Energy, Recovery, Sleep, Strain, Health Age) are reached
+// by tapping their cards on Today, so the nav stays to the tools + views.
 const NAV = [
   { href: "/today", label: "Today", icon: Sun, color: "#211c14" },
-  { href: "/energy", label: "Energy", icon: BatteryCharging, color: "#eb9d18" },
-  { href: "/recovery", label: "Recovery", icon: HeartPulse, color: "#13b57e" },
-  { href: "/sleep", label: "Sleep", icon: Moon, color: "#7b68ee" },
-  { href: "/strain", label: "Strain", icon: Flame, color: "#ef5a45" },
-  { href: "/health-age", label: "Health Age", icon: Gauge, color: "#0ea5a0" },
+  { href: "/trends", label: "Trends", icon: LineChart, color: "#2a8fc4" },
   { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#2298cf" },
   { href: "/medication", label: "Medication", icon: Pill, color: "#c2569f" },
   { href: "/journal", label: "Journal", icon: NotebookPen, color: "#a98b3f" },
-  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
-  { href: "/trends", label: "Trends", icon: LineChart, color: "#2a8fc4" },
   { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
   { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
+  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
   { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
 
-// Bottom tab bar shows the daily-driver five; the rest live behind "More".
-const MOBILE_PRIMARY = ["/today", "/assistant", "/sleep", "/nutrition"];
+// Bottom tab bar shows the daily drivers; the rest live behind "More".
+const MOBILE_PRIMARY = ["/today", "/nutrition", "/journal", "/planner"];
 
 function DesktopNav() {
   const pathname = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-black/[0.06] bg-ink-900/70 px-3 py-5 backdrop-blur-xl lg:flex">
       <Link href="/today" className="mb-6 flex items-center gap-2.5 px-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-recovery to-sleep text-[#241f18] shadow-lift">
-          <Activity size={18} strokeWidth={2.4} />
-        </span>
+        <Logo size={36} className="shrink-0 shadow-lift" />
         <div>
           <div className="font-display text-[19px] font-bold leading-none tracking-[0.14em] text-ink-50">CURA</div>
           <div className="mt-1 text-[10px] tracking-wide text-ink-400">your body, clearly</div>

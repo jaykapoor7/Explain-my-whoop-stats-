@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Check, ChevronDown, Footprints, Sparkles } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, Footprints, Sparkles } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
 import { HealthAgeCard } from "@/components/health-age";
@@ -101,6 +101,11 @@ export default function TodayPage() {
                       </span>
                     </div>
                     <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
+                    {data.isLatest && (
+                      <Link href="/energy" className="mt-2 inline-flex items-center gap-1 text-xs font-medium" style={{ color: DOMAIN_COLOR.energy }}>
+                        Energy breakdown <ArrowRight size={13} />
+                      </Link>
+                    )}
                   </>
                 )}
               </div>

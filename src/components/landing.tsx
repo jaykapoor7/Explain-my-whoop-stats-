@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Activity, HeartPulse, LineChart, LogIn, Moon, NotebookPen, Sparkles } from "lucide-react";
+import { HeartPulse, LineChart, LogIn, Moon, NotebookPen, Sparkles } from "lucide-react";
 import { useAccount } from "@/components/account";
+import { Logo } from "@/components/logo";
 
 const FEATURES = [
   { icon: HeartPulse, color: "#13b57e", title: "Recovery, sleep, strain & energy", body: "One clear score for each, every morning — so you know what your body can handle today." },
@@ -20,9 +21,7 @@ export function Landing() {
         <div className="pointer-events-none absolute -left-16 -top-16 h-56 w-56 rounded-full bg-recovery/20 blur-3xl" />
         <div className="pointer-events-none absolute -bottom-20 -right-10 h-56 w-56 rounded-full bg-sleep/20 blur-3xl" />
         <div className="relative">
-          <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-recovery to-sleep text-[#241f18] shadow-lift">
-            <Activity size={26} strokeWidth={2.4} />
-          </span>
+          <Logo size={56} className="mx-auto shadow-lift" />
           <h1 className="mt-6 font-display text-5xl font-bold tracking-[0.18em] text-ink-50 sm:text-7xl">CURA</h1>
           <p className="mx-auto mt-4 max-w-xl text-lg leading-snug text-ink-300 sm:text-xl">
             Your body, clearly explained. Turn your wearable into daily scores you actually understand — and the patterns behind them.
