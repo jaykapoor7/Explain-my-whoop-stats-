@@ -14,6 +14,7 @@ import {
   Settings,
   Sun,
   Target,
+  Users,
   UtensilsCrossed,
   X,
 } from "lucide-react";
@@ -32,6 +33,7 @@ const NAV = [
   { href: "/journal", label: "Journal", icon: NotebookPen, color: "#a98b3f" },
   { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
   { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
+  { href: "/friends", label: "Friends", icon: Users, color: "#e0894e" },
   { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
   { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
