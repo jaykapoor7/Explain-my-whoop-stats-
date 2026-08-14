@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useEffect, useRef } from "react";
+import { motion } from "framer-motion";
 import {
   MessageCircle,
   CalendarDays,
-  Grid2x2,
   LineChart,
   NotebookPen,
   Pill,
@@ -16,7 +15,6 @@ import {
   Target,
   Users,
   UtensilsCrossed,
-  X,
 } from "lucide-react";
 import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
@@ -37,9 +35,6 @@ const NAV = [
   { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
   { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
-
-// Bottom tab bar shows the daily drivers; the rest live behind "More".
-const MOBILE_PRIMARY = ["/today", "/nutrition", "/journal", "/planner"];
 
 function DesktopNav() {
   const pathname = usePathname();
@@ -84,76 +79,38 @@ function DesktopNav() {
   );
 }
 
+/** A single scrollable tab bar with EVERY section — nothing hidden behind a
+ * menu. The active tab auto-centres, and soft edge fades hint there's more to
+ * swipe. */
 function MobileNav() {
   const pathname = usePathname();
-  const [moreOpen, setMoreOpen] = useState(false);
-  const primary = NAV.filter((n) => MOBILE_PRIMARY.includes(n.href));
-  const rest = NAV.filter((n) => !MOBILE_PRIMARY.includes(n.href));
-  const moreActive = rest.some((n) => pathname.startsWith(n.href));
+  const activeRef = useRef<HTMLAnchorElement>(null);
+
+  useEffect(() => {
+    activeRef.current?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [pathname]);
 
   return (
-    <>
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.07] bg-ink-900/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
-        <div className="mx-auto flex max-w-md items-stretch justify-around">
-          {primary.map(({ href, label, icon: Icon, color }) => {
-            const active = pathname.startsWith(href);
-            return (
-              <Link key={href} href={href} className="flex flex-1 flex-col items-center gap-1 py-2.5" onClick={() => setMoreOpen(false)}>
-                <Icon size={19} strokeWidth={2} style={{ color: active ? color : "#9a8f78" }} />
-                <span className={cn("text-[10px] font-medium", active ? "text-ink-100" : "text-ink-400")}>{label}</span>
-              </Link>
-            );
-          })}
-          <button onClick={() => setMoreOpen(!moreOpen)} className="flex flex-1 flex-col items-center gap-1 py-2.5">
-            <Grid2x2 size={19} strokeWidth={2} style={{ color: moreOpen || moreActive ? "#211c14" : "#9a8f78" }} />
-            <span className={cn("text-[10px] font-medium", moreOpen || moreActive ? "text-ink-100" : "text-ink-400")}>More</span>
-          </button>
-        </div>
-      </nav>
-
-      <AnimatePresence>
-        {moreOpen && (
-          <>
-            <motion.button
-              aria-label="Close menu"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMoreOpen(false)}
-              className="fixed inset-0 z-40 bg-[#2a2417]/35 backdrop-blur-sm lg:hidden"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", bounce: 0.1, duration: 0.45 }}
-              className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl border-t border-black/[0.08] bg-ink-850 p-5 pb-[calc(env(safe-area-inset-bottom)+72px)] lg:hidden"
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-black/[0.07] bg-ink-900/90 pb-[env(safe-area-inset-bottom)] backdrop-blur-xl lg:hidden">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-6 bg-gradient-to-r from-ink-900/90 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-6 bg-gradient-to-l from-ink-900/90 to-transparent" />
+      <div className="flex items-stretch gap-0.5 overflow-x-auto px-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        {NAV.map(({ href, label, icon: Icon, color }) => {
+          const active = pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              ref={active ? activeRef : undefined}
+              className="flex min-w-[58px] shrink-0 flex-col items-center gap-1 py-2.5"
             >
-              <div className="mb-4 flex items-center justify-between">
-                <span className="text-sm font-semibold text-ink-100">All sections</span>
-                <button onClick={() => setMoreOpen(false)} className="text-ink-400" aria-label="Close">
-                  <X size={18} />
-                </button>
-              </div>
-              <div className="mb-4"><AccountChip /></div>
-              <div className="grid grid-cols-4 gap-3">
-                {rest.map(({ href, label, icon: Icon, color }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex flex-col items-center gap-1.5 rounded-2xl border border-black/[0.06] bg-black/[0.03] px-2 py-3.5"
-                  >
-                    <Icon size={19} strokeWidth={2} style={{ color }} />
-                    <span className="text-[10px] font-medium text-ink-200">{label}</span>
-                  </Link>
-                ))}
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
-    </>
+              <Icon size={19} strokeWidth={2} style={{ color: active ? color : "#9a8f78" }} />
+              <span className={cn("whitespace-nowrap text-[10px] font-medium", active ? "text-ink-100" : "text-ink-400")}>{label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </nav>
   );
 }
 

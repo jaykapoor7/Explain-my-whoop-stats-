@@ -76,6 +76,19 @@ function mergeByDate(a: DailySummary[], b: DailySummary[]): DailySummary[] {
   return [...m.values()].sort((x, y) => x.date.localeCompare(y.date)).slice(-120);
 }
 
+/** Union two id-keyed lists (incoming wins on conflict, but nothing is lost).
+ * This is what lets a planner task added on your laptop survive a sync from a
+ * phone that never had it — the two lists merge instead of overwriting. */
+function unionById<T extends { id: string }>(local: T[], cloud: T[] = []): T[] {
+  const m = new Map(local.map((x) => [x.id, x]));
+  for (const x of cloud) m.set(x.id, x);
+  return [...m.values()];
+}
+/** Merge two plain maps (incoming wins per key; both keys survive). */
+function mergeMap<V>(local: Record<string, V>, cloud: Record<string, V> = {}): Record<string, V> {
+  return { ...local, ...cloud };
+}
+
 export const useApp = create<AppState>()(
   persist(
     (set) => ({
@@ -107,18 +120,21 @@ export const useApp = create<AppState>()(
           for (const day of s.wearableDays) byDate.set(day.date, day);
           for (const day of (d.wearableDays ?? [])) byDate.set(day.date, day);
           const merged = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date)).slice(-120);
+          // Everything the user logs is UNION-merged, never replaced — so a
+          // device syncing its state can only add to the cloud, never wipe what
+          // another device wrote (tasks, meals, journal, meds all survive).
           return {
             wearableDays: merged,
             lastSync: d.lastSync ?? s.lastSync,
-            activityResolutions: d.activityResolutions ?? s.activityResolutions,
-            activityTypeEdits: d.activityTypeEdits ?? s.activityTypeEdits,
-            meals: d.meals ?? s.meals,
-            medications: d.medications ?? s.medications,
-            medOverrides: d.medOverrides ?? s.medOverrides,
-            journal: d.journal ?? s.journal,
-            tasks: d.tasks ?? s.tasks,
-            taskDone: d.taskDone ?? s.taskDone,
-            goalTargets: d.goalTargets ?? s.goalTargets,
+            activityResolutions: mergeMap(s.activityResolutions, d.activityResolutions),
+            activityTypeEdits: mergeMap(s.activityTypeEdits, d.activityTypeEdits),
+            meals: unionById(s.meals, d.meals),
+            medications: unionById(s.medications, d.medications),
+            medOverrides: mergeMap(s.medOverrides, d.medOverrides),
+            journal: mergeMap(s.journal, d.journal),
+            tasks: unionById(s.tasks, d.tasks),
+            taskDone: mergeMap(s.taskDone, d.taskDone),
+            goalTargets: mergeMap(s.goalTargets, d.goalTargets),
             settings: { ...s.settings, ...(d.settings ?? {}) },
             manualDays: mergeByDate(s.manualDays, d.manualDays ?? []),
             cloudUpdatedAt: updatedAt,

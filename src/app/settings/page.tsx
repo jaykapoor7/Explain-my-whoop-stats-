@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { Connections } from "@/components/connections";
 import { ManualEntry } from "@/components/manual-entry";
@@ -153,10 +153,6 @@ export default function SettingsPage() {
         <ManualEntry />
       </Section>
 
-      <Section title="Sync diagnostics" sub="See exactly what the last sync pulled, and which numbers are measured vs estimated.">
-        <SyncDiagnostics />
-      </Section>
-
       <Section title="Privacy">
         <Card className="flex items-start gap-3.5 p-5">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-good/10 text-good">
@@ -193,6 +189,18 @@ export default function SettingsPage() {
           )}
         </Card>
       </Section>
+
+      <details className="group mt-10">
+        <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-ink-300 [&::-webkit-details-marker]:hidden">
+          <ChevronDown size={15} className="text-ink-400 transition-transform group-open:rotate-180" />
+          Advanced
+        </summary>
+        <div className="mt-4">
+          <Section className="mt-0" title="Sync diagnostics" sub="See exactly what the last sync pulled, and which numbers are measured vs estimated.">
+            <SyncDiagnostics />
+          </Section>
+        </div>
+      </details>
 
       <p className="mt-10 text-center text-[11px] text-ink-500">
         CURA · not a medical device ·{" "}
