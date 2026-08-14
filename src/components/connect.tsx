@@ -73,7 +73,7 @@ export function useFitbit() {
 }
 
 /** Full connect card: one-tap connect, self-host setup, device pairing + sync. */
-export function FitbitCard({ autoSyncOnConnected = false, advanced = false }: { autoSyncOnConnected?: boolean; advanced?: boolean }) {
+export function FitbitCard({ autoSyncOnConnected = false, advanced = false, openAdvanced = false }: { autoSyncOnConnected?: boolean; advanced?: boolean; openAdvanced?: boolean }) {
   const { status, busy, message, sync, saveCreds, disconnect } = useFitbit();
   const account = useAccount();
   const lastSync = useApp((s) => s.lastSync);
@@ -81,7 +81,7 @@ export function FitbitCard({ autoSyncOnConnected = false, advanced = false }: { 
   const [clientId, setClientId] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [origin, setOrigin] = useState("");
-  const [showSetup, setShowSetup] = useState(false);
+  const [showSetup, setShowSetup] = useState(openAdvanced);
 
   useEffect(() => {
     setOrigin(window.location.origin);

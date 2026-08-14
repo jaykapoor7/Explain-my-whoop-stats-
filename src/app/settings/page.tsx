@@ -1,7 +1,8 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, Info, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { useAccount } from "@/components/account";
@@ -9,124 +10,153 @@ import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { cn } from "@/lib/format";
 
+const FIELD = "h-11 w-full rounded-xl border border-black/10 bg-black/[0.02] px-3.5 text-sm text-ink-100 outline-none transition focus:border-black/25 focus:bg-black/[0.01]";
+
+/** A left-label / right-control settings row with a divider. */
+function Row({ label, hint, children, last }: { label: string; hint?: string; children: React.ReactNode; last?: boolean }) {
+  return (
+    <div className={cn("flex items-center justify-between gap-4 py-3.5", !last && "border-b border-black/[0.05]")}>
+      <div className="min-w-0">
+        <div className="text-[13px] font-medium text-ink-100">{label}</div>
+        {hint && <div className="mt-0.5 text-[11px] leading-relaxed text-ink-400">{hint}</div>}
+      </div>
+      <div className="shrink-0">{children}</div>
+    </div>
+  );
+}
+
+function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label={label}
+      className={cn("h-6 w-11 shrink-0 rounded-full p-0.5 transition-colors", on ? "bg-recovery" : "bg-black/15")}
+    >
+      <span className={cn("block h-5 w-5 rounded-full bg-white shadow-sm transition-transform", on && "translate-x-5")} />
+    </button>
+  );
+}
+
 export default function SettingsPage() {
   const { settings, setSettings, resetAll, hydrated } = useApp();
   const account = useAccount();
+  const [notice, setNotice] = useState<{ kind: "setup" | "error"; reason?: string } | null>(null);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const f = p.get("fitbit");
+    if (f === "setup") setNotice({ kind: "setup" });
+    else if (f === "error") setNotice({ kind: "error", reason: p.get("reason") ?? undefined });
+    if (f === "setup" || f === "error") window.history.replaceState({}, "", "/settings");
+  }, []);
+
   if (!hydrated) return <SkeletonPage />;
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title="Settings" sub="Preferences, data sources, and your data." />
+      <PageHeader title="Settings" sub="Your profile, connected data and privacy — all in one place." />
+
+      {notice?.kind === "setup" && (
+        <Card className="mt-5 flex items-start gap-3 border border-warn/25 bg-warn/[0.06] p-4">
+          <Info size={17} className="mt-0.5 shrink-0 text-warn" />
+          <p className="text-[13px] leading-relaxed text-ink-200">
+            Google sign-in isn&apos;t set up on this deployment yet, so there was nothing to sign in to. Once the app&apos;s
+            Google credentials are configured, the button works with a single tap. Self-hosting? Add your own credentials
+            under <span className="font-medium">Data source</span> below.
+          </p>
+        </Card>
+      )}
+      {notice?.kind === "error" && (
+        <Card className="mt-5 flex items-start gap-3 border border-bad/25 bg-bad/[0.06] p-4">
+          <AlertTriangle size={17} className="mt-0.5 shrink-0 text-bad" />
+          <p className="text-[13px] leading-relaxed text-ink-200">
+            Sign-in didn&apos;t complete{notice.reason ? ` (${notice.reason})` : ""}. This usually means the redirect URI
+            or credentials don&apos;t match. Check your Google OAuth client, then try again.
+          </p>
+        </Card>
+      )}
 
       <Section title="Profile">
-        <Card className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="px-5 py-1">
+          <div className="grid gap-4 py-4 sm:grid-cols-2">
             <label className="block">
-              <span className="text-xs font-medium text-ink-300">Display name</span>
-              <input
-                value={settings.name}
-                onChange={(e) => setSettings({ name: e.target.value })}
-                className="mt-1.5 h-10 w-full rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
-              />
+              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Display name</span>
+              <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} className={cn(FIELD, "mt-1.5")} />
             </label>
             <label className="block">
-              <span className="text-xs font-medium text-ink-300">Birth year <span className="text-ink-500">· for Health Age</span></span>
+              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Birth year <span className="normal-case text-ink-400">· for Health Age</span></span>
               <input
                 type="number"
                 value={settings.birthYear ?? ""}
-                onChange={(e) => {
-                  const y = parseInt(e.target.value, 10);
-                  setSettings({ birthYear: Number.isFinite(y) ? y : undefined });
-                }}
+                onChange={(e) => { const y = parseInt(e.target.value, 10); setSettings({ birthYear: Number.isFinite(y) ? y : undefined }); }}
                 placeholder="e.g. 1998"
-                className="tabular mt-1.5 h-10 w-full rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
+                className={cn(FIELD, "tabular mt-1.5")}
               />
             </label>
           </div>
-          <div>
-            <span className="text-xs font-medium text-ink-300">Weight unit</span>
-            <div className="mt-1.5 flex overflow-hidden rounded-lg border border-black/[0.08] text-xs" style={{ width: "fit-content" }}>
-              {(["kg", "lb"] as const).map((u) => (
-                <button
-                  key={u}
-                  onClick={() => setSettings({ weightUnit: u })}
-                  className={cn("px-4 py-2 font-medium", settings.weightUnit === u ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}
-                >
-                  {u}
-                </button>
-              ))}
-            </div>
+          <div className="border-t border-black/[0.05]">
+            <Row label="Weight unit">
+              <div className="flex overflow-hidden rounded-lg border border-black/[0.1] text-xs">
+                {(["kg", "lb"] as const).map((u) => (
+                  <button key={u} onClick={() => setSettings({ weightUnit: u })} className={cn("px-4 py-1.5 font-medium transition-colors", settings.weightUnit === u ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </Row>
+            <Row label="Show unrecognized HR blocks on Strain" hint="Short elevated-HR spikes that aren't clearly a workout." last>
+              <Toggle on={settings.showLowConfidence} onClick={() => setSettings({ showLowConfidence: !settings.showLowConfidence })} label="Toggle low-confidence visibility" />
+            </Row>
           </div>
-          <label className="flex items-center justify-between gap-3">
-            <span className="text-xs font-medium text-ink-300">Show unrecognized HR blocks on Strain</span>
-            <button
-              onClick={() => setSettings({ showLowConfidence: !settings.showLowConfidence })}
-              className={cn("h-6 w-11 rounded-full p-0.5 transition-colors", settings.showLowConfidence ? "bg-good" : "bg-ink-600")}
-              aria-label="Toggle low-confidence visibility"
-            >
-              <span className={cn("block h-5 w-5 rounded-full bg-white transition-transform", settings.showLowConfidence && "translate-x-5")} />
-            </button>
-          </label>
         </Card>
       </Section>
 
-      <Section title="Data source" sub="Sign in with Google to connect your Fitbit / Google Health data; it then syncs to every device you sign in on">
-        <FitbitCard autoSyncOnConnected advanced />
+      <Section title="Data source" sub="Sign in with Google to connect your Fitbit / Google Health data — it then syncs to every device you sign in on.">
+        <FitbitCard autoSyncOnConnected advanced openAdvanced={notice?.kind === "setup"} />
       </Section>
 
-      <Section title="Sync diagnostics" sub="Check what the last sync actually pulled from Fitbit, and which numbers are real vs estimated">
+      <Section title="Sync diagnostics" sub="See exactly what the last sync pulled, and which numbers are measured vs estimated.">
         <SyncDiagnostics />
       </Section>
 
       <Section title="Privacy">
-        <Card className="flex items-start gap-3 p-4">
+        <Card className="flex items-start gap-3.5 p-5">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-good/10 text-good">
-            <ShieldCheck size={16} />
+            <ShieldCheck size={17} />
           </span>
-          <p className="text-xs leading-relaxed text-ink-400">
-            When you&apos;re signed in, your data is stored in your own account&apos;s database so it syncs across your
-            devices; signed out, it stays only in this browser. Medication and journal data are treated as sensitive:
-            excluded from any future analytics by default, and never used to train models. Google tokens are encrypted
-            at rest and no secrets are committed to the repository — credentials use environment variables.
+          <p className="text-[13px] leading-relaxed text-ink-400">
+            When you&apos;re signed in, your data is stored in your own account so it syncs across your devices; signed
+            out, it stays only in this browser. Medication and journal data are treated as sensitive — never used for
+            advertising or to train models — and your Google token is encrypted at rest. See our{" "}
+            <Link href="/privacy" className="text-recovery underline">Privacy Policy</Link>.
           </p>
         </Card>
       </Section>
 
       <Section title="Your data">
-        <Card className="flex flex-wrap items-center justify-between gap-3 p-4">
-          <div>
-            <p className="text-sm font-semibold text-ink-100">Reset local data</p>
-            <p className="mt-0.5 text-xs text-ink-400">Clears synced wearable data, logs and preferences from this device.</p>
-          </div>
-          <button
-            onClick={() => {
-              if (confirm("Clear all local logs, edits and preferences?")) resetAll();
-            }}
-            className="flex items-center gap-1.5 rounded-full border border-bad/30 bg-bad/10 px-4 py-2 text-xs font-semibold text-[#ff9b9b] hover:bg-bad/20"
-          >
-            <RotateCcw size={13} /> Reset
-          </button>
-        </Card>
-
-        {account.signedIn && (
-          <Card className="mt-3 flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <p className="text-sm font-semibold text-ink-100">Delete account</p>
-              <p className="mt-0.5 text-xs text-ink-400">Permanently erases your profile, connection and cloud data everywhere.</p>
-            </div>
+        <Card className="px-5 py-1">
+          <Row label="Reset local data" hint="Clears synced wearable data, logs and preferences from this device." last={!account.signedIn}>
             <button
-              onClick={() => {
-                if (confirm("Permanently delete your account and all cloud data? This cannot be undone.")) account.deleteAccount();
-              }}
-              className="flex items-center gap-1.5 rounded-full border border-bad/40 bg-bad/15 px-4 py-2 text-xs font-semibold text-[#ff9b9b] hover:bg-bad/25"
+              onClick={() => { if (confirm("Clear all local logs, edits and preferences?")) resetAll(); }}
+              className="flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-xs font-semibold text-ink-200 transition hover:bg-black/[0.05]"
             >
-              <Trash2 size={13} /> Delete
+              <RotateCcw size={13} /> Reset
             </button>
-          </Card>
-        )}
+          </Row>
+          {account.signedIn && (
+            <Row label="Delete account" hint="Permanently erases your profile, connection and cloud data everywhere." last>
+              <button
+                onClick={() => { if (confirm("Permanently delete your account and all cloud data? This cannot be undone.")) account.deleteAccount(); }}
+                className="flex items-center gap-1.5 rounded-full border border-bad/40 bg-bad/[0.08] px-4 py-2 text-xs font-semibold text-bad transition hover:bg-bad/15"
+              >
+                <Trash2 size={13} /> Delete
+              </button>
+            </Row>
+          )}
+        </Card>
       </Section>
 
-      <p className="mt-8 text-center text-[11px] text-ink-500">
+      <p className="mt-10 text-center text-[11px] text-ink-500">
         CURA · not a medical device ·{" "}
         <Link href="/privacy" className="hover:text-ink-300">Privacy</Link> ·{" "}
         <Link href="/terms" className="hover:text-ink-300">Terms</Link>
