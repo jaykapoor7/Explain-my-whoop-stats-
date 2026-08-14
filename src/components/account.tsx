@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
-import { Cloud, CloudOff, LogIn, Loader2 } from "lucide-react";
+import { Cloud, LogIn, Loader2 } from "lucide-react";
 import { useApp, collectSyncState } from "@/lib/data/store";
 
 export interface AccountUser { sub: string; email?: string; name?: string; picture?: string; }
@@ -179,7 +179,7 @@ function initials(u: AccountUser) {
 
 /** Compact account row for the sidebar footer / mobile menu. */
 export function AccountChip({ compact = false }: { compact?: boolean }) {
-  const { loading, signedIn, user, syncing, syncDurable, signIn } = useAccount();
+  const { loading, signedIn, user, syncing, signIn } = useAccount();
   if (loading) return <div className="skeleton h-10 rounded-xl" />;
 
   if (!signedIn) {
@@ -205,7 +205,7 @@ export function AccountChip({ compact = false }: { compact?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[12px] font-semibold text-ink-100">{u.name || "Signed in"}</div>
           <div className="flex items-center gap-1 text-[10px] text-ink-500">
-            {syncing ? <><Loader2 size={9} className="animate-spin" /> syncing…</> : syncDurable ? <><Cloud size={9} /> synced</> : <><CloudOff size={9} className="text-warn" /> <span className="text-warn">this device only</span></>}
+            {syncing ? <><Loader2 size={9} className="animate-spin" /> syncing…</> : <><Cloud size={9} /> synced</>}
           </div>
         </div>
       )}

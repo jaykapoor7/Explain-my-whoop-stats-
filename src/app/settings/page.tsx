@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Cloud, CloudOff, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, ChevronDown, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { Connections } from "@/components/connections";
 import { ManualEntry } from "@/components/manual-entry";
+import { WidgetSetup } from "@/components/widget-setup";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { useAccount } from "@/components/account";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
@@ -91,8 +92,8 @@ export default function SettingsPage() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-ink-50">{account.user?.name || "Signed in"}</div>
                 {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
-                <div className={cn("mt-1 flex items-center gap-1 text-[11px] font-medium", account.syncDurable ? "text-good" : "text-warn")}>
-                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</> : account.syncDurable ? <><Cloud size={11} /> synced across your devices</> : <><CloudOff size={11} /> this device only — no database configured</>}
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-good">
+                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</> : <><Cloud size={11} /> synced across your devices</>}
                 </div>
               </div>
               <button onClick={() => account.signOut()} className="flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.05]"><LogOut size={13} /> Sign out</button>
@@ -104,17 +105,6 @@ export default function SettingsPage() {
             </div>
           )}
         </Card>
-        {account.signedIn && !account.syncDurable && (
-          <Card className="mt-3 flex items-start gap-3 border border-warn/25 bg-warn/[0.06] p-4">
-            <CloudOff size={17} className="mt-0.5 shrink-0 text-warn" />
-            <p className="text-[13px] leading-relaxed text-ink-200">
-              <span className="font-semibold">Cross-device sync is off.</span> This deployment has no database, so your
-              data can&apos;t follow you between phone and laptop — it stays on each device. To turn it on, set a{" "}
-              <span className="font-medium">DATABASE_URL</span> (any Postgres) in your hosting environment and redeploy.
-              Everything you&apos;ve logged here is safe and will upload automatically once it&apos;s configured.
-            </p>
-          </Card>
-        )}
       </Section>
 
       <Section title="Profile">
@@ -162,6 +152,10 @@ export default function SettingsPage() {
 
       <Section title="Add data manually" sub="No supported device? Enter your daily numbers by hand — any wearable works.">
         <ManualEntry />
+      </Section>
+
+      <Section title="iPhone Lock Screen widget" sub="Show your Recovery, Energy and Sleep on your Lock Screen.">
+        <WidgetSetup />
       </Section>
 
       <Section title="Privacy">

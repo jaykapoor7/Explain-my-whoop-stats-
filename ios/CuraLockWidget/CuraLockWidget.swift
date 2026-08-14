@@ -1,0 +1,175 @@
+import WidgetKit
+import SwiftUI
+
+// MARK: - Model
+
+/// Matches the JSON from GET /api/widget/summary. Scores are computed by CURA's
+/// own engine on the server — the widget only displays them.
+struct CuraSummary: Codable {
+    var recovery: Int?
+    var energy: Int?
+    var sleep: Int?
+    var sleepHours: Double?
+    var recoveryStatus: String?
+    var energyStatus: String?
+    var updatedAt: Double?
+}
+
+// MARK: - Networking + offline cache
+
+enum CuraAPI {
+    private static let cacheKey = "cura_last_summary"
+
+    static func fetch() async -> (CuraSummary?, stale: Bool) {
+        guard let url = URL(string: CuraConfig.summaryURL) else { return (cached(), true) }
+        var req = URLRequest(url: url)
+        req.setValue("Bearer \(CuraConfig.widgetToken)", forHTTPHeaderField: "Authorization")
+        req.timeoutInterval = 12
+        do {
+            let (data, resp) = try await URLSession.shared.data(for: req)
+            guard (resp as? HTTPURLResponse)?.statusCode == 200 else { return (cached(), true) }
+            let summary = try JSONDecoder().decode(CuraSummary.self, from: data)
+            UserDefaults.standard.set(data, forKey: cacheKey) // cache latest for offline
+            return (summary, false)
+        } catch {
+            return (cached(), true) // offline / error → show last known values
+        }
+    }
+
+    private static func cached() -> CuraSummary? {
+        guard let data = UserDefaults.standard.data(forKey: cacheKey) else { return nil }
+        return try? JSONDecoder().decode(CuraSummary.self, from: data)
+    }
+}
+
+// MARK: - Timeline
+
+struct CuraEntry: TimelineEntry {
+    let date: Date
+    let summary: CuraSummary?
+    let stale: Bool
+}
+
+struct CuraProvider: TimelineProvider {
+    func placeholder(in context: Context) -> CuraEntry {
+        CuraEntry(date: Date(), summary: CuraSummary(recovery: 72, energy: 65, sleep: 80, sleepHours: 7.4, recoveryStatus: "Primed", energyStatus: "Charged", updatedAt: nil), stale: false)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (CuraEntry) -> Void) {
+        Task {
+            let (summary, stale) = await CuraAPI.fetch()
+            completion(CuraEntry(date: Date(), summary: summary, stale: stale))
+        }
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<CuraEntry>) -> Void) {
+        Task {
+            let (summary, stale) = await CuraAPI.fetch()
+            let entry = CuraEntry(date: Date(), summary: summary, stale: stale)
+            // Refresh roughly every 30 minutes; scores only change on sync.
+            let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+            completion(Timeline(entries: [entry], policy: .after(next)))
+        }
+    }
+}
+
+// MARK: - Views
+
+private struct Metric: View {
+    let label: String
+    let value: Int?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(label).font(.system(size: 9, weight: .semibold)).opacity(0.7)
+            Text(value.map(String.init) ?? "–").font(.system(size: 19, weight: .bold, design: .rounded))
+        }
+    }
+}
+
+/// Lock Screen rectangular (monochrome/vibrant) — the primary target.
+struct CuraRectangularView: View {
+    let entry: CuraEntry
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                Text("CURA").font(.system(size: 10, weight: .heavy)).tracking(1)
+                if entry.stale { Image(systemName: "wifi.slash").font(.system(size: 8)).opacity(0.6) }
+                Spacer()
+            }
+            HStack(alignment: .top) {
+                Metric(label: "REC", value: entry.summary?.recovery)
+                Spacer()
+                Metric(label: "ENERGY", value: entry.summary?.energy)
+                Spacer()
+                Metric(label: "SLEEP", value: entry.summary?.sleep)
+            }
+        }
+    }
+}
+
+/// Home Screen small (full colour, CURA cream/greens) — a bonus option.
+struct CuraSmallView: View {
+    let entry: CuraEntry
+    private let cream = Color(red: 0.96, green: 0.94, blue: 0.89)
+    private let ink = Color(red: 0.13, green: 0.11, blue: 0.08)
+    private func row(_ label: String, _ value: Int?, _ color: Color) -> some View {
+        HStack {
+            Text(label).font(.system(size: 12, weight: .medium)).foregroundStyle(ink.opacity(0.6))
+            Spacer()
+            Text(value.map(String.init) ?? "–").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(color)
+        }
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("CURA").font(.system(size: 12, weight: .heavy)).tracking(1.5).foregroundStyle(ink)
+            row("Recovery", entry.summary?.recovery, Color(red: 0.07, green: 0.71, blue: 0.49))
+            row("Energy", entry.summary?.energy, Color(red: 0.92, green: 0.62, blue: 0.10))
+            row("Sleep", entry.summary?.sleep, Color(red: 0.48, green: 0.41, blue: 0.93))
+        }
+        .padding(14)
+    }
+}
+
+struct CuraWidgetEntryView: View {
+    @Environment(\.widgetFamily) var family
+    let entry: CuraEntry
+
+    var body: some View {
+        let content = Group {
+            switch family {
+            case .accessoryRectangular: CuraRectangularView(entry: entry)
+            case .accessoryInline:
+                Text("R \(entry.summary?.recovery.map(String.init) ?? "–") · E \(entry.summary?.energy.map(String.init) ?? "–") · S \(entry.summary?.sleep.map(String.init) ?? "–")")
+            default: CuraSmallView(entry: entry)
+            }
+        }
+        if #available(iOS 17.0, *) {
+            content
+                .containerBackground(for: .widget) {
+                    family == .systemSmall ? Color(red: 0.96, green: 0.94, blue: 0.89) : Color.clear
+                }
+                .widgetURL(URL(string: CuraConfig.appURL))
+        } else {
+            content.widgetURL(URL(string: CuraConfig.appURL))
+        }
+    }
+}
+
+// MARK: - Widget
+
+struct CuraLockWidget: Widget {
+    let kind = "CuraLockWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: CuraProvider()) { entry in
+            CuraWidgetEntryView(entry: entry)
+        }
+        .configurationDisplayName("CURA")
+        .description("Your Recovery, Energy and Sleep at a glance.")
+        .supportedFamilies([.accessoryRectangular, .accessoryInline, .systemSmall])
+    }
+}
+
+@main
+struct CuraWidgetBundle: WidgetBundle {
+    var body: some Widget { CuraLockWidget() }
+}

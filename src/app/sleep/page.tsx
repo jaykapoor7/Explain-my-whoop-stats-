@@ -5,6 +5,7 @@ import { ScorePage } from "@/components/score-page";
 import { Card, Delta, Section } from "@/components/ui";
 import { Hypnogram, SleepStagesBar } from "@/components/charts";
 import { sleepCoach } from "@/lib/scoring/sleep-coach";
+import { useApp } from "@/lib/data/store";
 import { DOMAIN_COLOR, fmtDuration, fmtTime } from "@/lib/format";
 
 function Fact({ label, value, hint }: { label: string; value: string; hint?: string }) {
@@ -18,6 +19,8 @@ function Fact({ label, value, hint }: { label: string; value: string; hint?: str
 }
 
 export default function SleepPage() {
+  const wakeTime = useApp((s) => s.settings.wakeTime);
+  const setSettings = useApp((s) => s.setSettings);
   return (
     <ScorePage
       title="Sleep"
@@ -33,7 +36,7 @@ export default function SleepPage() {
         const en = data.today!.energy;
         const sleepPtsRec = rec.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
         const sleepPtsEn = en.contributors.find((c) => c.label === "Sleep")?.points ?? 0;
-        const coach = sleepCoach(data.days.map((d) => d.day));
+        const coach = sleepCoach(data.days.map((d) => d.day), wakeTime);
         return (
           <>
             {coach.available && (
@@ -47,7 +50,15 @@ export default function SleepPage() {
                       <div className="min-w-0">
                         <div className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Suggested bedtime</div>
                         <div className="tabular text-[2rem] font-bold leading-tight text-ink-50">{fmtTime(coach.suggestedBedtime)}</div>
-                        <div className="text-[11px] text-ink-400">to wake by {fmtTime(coach.suggestedWake)}</div>
+                        <label className="mt-0.5 flex items-center gap-1.5 text-[11px] text-ink-400">
+                          to wake by
+                          <input
+                            type="time"
+                            value={wakeTime ?? coach.suggestedWake}
+                            onChange={(e) => setSettings({ wakeTime: e.target.value || undefined })}
+                            className="tabular rounded-md border border-black/[0.1] bg-black/[0.03] px-1.5 py-0.5 text-[12px] font-medium text-ink-100 outline-none focus:border-black/25"
+                          />
+                        </label>
                       </div>
                     </div>
                     <div className="grid flex-1 grid-cols-3 gap-2.5">

@@ -26,6 +26,13 @@ const minutesInto = (iso: string): number => {
   return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : NaN;
 };
 
+/** Parse a plain "HH:MM" (24h) into minutes-from-midnight, or null. */
+const parseHM = (s?: string): number | null => {
+  if (!s) return null;
+  const [h, m] = s.split(":").map(Number);
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null;
+};
+
 const fmtHM = (mins: number): string => {
   const t = ((Math.round(mins) % 1440) + 1440) % 1440;
   return `${String(Math.floor(t / 60)).padStart(2, "0")}:${String(t % 60).padStart(2, "0")}`;
@@ -66,8 +73,10 @@ export interface SleepCoach {
   rationale: string;
 }
 
-/** Tonight's recommendation, built from the day history (chronological). */
-export function sleepCoach(history: DailySummary[]): SleepCoach {
+/** Tonight's recommendation, built from the day history (chronological).
+ * `wakeTime` ("HH:MM") lets the user pin their target wake time; otherwise we
+ * fall back to their habitual wake time. */
+export function sleepCoach(history: DailySummary[], wakeTime?: string): SleepCoach {
   const nights = history.filter((d) => d.sleep.asleepMin > 0);
   const need = personalSleepNeed(history);
   const debt = sleepDebtMin(history, need);
@@ -80,9 +89,9 @@ export function sleepCoach(history: DailySummary[]): SleepCoach {
   const repay = Math.min(debt, 90); // pay down up to 1.5h tonight
   const tonightNeed = need + repay + strainAdd;
 
-  // Habitual wake time + personal efficiency from the last two weeks.
+  // Target wake time: the user's chosen time if set, else their habitual one.
   const wakeMins = history.slice(-14).map((d) => minutesInto(d.sleep.wake)).filter((m) => isFinite(m));
-  const wakeMin = wakeMins.length ? median(wakeMins) : 7 * 60;
+  const wakeMin = parseHM(wakeTime) ?? (wakeMins.length ? median(wakeMins) : 7 * 60);
   const effs = history.slice(-14).map((d) => d.sleep.efficiencyPct).filter((e) => e > 0);
   const eff = effs.length ? clamp(median(effs), 75, 96) : 90;
 

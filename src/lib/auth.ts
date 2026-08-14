@@ -60,6 +60,32 @@ export function getSession(req: NextRequest): Session | null {
   return verifySession(req.cookies.get(SESSION_COOKIE)?.value);
 }
 
+/**
+ * Widget token — a long-lived, read-only bearer token for a personal device
+ * (e.g. an iOS Lock Screen widget). Signed with the same secret but domain-
+ * separated from session cookies, and carrying only the account's subject id.
+ * Stateless: no DB row, revocable by rotating AUTH_SECRET.
+ */
+export function signWidgetToken(sub: string): string {
+  const payload = b64url(Buffer.from(JSON.stringify({ sub, kind: "widget" })));
+  const sig = b64url(crypto.createHmac("sha256", secret()).update("widget:" + payload).digest());
+  return `${payload}.${sig}`;
+}
+
+export function verifyWidgetToken(raw?: string): string | null {
+  if (!raw) return null;
+  const [payload, sig] = raw.split(".");
+  if (!payload || !sig) return null;
+  const expect = b64url(crypto.createHmac("sha256", secret()).update("widget:" + payload).digest());
+  if (sig.length !== expect.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expect))) return null;
+  try {
+    const p = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { sub?: string; kind?: string };
+    return p.kind === "widget" && p.sub ? p.sub : null;
+  } catch {
+    return null;
+  }
+}
+
 export function sessionCookieOptions(secure: boolean) {
   return { httpOnly: true, secure, sameSite: "lax" as const, path: "/", maxAge: Math.floor(SESSION_TTL_MS / 1000) };
 }

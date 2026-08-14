@@ -16,6 +16,7 @@ export interface Settings {
   birthYear?: number; // for Health Age; optional
   whatsappNumber?: string; // digits incl. country code, for wa.me plan reminders
   browserReminders?: boolean; // fire local notifications for timed tasks while open
+  wakeTime?: string; // preferred wake time "HH:MM" (24h) for the sleep coach
 }
 
 export const DEFAULT_GOALS: Goal[] = [
