@@ -46,6 +46,17 @@ export function ageFromBirthYear(birthYear: number | undefined, today = new Date
   return age >= 13 && age <= 100 ? age : undefined;
 }
 
+/** Health Age computed as of each day (rolling window), for a trend line. */
+export function healthAgeTrend(days: ScoredDay[], actualAge: number | undefined): { date: string; value: number }[] {
+  if (!actualAge) return [];
+  const out: { date: string; value: number }[] = [];
+  for (let i = 0; i < days.length; i++) {
+    const r = calcHealthAge(days.slice(0, i + 1), actualAge);
+    if (r.available) out.push({ date: days[i].day.date, value: r.physioAge });
+  }
+  return out;
+}
+
 export function calcHealthAge(days: ScoredDay[], actualAge: number | undefined): HealthAgeResult {
   const base: HealthAgeResult = {
     available: false, actualAge: actualAge ?? 0, physioAge: 0, deltaYears: 0,
