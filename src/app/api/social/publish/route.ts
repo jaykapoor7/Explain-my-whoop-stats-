@@ -19,6 +19,9 @@ export async function POST(req: NextRequest) {
       strain: num(b.strain),
       sleepHours: num(b.sleepHours),
       day: typeof b.day === "string" ? b.day : "",
+      recovery7: num(b.recovery7),
+      sleep7: num(b.sleep7),
+      strain7: num(b.strain7),
     });
     return NextResponse.json({ ok: true });
   } catch {

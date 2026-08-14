@@ -25,7 +25,11 @@ export interface UserRow {
 
 // ---- Social (friend groups / leaderboards) ----
 export interface Group { id: string; name: string; code: string; ownerSub: string; }
-export interface PublishScores { recovery: number | null; sleep: number | null; strain: number | null; sleepHours: number | null; day: string; }
+export interface PublishScores {
+  recovery: number | null; sleep: number | null; strain: number | null; sleepHours: number | null; day: string;
+  // 7-day averages, for the weekly leaderboard.
+  recovery7?: number | null; sleep7?: number | null; strain7?: number | null;
+}
 export interface MemberScore extends PublishScores { sub: string; name?: string; picture?: string; }
 
 const code6 = () => {
@@ -95,6 +99,9 @@ class PgStore implements Store {
         sub text PRIMARY KEY, recovery int, sleep int, strain real,
         sleep_hours real, day text, updated_at timestamptz NOT NULL DEFAULT now()
       );
+      ALTER TABLE social_scores ADD COLUMN IF NOT EXISTS recovery7 int;
+      ALTER TABLE social_scores ADD COLUMN IF NOT EXISTS sleep7 int;
+      ALTER TABLE social_scores ADD COLUMN IF NOT EXISTS strain7 real;
     `);
   }
   async upsertUser(u: UserRow) {
@@ -195,7 +202,7 @@ class PgStore implements Store {
   async memberScores(groupId: string) {
     await this.ready;
     const r = await this.pool.query(
-      `SELECT m.sub, u.name, u.picture, s.recovery, s.sleep, s.strain, s.sleep_hours, s.day
+      `SELECT m.sub, u.name, u.picture, s.recovery, s.sleep, s.strain, s.sleep_hours, s.day, s.recovery7, s.sleep7, s.strain7
        FROM social_members m
        LEFT JOIN users u ON u.sub = m.sub
        LEFT JOIN social_scores s ON s.sub = m.sub
@@ -205,16 +212,18 @@ class PgStore implements Store {
     return r.rows.map((row) => ({
       sub: row.sub, name: row.name ?? undefined, picture: row.picture ?? undefined,
       recovery: row.recovery, sleep: row.sleep, strain: row.strain, sleepHours: row.sleep_hours, day: row.day,
+      recovery7: row.recovery7, sleep7: row.sleep7, strain7: row.strain7,
     }));
   }
   async publishScores(sub: string, s: PublishScores) {
     await this.ready;
     await this.pool.query(
-      `INSERT INTO social_scores (sub, recovery, sleep, strain, sleep_hours, day, updated_at)
-       VALUES ($1,$2,$3,$4,$5,$6,now())
+      `INSERT INTO social_scores (sub, recovery, sleep, strain, sleep_hours, day, recovery7, sleep7, strain7, updated_at)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,now())
        ON CONFLICT (sub) DO UPDATE SET recovery=EXCLUDED.recovery, sleep=EXCLUDED.sleep,
-         strain=EXCLUDED.strain, sleep_hours=EXCLUDED.sleep_hours, day=EXCLUDED.day, updated_at=now()`,
-      [sub, s.recovery, s.sleep, s.strain, s.sleepHours, s.day]
+         strain=EXCLUDED.strain, sleep_hours=EXCLUDED.sleep_hours, day=EXCLUDED.day,
+         recovery7=EXCLUDED.recovery7, sleep7=EXCLUDED.sleep7, strain7=EXCLUDED.strain7, updated_at=now()`,
+      [sub, s.recovery, s.sleep, s.strain, s.sleepHours, s.day, s.recovery7 ?? null, s.sleep7 ?? null, s.strain7 ?? null]
     );
   }
 }
@@ -302,6 +311,7 @@ class FileStore implements Store {
         sub, name: u?.name, picture: u?.picture,
         recovery: s?.recovery ?? null, sleep: s?.sleep ?? null, strain: s?.strain ?? null,
         sleepHours: s?.sleepHours ?? null, day: s?.day ?? "",
+        recovery7: s?.recovery7 ?? null, sleep7: s?.sleep7 ?? null, strain7: s?.strain7 ?? null,
       } as MemberScore;
     });
   }
