@@ -48,6 +48,48 @@ export function AgeSetter() {
   );
 }
 
+/** One-line Health Age strip for the Today page — it only updates weekly, so it
+ * doesn't need a big daily card. Taps through to the full page. */
+export function HealthAgeStrip() {
+  const data = useHealth();
+  const birthYear = useApp((s) => s.settings.birthYear);
+  const actualAge = ageFromBirthYear(birthYear);
+  const r = calcHealthAgeWeekly(data.days, actualAge);
+
+  if (!r.available) {
+    if (r.reason === "set-age") {
+      return (
+        <Link href="/health-age" className="group block">
+          <Card className="flex items-center gap-3 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${YOUNGER}1f`, color: YOUNGER }}><Cake size={15} /></span>
+            <span className="min-w-0 flex-1 text-[13px] text-ink-300">Add your birth year to see your Health Age</span>
+            <ArrowRight size={15} className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5" />
+          </Card>
+        </Link>
+      );
+    }
+    return null;
+  }
+
+  const accent = r.deltaYears <= 0 ? YOUNGER : OLDER;
+  return (
+    <Link href="/health-age" className="group block">
+      <Card className="flex items-center gap-3.5 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: `${accent}1f`, color: accent }}><Sparkles size={16} /></span>
+        <div className="flex min-w-0 flex-1 items-baseline gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Health Age</span>
+          <span className="tabular font-display text-2xl font-bold leading-none" style={{ color: accent }}>{r.physioAge}</span>
+          <span className="text-xs text-ink-400">vs {r.actualAge}</span>
+        </div>
+        <span className="tabular shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold" style={{ background: `${accent}1f`, color: accent }}>
+          {r.deltaYears === 0 ? "on pace" : `${Math.abs(r.deltaYears)} yr ${r.deltaYears < 0 ? "younger" : "older"}`}
+        </span>
+        <ArrowRight size={15} className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5" />
+      </Card>
+    </Link>
+  );
+}
+
 /** Compact Health Age summary for the Today page — taps through to the full page. */
 export function HealthAgeCard() {
   const data = useHealth();

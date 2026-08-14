@@ -1,26 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Footprints } from "lucide-react";
-import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, ScoreRing, Section, SkeletonPage, StatusPill, Why } from "@/components/ui";
+import { ArrowRight, Check, ChevronDown, Flame, Footprints } from "lucide-react";
+import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
-import { HealthAgeCard } from "@/components/health-age";
-import { DailyStateCard, IntelligenceInsights, StageBanner } from "@/components/intelligence";
+import { HealthAgeStrip } from "@/components/health-age";
+import { DailyStateStrip, IntelligenceInsights, StageBanner } from "@/components/intelligence";
 import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { ScoredDay } from "@/lib/scoring/engine";
-
-function NoDataRing({ size = 64 }: { size?: number }) {
-  return (
-    <span
-      className="flex shrink-0 items-center justify-center rounded-full border border-dashed border-black/15 text-ink-500"
-      style={{ width: size, height: size }}
-    >
-      <span className="text-lg">—</span>
-    </span>
-  );
-}
 
 function dayLedger(s: ScoredDay) {
   const seen = new Set<string>();
@@ -82,45 +71,12 @@ export default function TodayPage() {
         right={<DaySwitcher />}
       />
 
-      {data.isLatest && (
-        <>
-          <StageBanner model={data.model} />
-          <DailyStateCard model={data.model} />
-        </>
-      )}
+      {data.isLatest && <StageBanner model={data.model} />}
+      {data.isLatest && <DailyStateStrip model={data.model} />}
 
       {t && (
         <>
-          <Card className="mt-5">
-            <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
-              {t.energy.available === false ? <NoDataRing size={96} /> : <ScoreRing score={t.energy.score} color={DOMAIN_COLOR.energy} label="Energy" />}
-              <div className="w-full min-w-0 flex-1 text-center sm:text-left">
-                {t.energy.available === false ? (
-                  <>
-                    <StatusPill text="No data yet" color={DOMAIN_COLOR.energy} />
-                    <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex flex-wrap items-center justify-center gap-2 sm:justify-start">
-                      <StatusPill text={t.energy.status} color={DOMAIN_COLOR.energy} />
-                      <span className="text-xs text-ink-400">
-                        vs yesterday <Delta value={t.energy.deltaVsYesterday} /> · baseline {t.energy.baseline}
-                      </span>
-                    </div>
-                    <p className="mt-2.5 text-sm leading-relaxed text-ink-200">{t.energy.explanation}</p>
-                    {data.isLatest && (
-                      <Link href="/energy" className="mt-2 inline-flex items-center gap-1 text-xs font-medium" style={{ color: DOMAIN_COLOR.energy }}>
-                        Energy breakdown <ArrowRight size={13} />
-                      </Link>
-                    )}
-                  </>
-                )}
-              </div>
-            </div>
-            <Why summary="Explain my day">{explainDay(t)}</Why>
-          </Card>
-
+          {/* Three-ring hero: your day at a glance */}
           <div className="mt-4 flex gap-3">
             <DialTile
               href="/recovery"
@@ -132,14 +88,13 @@ export default function TodayPage() {
               delta={t.recovery.deltaVsYesterday}
             />
             <DialTile
-              href="/strain"
-              label="Strain"
-              score={t.strain.score}
-              scale={t.strain.scale}
-              color={DOMAIN_COLOR.strain}
-              available={t.strain.available !== false}
-              sub={t.strain.status}
-              delta={t.strain.deltaVsYesterday}
+              href="/energy"
+              label="Energy"
+              score={t.energy.score}
+              color={DOMAIN_COLOR.energy}
+              available={t.energy.available !== false}
+              sub={t.energy.status}
+              delta={t.energy.deltaVsYesterday}
             />
             <DialTile
               href="/sleep"
@@ -151,6 +106,22 @@ export default function TodayPage() {
               delta={t.sleep.deltaVsYesterday}
             />
           </div>
+
+          {/* Strain — secondary, slim */}
+          <Link href="/strain" className="group mt-3 block">
+            <Card className="flex items-center gap-3 p-3.5 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: `${DOMAIN_COLOR.strain}1f`, color: DOMAIN_COLOR.strain }}><Flame size={16} /></span>
+              <div className="min-w-0 flex-1">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.12em]" style={{ color: DOMAIN_COLOR.strain }}>Strain</div>
+                <div className="text-[11px] text-ink-400">{t.strain.available === false ? "No data yet" : t.strain.status}</div>
+              </div>
+              {t.strain.available !== false && <Delta value={t.strain.deltaVsYesterday} decimals={1} />}
+              <span className="tabular text-lg font-bold text-ink-50">{t.strain.available === false ? "—" : t.strain.score.toFixed(1)}</span>
+              <ArrowRight size={15} className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5" />
+            </Card>
+          </Link>
+
+          <Why summary="Explain my day">{explainDay(t)}</Why>
 
           <details className="group mt-4">
             <summary className="flex cursor-pointer items-center gap-2 rounded-xl border border-black/[0.06] bg-black/[0.02] px-4 py-3 text-[13px] font-medium text-ink-200 transition-colors hover:bg-black/[0.035] [&::-webkit-details-marker]:hidden">
@@ -164,14 +135,12 @@ export default function TodayPage() {
         </>
       )}
 
+      {t && <div className="mt-4"><HealthAgeStrip /></div>}
+
       {t && (
-      <div className="mt-8 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5">
+      <div className="mt-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5">
       {/* Left column */}
       <div className="space-y-8">
-      <Section className="mt-0" title="Health Age" sub="How old your body reads vs the calendar">
-        <HealthAgeCard />
-      </Section>
-
       {data.model.insights[0] && (
         <Section className="mt-0" title="From your patterns" action={<Link href="/trends" className="text-xs font-medium text-ink-300 hover:text-ink-100">All insights →</Link>}>
           <IntelligenceInsights insights={data.model.insights.slice(0, 2)} />

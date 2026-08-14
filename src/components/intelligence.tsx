@@ -119,6 +119,44 @@ export function DailyStateCard({ model }: { model: PersonalHealthModel }) {
   );
 }
 
+/** One-line version of the daily state, for sitting above the score rings on
+ * Today. Same evidence, expandable, minimal height. */
+export function DailyStateStrip({ model }: { model: PersonalHealthModel }) {
+  const st: DailyState = model.state;
+  if (st.confidence === "insufficient") return null;
+  const color = STATE_COLOR(st.label);
+  const worst = st.evidence.filter((e) => e.z <= -0.75);
+  const best = st.evidence.filter((e) => e.z >= 0.75);
+  const lead = worst.length >= best.length ? worst : best;
+  const summary = lead.slice(0, 2).map((e) => e.text).join(", ") || "in line with your baseline";
+  const t = model.trajectory;
+  const trajTone = t.direction === "improving" ? "text-good" : t.direction === "declining" ? "text-bad" : "text-ink-400";
+  const TrajIcon = t.direction === "improving" ? TrendingUp : t.direction === "declining" ? TrendingDown : Activity;
+
+  return (
+    <Card className="mt-4 p-3.5">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg" style={{ background: `${color}22`, color }}><Activity size={15} /></span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+            <span className="text-[13px] font-semibold text-ink-50">{st.label}</span>
+            <span className="text-[11px] text-ink-400">{summary}</span>
+          </div>
+        </div>
+        {t.direction !== "uncertain" && t.score != null && (
+          <span className={cn("hidden items-center gap-1 text-[11px] font-medium sm:flex", trajTone)}><TrajIcon size={12} /> {t.direction}</span>
+        )}
+        <ConfPill c={st.confidence} />
+      </div>
+      {st.evidence.length > 0 && (
+        <Expand label="Why this state">
+          {st.evidence.map((e) => <EvidenceRow key={e.metric} e={e} />)}
+        </Expand>
+      )}
+    </Card>
+  );
+}
+
 /** Ranked, explainable insights — each expandable to its evidence trail. */
 export function IntelligenceInsights({ insights, empty }: { insights: AnalyticsInsight[]; empty?: string }) {
   if (!insights.length) return <Card className="p-5 text-sm text-ink-400">{empty ?? "Not enough history yet — insights sharpen as your baseline fills in."}</Card>;

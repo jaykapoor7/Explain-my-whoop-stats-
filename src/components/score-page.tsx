@@ -23,6 +23,7 @@ export function ScorePage({
   baselineLabel,
   ringLabel,
   algoNote,
+  belowHero,
   extras,
 }: {
   title: string;
@@ -32,6 +33,7 @@ export function ScorePage({
   baselineLabel: (score: ScoreResult) => string;
   ringLabel: string;
   algoNote: string;
+  belowHero?: (data: ReturnType<typeof useHealth>) => ReactNode;
   extras?: (data: ReturnType<typeof useHealth>) => ReactNode;
 }) {
   const data = useHealth();
@@ -102,6 +104,8 @@ export function ScorePage({
           value. {algoNote}
         </Why>
       </Card>
+
+      {belowHero?.(data)}
 
       <Section title="What affected you" sub="Signed contributions — these sum to today's score">
         <Card>

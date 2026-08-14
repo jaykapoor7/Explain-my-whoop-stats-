@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  MessageCircle,
   CalendarDays,
   Grid2x2,
   LineChart,
@@ -21,6 +20,7 @@ import {
 import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
 import { AccountProvider, AccountChip } from "@/components/account";
+import { Coach } from "@/components/coach";
 import { Logo } from "@/components/logo";
 
 // The daily metrics (Energy, Recovery, Sleep, Strain, Health Age) are reached
@@ -34,7 +34,6 @@ const NAV = [
   { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
   { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
   { href: "/friends", label: "Friends", icon: Users, color: "#e0894e" },
-  { href: "/assistant", label: "Assistant", icon: MessageCircle, color: "#0f9e86" },
   { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
 
@@ -176,6 +175,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-5xl lg:pb-12 lg:pt-8 xl:mx-auto xl:max-w-6xl xl:pl-56">
           {children}
         </main>
+        <Coach />
       </div>
     </AccountProvider>
   );
