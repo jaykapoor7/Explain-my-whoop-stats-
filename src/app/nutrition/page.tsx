@@ -299,9 +299,6 @@ export default function NutritionPage() {
         </Card>
       </Section>
 
-      <p className="mt-8 text-center text-[11px] text-ink-500">
-        Food database is built-in for now — the architecture supports a search API and barcode scanning later.
-      </p>
     </div>
   );
 }

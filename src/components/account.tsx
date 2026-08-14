@@ -69,21 +69,36 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     if (!signedIn) return;
     let disposed = false;
     (async () => {
+      // Wait until the local store has hydrated from localStorage, so we never
+      // push empty defaults over good cloud data (or mis-judge "local is newer").
+      for (let i = 0; i < 40 && !useApp.getState().hydrated; i++) {
+        await new Promise((r) => setTimeout(r, 50));
+        if (disposed) return;
+      }
       setSyncing(true);
       try {
         const r = await fetch("/api/data", { cache: "no-store" });
         const j = (await r.json()) as { data: string | null; updatedAt: number };
-        const localTs = useApp.getState().cloudUpdatedAt;
-        if (j.data && j.updatedAt > localTs) {
+        const st = useApp.getState();
+        const localTs = st.cloudUpdatedAt;
+        // A device with nothing logged yet should always adopt the cloud copy
+        // rather than overwrite it with an empty snapshot.
+        const localEmpty =
+          st.wearableDays.length === 0 && st.meals.length === 0 && st.medications.length === 0 &&
+          st.tasks.length === 0 && Object.keys(st.journal).length === 0;
+        if (j.data && (j.updatedAt > localTs || localEmpty)) {
           applying.current = true;
           const parsed = JSON.parse(j.data) as Record<string, unknown>;
           useApp.getState().hydrateFromCloud(parsed, j.updatedAt);
           lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
           applying.current = false;
-        } else {
-          // Local is newer (or cloud empty) — seed the cloud from this device.
+        } else if (!localEmpty) {
+          // Local has content and is newer (or cloud is empty) — seed the cloud.
           lastSig.current = ""; // force a push
           await push();
+        } else {
+          // Both empty — nothing to do; wait for real edits.
+          lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
         }
       } catch { /* offline — try again on next change */ }
       if (!disposed) setSyncing(false);

@@ -79,7 +79,7 @@ function ActivityRow({ a }: { a: Activity }) {
               </span>
             )}
           </div>
-          <p className="mt-2 text-[10px] text-ink-500">Your corrections will eventually teach activity detection.</p>
+          <p className="mt-2 text-[10px] text-ink-500">Your corrections refine how activities are detected.</p>
         </div>
       )}
     </Card>
