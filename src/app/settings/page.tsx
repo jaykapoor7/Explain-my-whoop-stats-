@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
+import { Connections } from "@/components/connections";
 import { ManualEntry } from "@/components/manual-entry";
 import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { useAccount } from "@/components/account";
@@ -144,7 +145,11 @@ export default function SettingsPage() {
         <FitbitCard autoSyncOnConnected advanced openAdvanced={notice?.kind === "setup"} />
       </Section>
 
-      <Section title="Any wearable" sub="On Apple Watch, Garmin, Oura, Whoop or Samsung? Enter your daily numbers and CURA scores them the same way.">
+      <Section title="Other wearables" sub="Connect Oura, WHOOP, Fitbit or Polar directly — sign in once and CURA auto-syncs and scores them the same way.">
+        <Connections />
+      </Section>
+
+      <Section title="Add data manually" sub="No supported device? Enter your daily numbers by hand — any wearable works.">
         <ManualEntry />
       </Section>
 
