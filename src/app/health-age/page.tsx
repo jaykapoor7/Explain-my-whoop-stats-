@@ -8,7 +8,7 @@ import { AgeSetter, REC, OLDER, YOUNGER } from "@/components/health-age";
 import { RangeToggle } from "@/components/score-page";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
-import { ageFromBirthYear, calcHealthAge, healthAgeTrend } from "@/lib/scoring/health-age";
+import { ageFromBirthYear, calcHealthAgeWeekly, healthAgeTrend } from "@/lib/scoring/health-age";
 
 export default function HealthAgePage() {
   const data = useHealth();
@@ -18,7 +18,7 @@ export default function HealthAgePage() {
   if (!data.hydrated) return <SkeletonPage />;
 
   const actualAge = ageFromBirthYear(birthYear);
-  const r = calcHealthAge(data.days, actualAge);
+  const r = calcHealthAgeWeekly(data.days, actualAge);
   const accent = r.deltaYears <= 0 ? YOUNGER : OLDER;
 
   const header = <PageHeader title="Health Age" sub="How old your body reads versus the calendar — and how to turn it back." />;
@@ -84,7 +84,10 @@ export default function HealthAgePage() {
               </span>
             </div>
           </div>
-          <p className="min-w-0 flex-1 text-center text-sm leading-relaxed text-ink-200 sm:text-left">{r.headline}</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-center text-sm leading-relaxed text-ink-200 sm:text-left">{r.headline}</p>
+            <p className="mt-1.5 text-center text-[11px] text-ink-500 sm:text-left">Refreshes every Sunday, so it&apos;s a steady weekly read — not a daily wobble.</p>
+          </div>
         </div>
       </Card>
 

@@ -6,7 +6,7 @@ import { ArrowRight, Cake, Sparkles } from "lucide-react";
 import { Card } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
-import { calcHealthAge, ageFromBirthYear } from "@/lib/scoring/health-age";
+import { calcHealthAgeWeekly, ageFromBirthYear } from "@/lib/scoring/health-age";
 
 export const YOUNGER = "#13b57e";
 export const OLDER = "#eb9d18";
@@ -53,7 +53,7 @@ export function HealthAgeCard() {
   const data = useHealth();
   const birthYear = useApp((s) => s.settings.birthYear);
   const actualAge = ageFromBirthYear(birthYear);
-  const r = calcHealthAge(data.days, actualAge);
+  const r = calcHealthAgeWeekly(data.days, actualAge);
   const accent = r.deltaYears <= 0 ? YOUNGER : OLDER;
 
   if (!r.available) {

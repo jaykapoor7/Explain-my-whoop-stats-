@@ -46,6 +46,24 @@ export function ageFromBirthYear(birthYear: number | undefined, today = new Date
   return age >= 13 && age <= 100 ? age : undefined;
 }
 
+/** ISO date of the most recent Sunday on or before `today`. */
+export function mostRecentSunday(today = new Date()): string {
+  const x = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  x.setDate(x.getDate() - x.getDay()); // getDay(): 0 = Sunday
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${x.getFullYear()}-${p(x.getMonth() + 1)}-${p(x.getDate())}`;
+}
+
+/** Health Age that only refreshes weekly (anchored to the last Sunday), like
+ * WHOOP Age — so the number is stable through the week instead of drifting
+ * every day. Falls back to all data for brand-new users. */
+export function calcHealthAgeWeekly(days: ScoredDay[], actualAge: number | undefined): HealthAgeResult {
+  const sunday = mostRecentSunday();
+  const upTo = days.filter((s) => s.day.date <= sunday);
+  const r = calcHealthAge(upTo.length ? upTo : days, actualAge);
+  return r.available ? r : calcHealthAge(days, actualAge);
+}
+
 /** Health Age computed as of each day (rolling window), for a trend line. */
 export function healthAgeTrend(days: ScoredDay[], actualAge: number | undefined): { date: string; value: number }[] {
   if (!actualAge) return [];
