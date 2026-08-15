@@ -11,9 +11,11 @@ import { build, hasHrv, hasRhr, lc, term, unavailable } from "./sleep";
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
 
-/** Neutral midpoint: an average day with nothing pulling recovery up or down
- * lands here. Every factor is a signed move off this base. */
-export const RECOVERY_BASE = 58;
+/** Neutral midpoint: a day sitting right at your personal baseline lands here —
+ * a comfortable "ready" reading, WHOOP-style, rather than a harsh middling
+ * score. Being above your baseline pushes into the green; below drops you toward
+ * yellow/red. Every factor is a signed move off this base. */
+export const RECOVERY_BASE = 66;
 
 export function calcRecovery(
   day: DailySummary,
@@ -35,13 +37,17 @@ export function calcRecovery(
 
   const terms: Contributor[] = [];
   if (hasHrv(day)) {
-    const pts = Math.round(clampV(hrvPct * 55, -26, 24));
+    // HRV is the primary autonomic signal (WHOOP weights it most). Asymmetric,
+    // deliberately: a rise above your baseline is rewarded a touch more than a
+    // dip below is penalised, so an average night isn't harshly marked down.
+    const hrvSlope = hrvPct >= 0 ? 55 : 42;
+    const pts = Math.round(clampV(hrvPct * hrvSlope, -20, 26));
     terms.push(term("HRV", pts,
       `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical (${signedPct(hrvPct)})`,
-      { math: `Your overnight HRV of ${day.hrv.rmssdMs} ms is ${signedPct(hrvPct)} vs your ${Math.round(baseline.hrvMs)} ms baseline. Scaled ×55 (HRV is the primary autonomic signal) → ${pts >= 0 ? "+" : ""}${pts}.` }));
+      { math: `Your overnight HRV of ${day.hrv.rmssdMs} ms is ${signedPct(hrvPct)} vs your ${Math.round(baseline.hrvMs)} ms baseline — the strongest recovery signal → ${pts >= 0 ? "+" : ""}${pts}.` }));
   }
   if (hasRhr(day)) {
-    const pts = Math.round(clampV(-rhrDelta * 2.3, -22, 16));
+    const pts = Math.round(clampV(-rhrDelta * 2.0, -14, 16));
     terms.push(term("Resting HR", pts,
       `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`,
       { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline. A lower RHR means more recovered → ${pts >= 0 ? "+" : ""}${pts}.` }));
@@ -58,7 +64,7 @@ export function calcRecovery(
   // rolling-two-week typical, not a fixed number — spiking above your norm costs
   // recovery, backing off returns some.
   const loadGap = prevStrain - baseline.strain;
-  const loadPts = Math.round(clampV(-loadGap * 1.5, -20, 10));
+  const loadPts = Math.round(clampV(-loadGap * 1.2, -14, 10));
   terms.push(term("Training load", loadPts,
     `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`,
     { math: `Yesterday's strain of ${prevStrain.toFixed(1)} vs your ${baseline.strain.toFixed(1)} two-week typical is a gap of ${loadGap >= 0 ? "+" : ""}${loadGap.toFixed(1)}. ${loadGap > 0 ? "Training above your norm costs recovery" : "Backing off returns some"} → ${loadPts >= 0 ? "+" : ""}${loadPts}.` }));

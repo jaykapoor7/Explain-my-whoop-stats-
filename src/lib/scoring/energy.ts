@@ -20,9 +20,10 @@ import { countedActivities } from "./strain";
  */
 
 /** Physiological anchor for morning capacity — an average night with average
- * recovery and a normal day behind you lands near here. Readiness and yesterday's
- * load move you off it; it is NOT shown to the user as a flat "neutral". */
-export const ENERGY_ANCHOR = 58;
+ * recovery and a normal day behind you lands near here. Set on the generous side
+ * so a typical day reads as usable energy rather than a harsh middling score.
+ * Readiness and yesterday's load move you off it; NOT shown as a flat "neutral". */
+export const ENERGY_ANCHOR = 64;
 
 export interface EnergySplit {
   morningCapacity: number; // start-of-day score (0..100)

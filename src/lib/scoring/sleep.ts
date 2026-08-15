@@ -12,9 +12,10 @@ import { clamp } from "../format";
 // Data availability — a metric that didn't sync arrives as 0, which is NOT a
 // real measurement. Every calculator must exclude a missing input rather than
 // score it, so the app never fabricates "0h slept" or penalizes absent data.
-/** Neutral midpoint for the sleep score — a middling night lands here and each
- * factor is a signed move off it. */
-export const SLEEP_BASE = 62;
+/** Neutral midpoint for the sleep score. Set so that meeting your personal sleep
+ * need with ordinary quality lands in the high 80s (WHOOP-style "sleep
+ * performance"), rather than a harsh middling score. */
+export const SLEEP_BASE = 68;
 
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
 export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
@@ -42,13 +43,14 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
   // contributes signed points around a neutral base, so "what helped / hurt"
   // literally sums to the score. Targets: deep ≈ 18% and REM ≈ 21% of sleep,
   // efficiency ≈ 86%+, wake-ups ≈ 2, timing regularity ≈ 80%.
-  const durGap = s.asleepMin - s.needMin;
+  // Meeting your personal sleep NEED is the dominant lever — WHOOP-style "sleep
+  // performance" (% of need met). Hitting your need scores strongly; extra sleep
+  // gives a small bonus; falling short costs progressively but gently.
+  const pctNeed = s.needMin > 0 ? s.asleepMin / s.needMin : 1;
+  const durPts = clamp((pctNeed - 0.9) * 130, -24, 18);
   const terms: Contributor[] = [
-    // Meeting your sleep need is the biggest lever; being short hurts more than
-    // being long helps (diminishing returns past your need). Gentle slopes so a
-    // slightly-short night reads "fair", not "poor".
-    term("Sleep duration", durGap >= 0 ? Math.min(12, durGap / 7) : Math.max(-16, durGap / 10),
-      `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need`),
+    term("Sleep duration", durPts,
+      `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need (${Math.round(pctNeed * 100)}% of need)`),
     // Deep sleep — physical repair, hormone release (share-based, so a short
     // night isn't penalised twice on absolute minutes).
     term("Deep sleep", clamp((deep - s.asleepMin * 0.18) / 9, -5, 7),
@@ -57,10 +59,10 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
     term("REM sleep", clamp((rem - s.asleepMin * 0.21) / 10, -5, 7),
       `${Math.round(rem)}m (${pct(rem, s.asleepMin)}% of sleep)`),
     // How much of your time in bed was actually asleep.
-    term("Efficiency", clamp((s.efficiencyPct - 84) * 0.8, -12, 12),
+    term("Efficiency", clamp((s.efficiencyPct - 84) * 0.8, -10, 12),
       `${s.efficiencyPct}% of time in bed asleep`),
     // Fragmentation — frequent or long wake-ups blunt restoration.
-    term("Restfulness", clamp(-(s.awakenings - 2) * 1.4 - Math.max(0, s.stages.awake - 35) * 0.1, -8, 3),
+    term("Restfulness", clamp(-(s.awakenings - 2) * 1.2 - Math.max(0, s.stages.awake - 35) * 0.1, -6, 3),
       `${s.awakenings} wake-ups, ${Math.round(s.stages.awake)}m awake`),
     // Going to bed and waking at consistent times strengthens your rhythm.
     term("Timing consistency", clamp((s.consistencyPct - 80) * 0.14, -7, 6),
