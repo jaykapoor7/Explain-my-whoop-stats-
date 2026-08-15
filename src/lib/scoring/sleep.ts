@@ -15,8 +15,11 @@ import { clamp, softScore } from "../format";
 /** Reference point = "you at your own baseline": your personal sleep need,
  * your typical stage architecture and efficiency. Meeting your need with ordinary
  * quality lands in the high 80s (WHOOP-style "sleep performance"). Every factor
- * is a signed move off this personal reference, not a fixed textbook target. */
-export const SLEEP_BASE = 64;
+ * is a signed move off this personal reference, not a fixed textbook target.
+ * Calibrated so a solid night lands in the high 80s, tracking the Fitbit/Google
+ * Health sleep score (same data source): duration ~50%, deep/REM ~25%,
+ * restoration ~25%. */
+export const SLEEP_BASE = 70;
 
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
 export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
@@ -53,7 +56,7 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
   // performance" (% of need met). Hitting your need scores strongly; extra sleep
   // gives a small bonus; falling short costs progressively but gently.
   const pctNeed = s.needMin > 0 ? s.asleepMin / s.needMin : 1;
-  const durPts = clamp((pctNeed - 0.9) * 130, -24, 18);
+  const durPts = clamp((pctNeed - 0.87) * 130, -24, 18);
   const terms: Contributor[] = [
     term("Sleep duration", durPts,
       `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need (${Math.round(pctNeed * 100)}% of need)`),
@@ -72,9 +75,10 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
     // Going to bed and waking at consistent times strengthens your rhythm.
     term("Timing consistency", clamp((s.consistencyPct - 80) * 0.14, -7, 6),
       `${s.consistencyPct}% regular bed/wake times`),
-    // Carrying a rolling shortfall vs your need is a real, published readiness
-    // drag — ~2 points per hour of debt, so a large shortfall clearly matters.
-    term("Sleep debt", clamp(-(s.debtMin / 60) * 2, -12, 2),
+    // The nightly sleep score mirrors Fitbit/Google Health — it scores THIS
+    // night. Rolling multi-day debt is a readiness concept (it carries strong
+    // weight in Recovery), so here it's only a light nudge.
+    term("Sleep debt", clamp(-(s.debtMin / 60) * 1, -4, 2),
       s.debtMin > 0 ? `${fmtShort(s.debtMin)} rolling shortfall` : "no accrued debt"),
   ];
   const score = softScore(SLEEP_BASE + terms.reduce((a, c) => a + c.points, 0));
