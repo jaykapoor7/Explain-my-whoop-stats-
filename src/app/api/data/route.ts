@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
-import { db } from "@/lib/db";
+import { db, isDurable } from "@/lib/db";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   // Durable = a real database is configured. Without it the file fallback is
   // read-only/ephemeral on serverless, so cross-device sync can't work — the
   // client uses this to tell the user the truth instead of a false "synced".
-  const durable = !!process.env.DATABASE_URL;
+  const durable = isDurable();
   try {
     const snap = await db().getSnapshot(session.sub);
     return NextResponse.json({ ...(snap ?? { data: null, updatedAt: 0 }), durable });

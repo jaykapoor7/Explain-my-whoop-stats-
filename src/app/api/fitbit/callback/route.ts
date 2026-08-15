@@ -22,7 +22,12 @@ export async function GET(req: NextRequest) {
   let token;
   try {
     token = await exchangeCode(c, code, redirectUri(origin), verifier);
-  } catch {
+  } catch (e) {
+    // Surface the real Google error in server logs — almost always a
+    // redirect_uri_mismatch or invalid_client (wrong secret / redirect URI not
+    // registered). The reason code goes to the UI; the detail to Vercel logs.
+    console.error("[auth] token exchange failed:", e instanceof Error ? e.message : e);
+    console.error("[auth] redirect_uri used was:", redirectUri(origin), "— this must be registered EXACTLY in the Google OAuth client.");
     return fail("exchange");
   }
 

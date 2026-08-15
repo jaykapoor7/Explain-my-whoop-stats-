@@ -7,14 +7,31 @@ import { Pool, type Pool as PgPool } from "pg";
 /**
  * Tiny persistence layer for accounts + cloud sync.
  *
- * - Production: set DATABASE_URL to a Postgres connection string. Tables are
- *   created on first use.
- * - Local / no DATABASE_URL: falls back to a JSON file under .data/ so the app
- *   runs with zero setup (single-server only).
+ * - Production: a Postgres connection string. Tables are created on first use.
+ * - Local / no database: falls back to a JSON file under .data/ so the app runs
+ *   with zero setup (single-server only).
  *
  * We store just what cloud sync needs: the user's profile, their encrypted
  * Google refresh token, and one app-state snapshot per user.
  */
+
+/**
+ * Resolve the Postgres URL from whichever env var the host populated. Our own
+ * DATABASE_URL wins; then the names Vercel's Postgres/Neon integration sets
+ * automatically (POSTGRES_URL etc.) — so cross-device sync works out of the box
+ * on Vercel without hand-copying a second variable. Returns null when none are
+ * set, in which case the file fallback is used.
+ */
+export function resolveDbUrl(): string | null {
+  return (
+    process.env.DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.POSTGRES_PRISMA_URL ||
+    process.env.POSTGRES_URL_NON_POOLING ||
+    process.env.DATABASE_POSTGRES_URL ||
+    null
+  );
+}
 
 export interface UserRow {
   sub: string;
@@ -66,9 +83,12 @@ class PgStore implements Store {
   private pool: PgPool;
   private ready: Promise<void>;
   constructor(connectionString: string) {
-    const ssl = /\bsslmode=require\b/.test(connectionString) || /neon\.tech|supabase\.co|render\.com/.test(connectionString)
-      ? { rejectUnauthorized: false }
-      : undefined;
+    // Managed Postgres (Vercel/Neon/Supabase/Render/…) all require TLS. Only a
+    // local connection is plaintext, so default to SSL for anything that isn't
+    // localhost — this avoids silent connection failures when the URL doesn't
+    // happen to carry sslmode=require.
+    const isLocal = /@(localhost|127\.0\.0\.1|::1)[:/]/.test(connectionString) || /\bsslmode=disable\b/.test(connectionString);
+    const ssl = isLocal ? undefined : { rejectUnauthorized: false };
     this.pool = new Pool({ connectionString, ssl, max: 3 });
     this.ready = this.init();
   }
@@ -322,8 +342,15 @@ class FileStore implements Store {
 
 let instance: Store | null = null;
 export function db(): Store {
-  if (!instance) instance = process.env.DATABASE_URL ? new PgStore(process.env.DATABASE_URL) : new FileStore();
+  if (!instance) {
+    const url = resolveDbUrl();
+    instance = url ? new PgStore(url) : new FileStore();
+  }
   return instance;
 }
+
+/** Whether a durable database is configured (vs the ephemeral file fallback).
+ * The UI uses this to tell the truth about cross-device sync. */
+export const isDurable = () => !!resolveDbUrl();
 
 export const cloudEnabled = () => true; // accounts always available; storage backend chosen above
