@@ -13,13 +13,23 @@ import { build, term, unavailable } from "./sleep";
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
 
-/** Estimate the strain load of a session from its duration and average HR.
- * The single source of truth for "what would this cost me?" — used both when
- * mapping manually-entered workouts and by the Strain page's session planner,
- * so a projection matches what actually gets logged. */
+/** Estimate the strain load of a session from its duration and average HR, on
+ * the 0–21 scale. The single source of truth for "what would this cost me?" —
+ * used when mapping logged workouts (manual + Google Health) AND by the Strain
+ * page's session planner, so a projection matches what actually gets logged.
+ *
+ * Model: intensity is the fraction of your usable HR range (~85 easy floor →
+ * ~180 ceiling); cardiac load grows faster than linearly with intensity
+ * (exponent 1.5), accumulates over duration, then saturates toward the 21
+ * ceiling. Calibrated WHOOP-style: an easy 30 min ≈ 3, a moderate 45 min ≈ 8,
+ * a hard hour ≈ 14, an all-out hour ≈ 16, an all-out 90 min approaches 19. */
 export function estimateActivityLoad(minutes: number, avgHr: number): number {
-  const load = clamp(minutes * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
-  return Math.round(load * 10) / 10;
+  if (!(minutes > 0)) return 0;
+  // Unknown HR (some manual logs) → assume a moderate effort so duration counts.
+  const intensity = avgHr > 0 ? clamp((avgHr - 85) / 95, 0, 1) : 0.5;
+  const dose = minutes * Math.pow(intensity, 1.5);
+  const load = 21 * (1 - Math.exp(-dose / 40));
+  return Math.round(clamp(load, 0.3, 21) * 10) / 10;
 }
 
 export function countedActivities(day: DailySummary): Activity[] {

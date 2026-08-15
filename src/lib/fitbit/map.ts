@@ -1,4 +1,5 @@
 import type { Activity, ActivityConfidence, SleepSession } from "../types";
+import { estimateActivityLoad } from "../scoring/strain";
 
 /**
  * Pure mappers from Google Health API dataPoints → Health OS domain objects.
@@ -169,7 +170,7 @@ export function mapExercise(p: Json): Activity | null {
   const zones = [0, zmin(z.lightTime), zmin(z.moderateTime), zmin(z.vigorousTime), zmin(z.peakTime)];
 
   const name = e.displayName || humanize(String(e.exerciseType ?? "Workout"));
-  const load = clamp(durMin * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
+  const load = estimateActivityLoad(durMin, avgHr);
   const id = p.name ? String(p.name).split("/").pop() : `${date}-${start}`;
 
   return {
