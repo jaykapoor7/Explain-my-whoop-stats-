@@ -1,7 +1,7 @@
 import { DailySummary, NutritionTotals, PersonalBaseline, ScoreResult } from "../types";
 import { calcSleep } from "./sleep";
 import { personalSleepNeed, sleepDebtMin } from "./sleep-coach";
-import { calcStrain, countedActivities } from "./strain";
+import { calcStrain } from "./strain";
 import { calcRecovery } from "./recovery";
 import { calcEnergy } from "./energy";
 
@@ -61,8 +61,10 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
   const rhrVals = window.map((d) => d.rhr.bpm).filter((x) => x > 0);
   const hrvMs = meanPos(window.map((d) => d.hrv.rmssdMs)) || days[i].hrv.rmssdMs || 45;
   const rhrBpm = meanPos(window.map((d) => d.rhr.bpm)) || days[i].rhr.bpm || 60;
-  const hrvSigma = robustSigma(hrvVals, hrvMs, 0.06);
-  const rhrSigma = robustSigma(rhrVals, rhrBpm, 0.03);
+  // Floors reflect realistic day-to-day CV (~10% HRV, ~4.5% RHR) so a short or
+  // unusually steady history can't make ordinary swings look like huge z-scores.
+  const hrvSigma = robustSigma(hrvVals, hrvMs, 0.1);
+  const rhrSigma = robustSigma(rhrVals, rhrBpm, 0.045);
   // Recent multi-day autonomic trajectory: how the last few days' HRV sit vs the
   // fuller baseline, in personal-σ units. Drives an adaptive starting point.
   const recentHrv = window.slice(-5).map((d) => d.hrv.rmssdMs).filter((x) => x > 0);
@@ -75,7 +77,11 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
     rhrBpm,
     sleepMin: meanPos(window.map((d) => d.sleep.asleepMin)) || days[i].sleep.asleepMin || 450,
     sleepEffPct: meanPos(window.map((d) => d.sleep.efficiencyPct)) || days[i].sleep.efficiencyPct || 90,
-    strain: mean(window.map((d) => countedActivities(d).reduce((s, a) => s + a.load, 0))) || 10,
+    // Typical daily strain = mean of prior days' full strain SCORE (steps +
+    // workouts), matching prevStrain — NOT counted-workout load with a phantom
+    // fallback of 10, which made non-training days look like a big rest and
+    // handed a standing recovery/energy bonus.
+    strain: mean(scoredWindow.filter((s) => s.strain.available !== false).map((s) => s.strain.score)) || 6,
     steps: meanPos(window.map((d) => d.steps)) || days[i].steps,
     energy: mean(scoredWindow.filter((s) => s.energy.available !== false).map((s) => s.energy.score)) || 55,
     recovery: mean(scoredWindow.filter((s) => s.recovery.available !== false).map((s) => s.recovery.score)) || 55,
