@@ -219,6 +219,14 @@ export interface PersonalBaseline {
   steps: number;
   energy: number;
   recovery: number;
+  /** Personal day-to-day spread (robust σ) of HRV / RHR, so a deviation is
+   * judged in units of YOUR own variability rather than a fixed slope. */
+  hrvSigma?: number;
+  rhrSigma?: number;
+  /** Recent multi-day autonomic trajectory in personal-σ units (last ~5 days'
+   * HRV vs your baseline): + = trending recovered, − = accumulating fatigue.
+   * Lets the score's starting point move day-to-day with your state. */
+  hrvSustain?: number;
 }
 
 export type ContributorKind = "positive" | "negative" | "neutral";

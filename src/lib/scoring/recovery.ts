@@ -30,27 +30,45 @@ export function calcRecovery(
     return unavailable("recovery", 100, "Awaiting sleep", "Recovery is calculated once last night's sleep has been recorded and processed.");
   }
   const clampV = (v: number, lo: number, hi: number) => clamp(v, lo, hi);
-  // HRV is the primary autonomic signal — measured as % deviation from your
-  // own baseline so it reads the same whether your typical HRV is 40 or 90 ms.
+  // Judge each signal in units of YOUR OWN day-to-day spread (robust z-score),
+  // not a fixed slope on a raw %. The same 10% HRV dip is noise for someone whose
+  // HRV swings a lot and meaningful for someone rock-steady — the z-score captures
+  // that. Falls back to a sensible spread when history is short.
+  const hrvSigma = baseline.hrvSigma && baseline.hrvSigma > 0 ? baseline.hrvSigma : Math.max(baseline.hrvMs * 0.1, 4);
+  const rhrSigma = baseline.rhrSigma && baseline.rhrSigma > 0 ? baseline.rhrSigma : Math.max(baseline.rhrBpm * 0.05, 2);
   const hrvPct = baseline.hrvMs > 0 ? (day.hrv.rmssdMs - baseline.hrvMs) / baseline.hrvMs : 0;
+  const zHrv = (day.hrv.rmssdMs - baseline.hrvMs) / hrvSigma;         // + = above your normal
+  const zRhr = (baseline.rhrBpm - day.rhr.bpm) / rhrSigma;            // + = lower RHR (better)
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
+  const sig1 = (z: number) => `${z >= 0 ? "+" : ""}${z.toFixed(1)}σ`;
 
   const terms: Contributor[] = [];
+
+  // Adaptive starting point: your recent multi-day autonomic trajectory shifts
+  // today's baseline, so the score doesn't reset to the same neutral each day —
+  // sustained sub-baseline HRV (accumulating fatigue) lowers it, a recovered
+  // streak raises it.
+  const trendPts = Math.round(clampV((baseline.hrvSustain ?? 0) * 4, -7, 7));
+  if (Math.abs(trendPts) >= 1) {
+    terms.push(term("Multi-day trend", trendPts,
+      `HRV ${sig1(baseline.hrvSustain ?? 0)} vs baseline over recent days`,
+      { math: `Over the last few days your HRV has run ${sig1(baseline.hrvSustain ?? 0)} relative to your baseline. Sustained state shifts today's starting point (not a fixed neutral) → ${trendPts >= 0 ? "+" : ""}${trendPts}.` }));
+  }
+
   if (hasHrv(day)) {
-    // HRV is the primary autonomic signal (WHOOP weights it most). Asymmetric,
-    // deliberately: a rise above your baseline is rewarded a touch more than a
-    // dip below is penalised, so an average night isn't harshly marked down.
-    const hrvSlope = hrvPct >= 0 ? 55 : 42;
-    const pts = Math.round(clampV(hrvPct * hrvSlope, -20, 26));
+    // HRV is the primary autonomic signal (WHOOP weights it most). Asymmetric:
+    // a rise above your normal is rewarded a touch more than a dip is penalised.
+    const slope = zHrv >= 0 ? 13 : 10;
+    const pts = Math.round(clampV(zHrv * slope, -20, 26));
     terms.push(term("HRV", pts,
-      `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical (${signedPct(hrvPct)})`,
-      { math: `Your overnight HRV of ${day.hrv.rmssdMs} ms is ${signedPct(hrvPct)} vs your ${Math.round(baseline.hrvMs)} ms baseline — the strongest recovery signal → ${pts >= 0 ? "+" : ""}${pts}.` }));
+      `${day.hrv.rmssdMs} ms — ${sig1(zHrv)} vs your normal (${signedPct(hrvPct)})`,
+      { math: `Your overnight HRV of ${day.hrv.rmssdMs} ms is ${sig1(zHrv)} from your ${Math.round(baseline.hrvMs)} ms baseline, measured against your own ±${Math.round(hrvSigma)} ms day-to-day spread → ${pts >= 0 ? "+" : ""}${pts}. The strongest recovery signal.` }));
   }
   if (hasRhr(day)) {
-    const pts = Math.round(clampV(-rhrDelta * 2.0, -14, 16));
+    const pts = Math.round(clampV(zRhr * 8, -14, 16));
     terms.push(term("Resting HR", pts,
-      `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`,
-      { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline. A lower RHR means more recovered → ${pts >= 0 ? "+" : ""}${pts}.` }));
+      `${day.rhr.bpm} bpm — ${sig1(zRhr)} vs your normal`,
+      { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline — ${sig1(zRhr)} against your own ±${Math.round(rhrSigma)} bpm spread. Lower = more recovered → ${pts >= 0 ? "+" : ""}${pts}.` }));
   }
   const sleepPts = Math.round(clampV((sleep.score - 60) * 0.4, -15, 15));
   terms.push(term("Sleep quality", sleepPts,
