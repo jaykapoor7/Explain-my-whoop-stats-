@@ -4,5 +4,5 @@
  * Google requires a working support contact.
  */
 export const APP_NAME = "CURA";
-export const CONTACT_EMAIL = "you@example.com"; // ← replace with your real contact email
+export const CONTACT_EMAIL = "jaykapoor700@gmail.com"; // public support contact (shown on Privacy & Terms)
 export const EFFECTIVE_DATE = "August 2026";

@@ -168,6 +168,17 @@ function MobileNav() {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  // Legal pages are public, standalone documents (linked from the Google OAuth
+  // consent screen and footers) — render them clean, with no app nav or Coach.
+  const isLegal = pathname === "/privacy" || pathname === "/terms";
+  if (isLegal) {
+    return (
+      <div className="min-h-screen">
+        <main className="mx-auto min-w-0 max-w-3xl px-5 py-10 sm:py-14">{children}</main>
+      </div>
+    );
+  }
   return (
     <AccountProvider>
       <div className="min-h-screen">
