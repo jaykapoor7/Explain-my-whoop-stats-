@@ -1,4 +1,4 @@
-import { Contributor, DailySummary, SleepScore } from "../types";
+import { Contributor, DailySummary, PersonalBaseline, SleepScore } from "../types";
 import { clamp } from "../format";
 
 /**
@@ -12,9 +12,10 @@ import { clamp } from "../format";
 // Data availability — a metric that didn't sync arrives as 0, which is NOT a
 // real measurement. Every calculator must exclude a missing input rather than
 // score it, so the app never fabricates "0h slept" or penalizes absent data.
-/** Neutral midpoint for the sleep score. Set so that meeting your personal sleep
- * need with ordinary quality lands in the high 80s (WHOOP-style "sleep
- * performance"), rather than a harsh middling score. */
+/** Reference point = "you at your own baseline": your personal sleep need,
+ * your typical stage architecture and efficiency. Meeting your need with ordinary
+ * quality lands in the high 80s (WHOOP-style "sleep performance"). Every factor
+ * is a signed move off this personal reference, not a fixed textbook target. */
 export const SLEEP_BASE = 68;
 
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
@@ -26,7 +27,7 @@ export function unavailable(domain: SleepScore["domain"], scale: number, status:
   return { domain, scale, score: 0, status, explanation, deltaVsYesterday: 0, baseline: 0, contributors: [], available: false };
 }
 
-export function calcSleep(day: DailySummary): { raw: SleepScore; features: SleepFeatures } {
+export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw: SleepScore; features: SleepFeatures } {
   const s = day.sleep;
   if (!hasSleep(day)) {
     return {
@@ -38,6 +39,11 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
   const rem = s.stages.rem;
   const deepRem = deep + rem;
   const hrs = s.asleepMin / 60;
+  // Personal references: judge stages and efficiency against YOUR own typical,
+  // falling back to population physiology only until your baseline exists.
+  const deepTarget = baseline?.deepPct && baseline.deepPct > 0 ? baseline.deepPct : 0.18;
+  const remTarget = baseline?.remPct && baseline.remPct > 0 ? baseline.remPct : 0.21;
+  const effTarget = baseline?.sleepEffPct && baseline.sleepEffPct > 0 ? baseline.sleepEffPct : 86;
 
   // Each pillar is measured against a personal or physiological target and
   // contributes signed points around a neutral base, so "what helped / hurt"
@@ -51,16 +57,15 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
   const terms: Contributor[] = [
     term("Sleep duration", durPts,
       `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need (${Math.round(pctNeed * 100)}% of need)`),
-    // Deep sleep — physical repair, hormone release (share-based, so a short
-    // night isn't penalised twice on absolute minutes).
-    term("Deep sleep", clamp((deep - s.asleepMin * 0.18) / 9, -5, 7),
-      `${Math.round(deep)}m (${pct(deep, s.asleepMin)}% of sleep)`),
-    // REM — memory, mood, cognitive recovery.
-    term("REM sleep", clamp((rem - s.asleepMin * 0.21) / 10, -5, 7),
-      `${Math.round(rem)}m (${pct(rem, s.asleepMin)}% of sleep)`),
-    // How much of your time in bed was actually asleep.
-    term("Efficiency", clamp((s.efficiencyPct - 84) * 0.8, -10, 12),
-      `${s.efficiencyPct}% of time in bed asleep`),
+    // Deep sleep vs YOUR typical share — physical repair, hormone release.
+    term("Deep sleep", clamp((deep - s.asleepMin * deepTarget) / 9, -5, 7),
+      `${Math.round(deep)}m (${pct(deep, s.asleepMin)}% vs your ${Math.round(deepTarget * 100)}% typical)`),
+    // REM vs YOUR typical share — memory, mood, cognitive recovery.
+    term("REM sleep", clamp((rem - s.asleepMin * remTarget) / 10, -5, 7),
+      `${Math.round(rem)}m (${pct(rem, s.asleepMin)}% vs your ${Math.round(remTarget * 100)}% typical)`),
+    // How much of your time in bed was actually asleep, vs your own norm.
+    term("Efficiency", clamp((s.efficiencyPct - effTarget) * 0.8, -10, 12),
+      `${s.efficiencyPct}% asleep vs your ${Math.round(effTarget)}% typical`),
     // Fragmentation — frequent or long wake-ups blunt restoration.
     term("Restfulness", clamp(-(s.awakenings - 2) * 1.2 - Math.max(0, s.stages.awake - 35) * 0.1, -6, 3),
       `${s.awakenings} wake-ups, ${Math.round(s.stages.awake)}m awake`),

@@ -67,6 +67,9 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
   // fuller baseline, in personal-σ units. Drives an adaptive starting point.
   const recentHrv = window.slice(-5).map((d) => d.hrv.rmssdMs).filter((x) => x > 0);
   const hrvSustain = recentHrv.length >= 2 ? (mean(recentHrv) - hrvMs) / hrvSigma : 0;
+  // Personal sleep architecture: your own typical deep / REM share.
+  const deepShares = window.map((d) => (d.sleep.asleepMin > 0 ? d.sleep.stages.deep / d.sleep.asleepMin : NaN)).filter((x) => x > 0 && isFinite(x));
+  const remShares = window.map((d) => (d.sleep.asleepMin > 0 ? d.sleep.stages.rem / d.sleep.asleepMin : NaN)).filter((x) => x > 0 && isFinite(x));
   return {
     hrvMs,
     rhrBpm,
@@ -79,6 +82,8 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
     hrvSigma,
     rhrSigma,
     hrvSustain,
+    deepPct: deepShares.length >= 3 ? mean(deepShares) : undefined,
+    remPct: remShares.length >= 3 ? mean(remShares) : undefined,
   };
 }
 
@@ -99,7 +104,7 @@ export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number }
         ? { ...raw, sleep: { ...raw.sleep, needMin: need, debtMin: debt } }
         : raw;
     const baseline = baselineAt(days, i, out);
-    const sleep = calcSleep(day).raw;
+    const sleep = calcSleep(day, baseline).raw;
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
     const recovery = calcRecovery(day, baseline, sleep, prevStrain);
     const strain = calcStrain(day, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });

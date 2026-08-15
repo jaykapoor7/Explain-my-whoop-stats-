@@ -72,20 +72,27 @@ export function calcEnergy(
       math: `Recovery ${Math.round(recovery.score)}% vs a neutral 55, scaled ×0.24 → ${pts >= 0 ? "+" : ""}${pts}. Your autonomic readiness this morning.`,
     }));
   }
+  // Judge HRV / RHR in units of YOUR OWN day-to-day spread (robust σ), not a
+  // fixed slope — the same deviation means more for a steady person than a
+  // naturally-variable one.
+  const hrvSigma = baseline.hrvSigma && baseline.hrvSigma > 0 ? baseline.hrvSigma : Math.max(baseline.hrvMs * 0.1, 4);
+  const rhrSigma = baseline.rhrSigma && baseline.rhrSigma > 0 ? baseline.rhrSigma : Math.max(baseline.rhrBpm * 0.05, 2);
+  const sig1 = (z: number) => `${z >= 0 ? "+" : ""}${z.toFixed(1)}σ`;
   if (hasHrv(day)) {
-    const hrvPct = baseline.hrvMs > 0 ? (day.hrv.rmssdMs - baseline.hrvMs) / baseline.hrvMs : 0;
-    const pts = Math.round(cl(hrvPct * 30, -14, 12));
-    capacity.push(term("HRV", pts, `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`, {
+    const zHrv = (day.hrv.rmssdMs - baseline.hrvMs) / hrvSigma;
+    const pts = Math.round(cl(zHrv * 7, -14, 12));
+    capacity.push(term("HRV", pts, `${day.hrv.rmssdMs} ms — ${sig1(zHrv)} vs your normal`, {
       group: "capacity",
-      math: `HRV ${day.hrv.rmssdMs} ms is ${(hrvPct * 100).toFixed(0)}% ${hrvPct >= 0 ? "above" : "below"} your ${Math.round(baseline.hrvMs)} ms baseline → ${pts >= 0 ? "+" : ""}${pts}.`,
+      math: `HRV ${day.hrv.rmssdMs} ms is ${sig1(zHrv)} from your ${Math.round(baseline.hrvMs)} ms baseline, against your own ±${Math.round(hrvSigma)} ms spread → ${pts >= 0 ? "+" : ""}${pts}.`,
     }));
   }
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
-  if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.5) {
-    const pts = Math.round(cl(-rhrDelta * 1.5, -12, 10));
-    capacity.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", pts, `${day.rhr.bpm} bpm this morning`, {
+  if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.0) {
+    const zRhr = (baseline.rhrBpm - day.rhr.bpm) / rhrSigma; // + = lower RHR (better)
+    const pts = Math.round(cl(zRhr * 5, -12, 10));
+    capacity.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", pts, `${day.rhr.bpm} bpm — ${sig1(zRhr)} vs your normal`, {
       group: "capacity",
-      math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline → ${pts >= 0 ? "+" : ""}${pts}. A raised RHR flags your body is still working.`,
+      math: `Resting HR ${day.rhr.bpm} bpm is ${sig1(zRhr)} against your own ±${Math.round(rhrSigma)} bpm spread → ${pts >= 0 ? "+" : ""}${pts}. A raised RHR flags your body is still working.`,
     }));
   }
   // NEW — yesterday's load carries over. Train hard and you wake with less in the

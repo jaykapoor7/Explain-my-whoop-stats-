@@ -227,6 +227,10 @@ export interface PersonalBaseline {
    * HRV vs your baseline): + = trending recovered, − = accumulating fatigue.
    * Lets the score's starting point move day-to-day with your state. */
   hrvSustain?: number;
+  /** Your own typical deep / REM share of sleep (fraction), so sleep stages are
+   * judged against your personal architecture rather than a fixed textbook %. */
+  deepPct?: number;
+  remPct?: number;
 }
 
 export type ContributorKind = "positive" | "negative" | "neutral";
