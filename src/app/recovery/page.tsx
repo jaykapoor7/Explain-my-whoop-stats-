@@ -3,6 +3,7 @@
 import { ScorePage } from "@/components/score-page";
 import { Card, Delta, Section } from "@/components/ui";
 import { TrendArea } from "@/components/charts";
+import { RECOVERY_BASE } from "@/lib/scoring/recovery";
 import { DOMAIN_COLOR, fmtNum } from "@/lib/format";
 
 export default function RecoveryPage() {
@@ -14,6 +15,7 @@ export default function RecoveryPage() {
       ringLabel="Recovery"
       pick={(s) => s.recovery}
       baselineLabel={(s) => `Your 14-day typical recovery is ${s.baseline}%.`}
+      neutralBase={RECOVERY_BASE}
       algoNote="Inputs: overnight HRV vs your baseline, resting heart rate vs baseline, last night's sleep quality, accrued sleep debt, and yesterday's training load measured against your two-week typical."
       extras={(data) => {
         const t = data.today!;

@@ -9,7 +9,7 @@ import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
 import { ScoredDay } from "@/lib/scoring/engine";
 import { ScoreResult } from "@/lib/types";
-import { cn, fmtDateLong } from "@/lib/format";
+import { cn, fmtDateLong, signed } from "@/lib/format";
 
 /**
  * Shared layout for the four score pages. Answers, in order:
@@ -23,6 +23,7 @@ export function ScorePage({
   baselineLabel,
   ringLabel,
   algoNote,
+  neutralBase,
   belowHero,
   extras,
 }: {
@@ -33,6 +34,10 @@ export function ScorePage({
   baselineLabel: (score: ScoreResult) => string;
   ringLabel: string;
   algoNote: string;
+  /** The neutral midpoint the score is built around. When set, a compact
+   * "neutral → today's factors → score" strip is shown under the hero so the
+   * maths is legible the same way the Energy battery is. */
+  neutralBase?: number;
   belowHero?: (data: ReturnType<typeof useHealth>) => ReactNode;
   extras?: (data: ReturnType<typeof useHealth>) => ReactNode;
 }) {
@@ -105,6 +110,10 @@ export function ScorePage({
         </Why>
       </Card>
 
+      {typeof neutralBase === "number" && score.scale === 100 && (
+        <ScoreMath title={title} base={neutralBase} score={Math.round(score.score)} color={color} baseline={score.baseline} />
+      )}
+
       {belowHero?.(data)}
 
       <Section title="What affected you" sub="Signed contributions — these sum to today's score">
@@ -136,6 +145,46 @@ export function ScorePage({
       </p>
     </div>
   );
+}
+
+/** Compact "neutral → today's factors → score" strip, so every score reads the
+ * same way as the Energy battery: a neutral midpoint that the day moves off. */
+function ScoreMath({ title, base, score, color, baseline }: { title: string; base: number; score: number; color: string; baseline: number }) {
+  const net = score - base;
+  const lc = title.toLowerCase();
+  return (
+    <Card className="mt-4 p-5">
+      <div className="grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-2 text-center">
+        <MathCell top="Neutral" val={`${base}`} sub={`an average ${lc} day`} />
+        <MathOp icon={net >= 0 ? "+" : "−"} />
+        <MathCell top="Today's factors" val={`${net >= 0 ? "+" : "−"}${Math.abs(net)}`} sub="net of all below" color={net >= 0 ? "#13b57e" : "#ef5a45"} />
+        <MathOp icon="=" />
+        <MathCell top={title} val={`${score}`} sub="today" color={color} strong />
+      </div>
+      <p className="mt-4 rounded-xl bg-black/[0.03] p-4 text-xs leading-relaxed text-ink-300">
+        Your {lc} starts at a neutral <span className="font-semibold text-ink-100">{base}</span> — a middling day.
+        Every factor under &ldquo;What affected you&rdquo; is a signed move off that base, and they sum to{" "}
+        <span className="font-semibold" style={{ color: net >= 0 ? "#13b57e" : "#ef5a45" }}>{signed(net)}</span>, giving today&apos;s{" "}
+        <span className="font-semibold" style={{ color }}>{score}</span>. Your{" "}
+        <span className="font-semibold text-ink-100">baseline</span> — the dashed line on the trend — is your own 14-day
+        typical ({baseline}{title === "Recovery" ? "%" : ""}), not a fixed target. Tap any factor to see its maths.
+      </p>
+    </Card>
+  );
+}
+
+function MathCell({ top, val, sub, color, strong }: { top: string; val: string; sub: string; color?: string; strong?: boolean }) {
+  return (
+    <div className="min-w-0">
+      <div className="text-[10px] font-medium uppercase tracking-wide text-ink-500">{top}</div>
+      <div className={strong ? "tabular text-2xl font-bold leading-tight" : "tabular text-xl font-bold leading-tight text-ink-50"} style={color ? { color } : undefined}>{val}</div>
+      <div className="truncate text-[10px] text-ink-400">{sub}</div>
+    </div>
+  );
+}
+
+function MathOp({ icon }: { icon: string }) {
+  return <span className="mt-3 flex h-5 w-5 items-center justify-center text-sm font-bold text-ink-400">{icon}</span>;
 }
 
 export function RangeToggle({ range, setRange, options = [7, 30] }: { range: number; setRange: (r: never) => void; options?: number[] }) {

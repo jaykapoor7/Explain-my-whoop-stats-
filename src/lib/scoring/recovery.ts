@@ -10,6 +10,11 @@ import { build, hasHrv, hasRhr, lc, term, unavailable } from "./sleep";
  *
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
+
+/** Neutral midpoint: an average day with nothing pulling recovery up or down
+ * lands here. Every factor is a signed move off this base. */
+export const RECOVERY_BASE = 58;
+
 export function calcRecovery(
   day: DailySummary,
   baseline: PersonalBaseline,
@@ -29,24 +34,36 @@ export function calcRecovery(
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
 
   const terms: Contributor[] = [];
-  if (hasHrv(day))
-    terms.push(term("HRV", clampV(hrvPct * 55, -26, 24),
-      `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical (${signedPct(hrvPct)})`));
-  if (hasRhr(day))
-    terms.push(term("Resting HR", clampV(-rhrDelta * 2.3, -22, 16),
-      `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`));
-  terms.push(term("Sleep quality", clampV((sleep.score - 60) * 0.4, -15, 15),
-    `Last night scored ${Math.round(sleep.score)}/100`));
-  terms.push(term("Sleep debt", clampV(-day.sleep.debtMin / 45, -4, 2),
-    day.sleep.debtMin > 0 ? `${fmtShort(day.sleep.debtMin)} accrued shortfall` : "well rested"));
+  if (hasHrv(day)) {
+    const pts = Math.round(clampV(hrvPct * 55, -26, 24));
+    terms.push(term("HRV", pts,
+      `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical (${signedPct(hrvPct)})`,
+      { math: `Your overnight HRV of ${day.hrv.rmssdMs} ms is ${signedPct(hrvPct)} vs your ${Math.round(baseline.hrvMs)} ms baseline. Scaled ×55 (HRV is the primary autonomic signal) → ${pts >= 0 ? "+" : ""}${pts}.` }));
+  }
+  if (hasRhr(day)) {
+    const pts = Math.round(clampV(-rhrDelta * 2.3, -22, 16));
+    terms.push(term("Resting HR", pts,
+      `${day.rhr.bpm} bpm vs ${Math.round(baseline.rhrBpm)} bpm typical`,
+      { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline. A lower RHR means more recovered → ${pts >= 0 ? "+" : ""}${pts}.` }));
+  }
+  const sleepPts = Math.round(clampV((sleep.score - 60) * 0.4, -15, 15));
+  terms.push(term("Sleep quality", sleepPts,
+    `Last night scored ${Math.round(sleep.score)}/100`,
+    { math: `Last night's sleep scored ${Math.round(sleep.score)}/100. Measured vs a neutral 60 and scaled ×0.4 → ${sleepPts >= 0 ? "+" : ""}${sleepPts}.` }));
+  const debtPts = Math.round(clampV(-day.sleep.debtMin / 45, -4, 2));
+  terms.push(term("Sleep debt", debtPts,
+    day.sleep.debtMin > 0 ? `${fmtShort(day.sleep.debtMin)} accrued shortfall` : "well rested",
+    { math: `You're carrying ${fmtShort(day.sleep.debtMin)} of rolling sleep debt → ${debtPts >= 0 ? "+" : ""}${debtPts}. Kept small so it doesn't double-count with sleep quality.` }));
   // Acute vs chronic training load: yesterday's strain measured against your
   // rolling-two-week typical, not a fixed number — spiking above your norm costs
   // recovery, backing off returns some.
   const loadGap = prevStrain - baseline.strain;
-  terms.push(term("Training load", clampV(-loadGap * 1.5, -20, 10),
-    `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`));
+  const loadPts = Math.round(clampV(-loadGap * 1.5, -20, 10));
+  terms.push(term("Training load", loadPts,
+    `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`,
+    { math: `Yesterday's strain of ${prevStrain.toFixed(1)} vs your ${baseline.strain.toFixed(1)} two-week typical is a gap of ${loadGap >= 0 ? "+" : ""}${loadGap.toFixed(1)}. ${loadGap > 0 ? "Training above your norm costs recovery" : "Backing off returns some"} → ${loadPts >= 0 ? "+" : ""}${loadPts}.` }));
 
-  const score = clamp(58 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = clamp(RECOVERY_BASE + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 67 ? "Primed" : score >= 34 ? "Adequate" : "Compromised";
   const ranked = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   const topHurt = [...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0];

@@ -2,9 +2,9 @@
 
 import { ScorePage } from "@/components/score-page";
 import { Card, Section } from "@/components/ui";
-import { ENERGY_NEUTRAL_BASE } from "@/lib/scoring/energy";
+import { energySplit } from "@/lib/scoring/energy";
 import { DOMAIN_COLOR } from "@/lib/format";
-import { BatteryCharging, Minus, Plus } from "lucide-react";
+import { BatteryCharging, Minus, Sunrise } from "lucide-react";
 
 export default function EnergyPage() {
   return (
@@ -14,16 +14,15 @@ export default function EnergyPage() {
       color={DOMAIN_COLOR.energy}
       ringLabel="Energy"
       pick={(s) => s.energy}
-      baselineLabel={(s) => `Your 14-day typical energy is ${s.baseline}. Sleep and recovery charge the battery; activity spends it.`}
-      algoNote="Sleep quality, HRV and this morning's recovery charge the score; each counted activity draws it down in proportion to its load."
+      baselineLabel={(s) => `Your 14-day typical energy is ${s.baseline}. Sleep, recovery and yesterday's load set your morning capacity; today's activity spends it.`}
+      algoNote="Your morning capacity is built from last night's sleep, this morning's recovery and HRV, and how hard you went yesterday; each counted activity then draws it down."
       belowHero={(data) => {
         const e = data.today!.energy;
         if (e.available === false) return null;
-        const charged = Math.round(e.contributors.reduce((s, c) => s + Math.max(0, c.points), 0));
-        const spent = Math.round(Math.abs(e.contributors.reduce((s, c) => s + Math.min(0, c.points), 0)));
+        const { morningCapacity, spent } = energySplit(e);
         const score = Math.round(e.score);
         const col = DOMAIN_COLOR.energy;
-        const vsBaseline = score - e.baseline;
+        const vsBaseline = morningCapacity - e.baseline;
         return (
           <Section title="Your energy battery" sub="Exactly how today's number is built">
             <Card className="p-5">
@@ -36,37 +35,36 @@ export default function EnergyPage() {
                 <span className="tabular w-12 text-right text-lg font-bold" style={{ color: col }}>{score}</span>
               </div>
 
-              {/* The equation — start, charge, spend → the battery above is the result */}
+              {/* The equation — woke with capacity, spent on activity, have this left */}
               <div className="mt-5 grid grid-cols-[1fr_auto_1fr_auto_1fr] items-start gap-x-2 text-center">
-                <MathCell top="Neutral start" val={`${ENERGY_NEUTRAL_BASE}`} sub="an average day" />
-                <Op icon={<Plus size={14} />} />
-                <MathCell top="Charged" val={`+${charged}`} sub="sleep · recovery · HRV" color="#13b57e" />
+                <MathCell top="Woke with" val={`${morningCapacity}`} sub="morning capacity" color="#13b57e" icon={<Sunrise size={12} />} />
                 <Op icon={<Minus size={14} />} />
-                <MathCell top="Spent" val={`−${spent}`} sub="today's activity" color={DOMAIN_COLOR.strain} />
+                <MathCell top="Spent" val={`${spent}`} sub="today's activity" color={DOMAIN_COLOR.strain} />
+                <Op icon={<span className="text-sm font-bold">=</span>} />
+                <MathCell top="Energy now" val={`${score}`} sub="available" color={col} strong />
               </div>
-              <p className="mt-2 text-center text-[11px] text-ink-400">
-                = <span className="font-semibold" style={{ color: col }}>{score}</span> — your energy right now, shown above.
-              </p>
 
-              {/* Plain-English explanation of the baseline */}
+              {/* Plain-English explanation */}
               <div className="mt-5 space-y-2 rounded-xl bg-black/[0.03] p-4 text-xs leading-relaxed text-ink-300">
                 <p>
-                  Energy starts every day at a neutral <span className="font-semibold text-ink-100">{ENERGY_NEUTRAL_BASE}</span> — a
-                  blank, average day. Good sleep, a strong recovery and higher-than-usual HRV{" "}
-                  <span className="font-semibold" style={{ color: "#13b57e" }}>charge</span> it up; the harder you train, the more it{" "}
-                  <span className="font-semibold" style={{ color: DOMAIN_COLOR.strain }}>spends</span> back down.
+                  You don&apos;t start every day at the same place. This morning your body woke with a capacity of{" "}
+                  <span className="font-semibold" style={{ color: "#13b57e" }}>{morningCapacity}</span> — built from{" "}
+                  <span className="font-semibold text-ink-100">last night&apos;s sleep</span>,{" "}
+                  <span className="font-semibold text-ink-100">this morning&apos;s recovery &amp; HRV</span>, and{" "}
+                  <span className="font-semibold text-ink-100">how hard you went yesterday</span> (a big day leaves residual fatigue). That&apos;s how much you can expend today.
                 </p>
                 <p>
-                  Your <span className="font-semibold text-ink-100">baseline</span> — the dashed line on the trend below — is your own{" "}
-                  <span className="font-semibold text-ink-100">14-day typical energy ({e.baseline})</span>, not a fixed target. Today you&apos;re{" "}
+                  Since waking, activity has <span className="font-semibold" style={{ color: DOMAIN_COLOR.strain }}>spent {spent}</span>, leaving{" "}
+                  <span className="font-semibold" style={{ color: col }}>{score}</span> in the tank. Your{" "}
+                  <span className="font-semibold text-ink-100">baseline</span> — the dashed line below — is your own 14-day typical energy ({e.baseline}); this morning you woke{" "}
                   {vsBaseline === 0 ? (
                     <span className="font-semibold text-ink-100">right on it</span>
                   ) : (
                     <span className="font-semibold" style={{ color: vsBaseline > 0 ? "#13b57e" : DOMAIN_COLOR.strain }}>
-                      {Math.abs(vsBaseline)} {vsBaseline > 0 ? "above" : "below"}
+                      {Math.abs(vsBaseline)} {vsBaseline > 0 ? "above" : "below"} it
                     </span>
-                  )}{" "}
-                  your normal. The signed factors under &ldquo;What affected you&rdquo; are the exact charge and spend amounts.
+                  )}
+                  . Tap any factor under &ldquo;What affected you&rdquo; to see its exact maths.
                 </p>
               </div>
             </Card>
@@ -77,10 +75,10 @@ export default function EnergyPage() {
   );
 }
 
-function MathCell({ top, val, sub, color, strong }: { top: string; val: string; sub: string; color?: string; strong?: boolean }) {
+function MathCell({ top, val, sub, color, strong, icon }: { top: string; val: string; sub: string; color?: string; strong?: boolean; icon?: React.ReactNode }) {
   return (
     <div className="min-w-0">
-      <div className="text-[10px] font-medium uppercase tracking-wide text-ink-500">{top}</div>
+      <div className="flex items-center justify-center gap-1 text-[10px] font-medium uppercase tracking-wide text-ink-500">{icon}{top}</div>
       <div className={strong ? "tabular text-2xl font-bold leading-tight" : "tabular text-xl font-bold leading-tight text-ink-50"} style={color ? { color } : undefined}>{val}</div>
       <div className="truncate text-[10px] text-ink-400">{sub}</div>
     </div>
@@ -88,5 +86,5 @@ function MathCell({ top, val, sub, color, strong }: { top: string; val: string; 
 }
 
 function Op({ icon }: { icon: React.ReactNode }) {
-  return <span className="flex h-5 w-5 items-center justify-center text-ink-400">{icon}</span>;
+  return <span className="mt-3 flex h-5 w-5 items-center justify-center text-ink-400">{icon}</span>;
 }

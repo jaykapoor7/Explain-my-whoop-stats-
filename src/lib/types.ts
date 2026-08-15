@@ -228,6 +228,13 @@ export interface Contributor {
   points: number; // signed
   kind: ContributorKind;
   detail?: string;
+  /** For Energy: whether this factor set your morning capacity ("capacity")
+   * or spent it down during the day ("spend"). Lets the UI show the tank as
+   * "woke with X, spent Y". Absent on the other pillars. */
+  group?: "capacity" | "spend";
+  /** Optional plain-English "how this was computed" shown when a ledger row is
+   * expanded — turns a bare signed number into a show-me explanation. */
+  math?: string;
 }
 
 export interface ScoreResult {

@@ -223,33 +223,59 @@ export function StatusPill({ text, color }: { text: string; color: string }) {
 }
 
 /** The "What affected you" ledger — signed contributor rows. */
+function LedgerRow({ c, max, unit }: { c: Contributor; max: number; unit: string }) {
+  const [open, setOpen] = useState(false);
+  // Something to reveal? Show the maths on tap; on mobile also surface the detail
+  // line that's otherwise hidden for space.
+  const expandable = !!(c.math || c.detail);
+  return (
+    <div className={cn("rounded-lg transition-colors", open ? "bg-black/[0.03]" : "hover:bg-black/[0.03]")}>
+      <button
+        type="button"
+        onClick={() => expandable && setOpen((v) => !v)}
+        className={cn("flex w-full items-center gap-3 px-2 py-1.5 text-left", !expandable && "cursor-default")}
+        aria-expanded={expandable ? open : undefined}
+      >
+        <span className={cn("w-4 text-center text-sm", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
+          {c.points > 0 ? "↑" : c.points < 0 ? "↓" : "·"}
+        </span>
+        <div className="min-w-0 flex-1">
+          <span className="text-sm text-ink-100">{c.label}</span>
+          {c.detail && <span className="ml-2 hidden text-xs text-ink-400 sm:inline">{c.detail}</span>}
+        </div>
+        <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-black/[0.06] sm:block">
+          <div className={cn("h-full rounded-full", c.points >= 0 ? "bg-good" : "bg-bad")} style={{ width: `${(Math.abs(c.points) / max) * 100}%`, opacity: 0.8 }} />
+        </div>
+        <span className={cn("tabular w-12 text-right text-sm font-semibold", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
+          {signed(c.points)}{unit}
+        </span>
+        {expandable && <ChevronDown size={13} className={cn("shrink-0 text-ink-400 transition-transform", open && "rotate-180")} />}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
+            <div className="px-9 pb-2.5 pt-0.5 text-xs leading-relaxed text-ink-400">
+              {c.detail && <span className="sm:hidden">{c.detail}. </span>}
+              {c.math}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export function ContributorLedger({ contributors, unit = "" }: { contributors: Contributor[]; unit?: string }) {
   if (!contributors.length)
     return <p className="text-sm text-ink-400">Nothing moved this score meaningfully today.</p>;
   const max = Math.max(...contributors.map((c) => Math.abs(c.points)), 1);
+  const anyExpandable = contributors.some((c) => c.math || c.detail);
   return (
     <div className="space-y-1">
       {contributors.map((c, i) => (
-        <div key={`${c.label}-${i}`} className="flex items-center gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-black/[0.03]">
-          <span className={cn("w-4 text-center text-sm", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
-            {c.points > 0 ? "↑" : c.points < 0 ? "↓" : "·"}
-          </span>
-          <div className="min-w-0 flex-1">
-            <span className="text-sm text-ink-100">{c.label}</span>
-            {c.detail && <span className="ml-2 hidden text-xs text-ink-400 sm:inline">{c.detail}</span>}
-          </div>
-          <div className="hidden h-1.5 w-24 overflow-hidden rounded-full bg-black/[0.06] sm:block">
-            <div
-              className={cn("h-full rounded-full", c.points >= 0 ? "bg-good" : "bg-bad")}
-              style={{ width: `${(Math.abs(c.points) / max) * 100}%`, opacity: 0.8 }}
-            />
-          </div>
-          <span className={cn("tabular w-12 text-right text-sm font-semibold", c.points > 0 ? "text-good" : c.points < 0 ? "text-bad" : "text-ink-400")}>
-            {signed(c.points)}
-            {unit}
-          </span>
-        </div>
+        <LedgerRow key={`${c.label}-${i}`} c={c} max={max} unit={unit} />
       ))}
+      {anyExpandable && <p className="px-2 pt-1.5 text-[11px] text-ink-500">Tap a factor to see how it was calculated.</p>}
     </div>
   );
 }

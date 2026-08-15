@@ -5,6 +5,7 @@ import { ScorePage } from "@/components/score-page";
 import { Card, Delta, Section } from "@/components/ui";
 import { Hypnogram, SleepStagesBar } from "@/components/charts";
 import { sleepCoach } from "@/lib/scoring/sleep-coach";
+import { SLEEP_BASE } from "@/lib/scoring/sleep";
 import { useApp } from "@/lib/data/store";
 import { DOMAIN_COLOR, fmtDuration, fmtTime } from "@/lib/format";
 
@@ -29,6 +30,7 @@ export default function SleepPage() {
       ringLabel="Sleep"
       pick={(s) => s.sleep}
       baselineLabel={(s) => `You typically sleep ${s.baseline}h a night over the last two weeks.`}
+      neutralBase={SLEEP_BASE}
       algoNote="Duration vs your personal need, deep and REM sleep, efficiency, restfulness, timing consistency and accrued sleep debt each contribute signed points."
       belowHero={(data) => {
         const coach = sleepCoach(data.days.map((d) => d.day), wakeTime);

@@ -12,6 +12,10 @@ import { clamp } from "../format";
 // Data availability — a metric that didn't sync arrives as 0, which is NOT a
 // real measurement. Every calculator must exclude a missing input rather than
 // score it, so the app never fabricates "0h slept" or penalizes absent data.
+/** Neutral midpoint for the sleep score — a middling night lands here and each
+ * factor is a signed move off it. */
+export const SLEEP_BASE = 62;
+
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
 export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
 export const hasRhr = (d: DailySummary) => d.rhr.bpm > 0;
@@ -66,7 +70,7 @@ export function calcSleep(day: DailySummary): { raw: SleepScore; features: Sleep
     term("Sleep debt", clamp(-s.debtMin / 45, -4, 2),
       s.debtMin > 0 ? `${fmtShort(s.debtMin)} rolling shortfall` : "no accrued debt"),
   ];
-  const score = clamp(62 + terms.reduce((a, c) => a + c.points, 0), 5, 99);
+  const score = clamp(SLEEP_BASE + terms.reduce((a, c) => a + c.points, 0), 5, 99);
   return {
     raw: build("sleep", 100, score, terms, sleepStatus(score), sleepExplain(terms, s, deepRem)),
     features: { deepRemMin: deepRem },
@@ -107,9 +111,9 @@ function sleepExplain(terms: Contributor[], s: DailySummary["sleep"], deepRem: n
 }
 
 // shared helpers reused by the other calculators
-export function term(label: string, points: number, detail?: string): Contributor {
+export function term(label: string, points: number, detail?: string, extra?: { group?: Contributor["group"]; math?: string }): Contributor {
   const p = Math.round(points);
-  return { label, points: p, kind: p > 0 ? "positive" : p < 0 ? "negative" : "neutral", detail };
+  return { label, points: p, kind: p > 0 ? "positive" : p < 0 ? "negative" : "neutral", detail, ...extra };
 }
 
 export function build(

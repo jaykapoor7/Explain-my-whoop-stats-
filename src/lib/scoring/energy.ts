@@ -4,24 +4,48 @@ import { build, hasHrv, term, unavailable } from "./sleep";
 import { countedActivities } from "./strain";
 
 /**
- * EnergyCalculator — deterministic mock, 0..100.
- * Energy = available physiological capacity right now: what sleep and
- * recovery put in the tank, minus what today's activity has already spent.
- * This is the "Sleep +9 / HRV +4 / Walk +2 / Football −6" ledger.
+ * EnergyCalculator — deterministic, 0..100.
  *
- * NOTE: placeholder weights. The finished algorithm will be designed separately.
+ * Energy is modelled in two phases, the way a battery actually works:
+ *
+ *   1. MORNING CAPACITY — how much you woke up with. Built from an anchor plus
+ *      how well you slept, this morning's recovery, your HRV/RHR vs your own
+ *      baseline, AND how hard you went YESTERDAY (a big day leaves residual
+ *      fatigue, so you start lower; an easy/rest day tops you up). This is the
+ *      "how much can I expend today" number.
+ *   2. SPEND — today's counted activity draws the tank down from there.
+ *
+ * Energy now = morning capacity − spend. Every term is signed and grouped so
+ * the UI can show "you woke with X, you've spent Y, you have Z left".
  */
 
-/** The neutral starting point of the energy tank — an average day with nothing
- * pushing it up or down lands here. Charge and spend move you off it. Exported so
- * the Energy page can show the exact same number it's built from. */
-export const ENERGY_NEUTRAL_BASE = 58;
+/** Physiological anchor for morning capacity — an average night with average
+ * recovery and a normal day behind you lands near here. Readiness and yesterday's
+ * load move you off it; it is NOT shown to the user as a flat "neutral". */
+export const ENERGY_ANCHOR = 58;
+
+export interface EnergySplit {
+  morningCapacity: number; // start-of-day score (0..100)
+  spent: number;           // points drawn down by today's activity (>= 0)
+}
+
+/** Recompute the capacity/spend split from a finished energy score's contributors,
+ * so the UI never re-derives the math and can't drift from the scorer. */
+export function energySplit(e: ScoreResult): EnergySplit {
+  if (e.available === false) return { morningCapacity: 0, spent: 0 };
+  const capTerms = e.contributors.filter((c) => c.group !== "spend");
+  const spend = e.contributors.filter((c) => c.group === "spend");
+  const morningCapacity = clamp(ENERGY_ANCHOR + capTerms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
+  return { morningCapacity: Math.round(morningCapacity), spent };
+}
 
 export function calcEnergy(
   day: DailySummary,
   baseline: PersonalBaseline,
   sleep: ScoreResult,
-  recovery: ScoreResult
+  recovery: ScoreResult,
+  prevStrain: number
 ): EnergyScore {
   const sleepOk = sleep.available !== false;
   const recoveryOk = recovery.available !== false;
@@ -30,43 +54,86 @@ export function calcEnergy(
     return unavailable("energy", 100, "No data", "No sleep, recovery or HRV data synced for this day yet.");
   }
   const cl = (v: number, lo: number, hi: number) => clamp(v, lo, hi);
-  // --- What charged the battery overnight ---
-  const charging: Contributor[] = [];
-  if (sleepOk) charging.push(term("Sleep", cl((sleep.score - 60) * 0.3, -16, 16), `Last night scored ${Math.round(sleep.score)}/100`));
-  if (recoveryOk) charging.push(term("Recovery base", cl((recovery.score - 55) * 0.24, -14, 14), `Woke at ${Math.round(recovery.score)}% recovery`));
+
+  // ---------- Phase 1: morning capacity (what you woke up with) ----------
+  const capacity: Contributor[] = [];
+  if (sleepOk) {
+    const pts = Math.round(cl((sleep.score - 60) * 0.3, -16, 16));
+    capacity.push(term("Sleep", pts, `Last night scored ${Math.round(sleep.score)}/100`, {
+      group: "capacity",
+      math: `Sleep ${Math.round(sleep.score)} vs a neutral 60, scaled ×0.3 → ${pts >= 0 ? "+" : ""}${pts}. Good nights charge the tank; poor ones start you lower.`,
+    }));
+  }
+  if (recoveryOk) {
+    const pts = Math.round(cl((recovery.score - 55) * 0.24, -14, 14));
+    capacity.push(term("Recovery", pts, `Woke at ${Math.round(recovery.score)}% recovery`, {
+      group: "capacity",
+      math: `Recovery ${Math.round(recovery.score)}% vs a neutral 55, scaled ×0.24 → ${pts >= 0 ? "+" : ""}${pts}. Your autonomic readiness this morning.`,
+    }));
+  }
   if (hasHrv(day)) {
     const hrvPct = baseline.hrvMs > 0 ? (day.hrv.rmssdMs - baseline.hrvMs) / baseline.hrvMs : 0;
-    charging.push(term("HRV", cl(hrvPct * 30, -14, 12), `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`));
+    const pts = Math.round(cl(hrvPct * 30, -14, 12));
+    capacity.push(term("HRV", pts, `${day.hrv.rmssdMs} ms vs ${Math.round(baseline.hrvMs)} ms typical`, {
+      group: "capacity",
+      math: `HRV ${day.hrv.rmssdMs} ms is ${(hrvPct * 100).toFixed(0)}% ${hrvPct >= 0 ? "above" : "below"} your ${Math.round(baseline.hrvMs)} ms baseline → ${pts >= 0 ? "+" : ""}${pts}.`,
+    }));
   }
   const rhrDelta = day.rhr.bpm - baseline.rhrBpm;
   if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.5) {
-    charging.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", cl(-rhrDelta * 1.5, -12, 10), `${day.rhr.bpm} bpm this morning`));
+    const pts = Math.round(cl(-rhrDelta * 1.5, -12, 10));
+    capacity.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", pts, `${day.rhr.bpm} bpm this morning`, {
+      group: "capacity",
+      math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline → ${pts >= 0 ? "+" : ""}${pts}. A raised RHR flags your body is still working.`,
+    }));
   }
-  // Debt is already reflected in the sleep + recovery scores above; keep this a
-  // light extra nudge only when the shortfall is large, so it isn't triple-counted.
+  // NEW — yesterday's load carries over. Train hard and you wake with less in the
+  // tank; take it easy (or rest) and you top up a little. Measured against YOUR
+  // typical daily strain so a normal day is neutral.
+  if (isFinite(prevStrain)) {
+    const strainGap = prevStrain - (isFinite(baseline.strain) ? baseline.strain : 10);
+    const pts = Math.round(cl(-strainGap * 1.1, -12, 5));
+    if (Math.abs(pts) >= 1) {
+      capacity.push(term("Yesterday's load", pts, `Yesterday's strain ${prevStrain.toFixed(1)} vs ${(baseline.strain || 10).toFixed(1)} typical`, {
+        group: "capacity",
+        math: `Yesterday you hit ${prevStrain.toFixed(1)} strain vs your ${(baseline.strain || 10).toFixed(1)} typical. ${strainGap > 0 ? "A harder-than-usual day leaves residual fatigue" : "An easier day let you top up"} → ${pts >= 0 ? "+" : ""}${pts}.`,
+      }));
+    }
+  }
+  // Large accrued sleep debt takes a little extra off the top (kept light — sleep
+  // and recovery already reflect most of it).
   if (sleepOk && day.sleep.debtMin > 120) {
-    charging.push(term("Sleep debt", cl(-(day.sleep.debtMin - 120) / 45, -4, 0), `${fmtShort(day.sleep.debtMin)} shortfall carried in`));
+    const pts = Math.round(cl(-(day.sleep.debtMin - 120) / 45, -4, 0));
+    capacity.push(term("Sleep debt", pts, `${fmtShort(day.sleep.debtMin)} shortfall carried in`, {
+      group: "capacity",
+      math: `You're carrying ${fmtShort(day.sleep.debtMin)} of rolling sleep debt; the part beyond 2h trims capacity → ${pts}.`,
+    }));
   }
 
-  // --- What today's activity has already spent ---
-  const spend = countedActivities(day).map((a) =>
-    term(a.type, cl(-a.load * 0.85, -20, 0), `${a.durationMin}m${a.avgHr > 0 ? ` at avg ${a.avgHr} bpm` : ""}`)
-  );
+  const morningCapacity = clamp(ENERGY_ANCHOR + capacity.reduce((a, c) => a + c.points, 0), 3, 99);
 
-  const terms = [...charging, ...spend];
-  const score = clamp(ENERGY_NEUTRAL_BASE + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  // ---------- Phase 2: spend (today's activity draws it down) ----------
+  const spend = countedActivities(day).map((a) => {
+    const pts = Math.round(cl(-a.load * 0.85, -20, 0));
+    return term(a.type, pts, `${a.durationMin}m${a.avgHr > 0 ? ` at avg ${a.avgHr} bpm` : ""}`, {
+      group: "spend",
+      math: `${a.type} carried ${a.load.toFixed(1)} strain; energy spent ≈ load ×0.85 → ${pts}.`,
+    });
+  });
+
+  const terms = [...capacity, ...spend];
+  const score = clamp(morningCapacity + spend.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
-  const chargedInto = Math.round(charging.reduce((a, c) => a + Math.max(0, c.points), 0));
-  const start = sleepOk ? (sleep.score >= 70 ? "well-charged" : "partially charged") : recoveryOk && recovery.score >= 60 ? "well-charged" : "partially charged";
-  const spendLine = spend.length ? `today's activity has drawn roughly ${spent} points back out` : `you haven't spent much on activity yet`;
+  const capWord = morningCapacity >= 70 ? "well-charged" : morningCapacity >= 50 ? "moderately charged" : "under-charged";
+  const spendLine = spend.length ? `today's activity has spent about ${spent}` : `you've spent little on activity so far`;
   return build(
     "energy",
     100,
     score,
     terms,
     status,
-    `Sleep and recovery put about ${chargedInto} points into the tank overnight (${start}); ${spendLine}.`
+    `You woke ${capWord} with a capacity of ${Math.round(morningCapacity)} — set by last night's sleep, this morning's recovery and how hard you went yesterday. From there, ${spendLine}.`
   );
 }
 
