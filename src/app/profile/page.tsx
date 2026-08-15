@@ -1,7 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { Cloud, Loader2, LogIn, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { Check, Cloud, Loader2, LogIn, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { useAccount } from "@/components/account";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
@@ -19,12 +20,90 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
   );
 }
 
+/** The editable "About you" form — a real draft you Save, not always-live inputs.
+ * Only mounted after hydration, so the draft initialises from the loaded values. */
+function AboutYou() {
+  const settings = useApp((s) => s.settings);
+  const setSettings = useApp((s) => s.setSettings);
+  const [draft, setDraft] = useState<{
+    name: string; birthYear?: number; sex?: "male" | "female" | "other"; heightCm?: number; weightUnit: "kg" | "lb";
+  }>({ name: settings.name ?? "", birthYear: settings.birthYear, sex: settings.sex, heightCm: settings.heightCm, weightUnit: settings.weightUnit });
+  const [saved, setSaved] = useState(false);
+
+  const dirty =
+    draft.name !== (settings.name ?? "") || draft.birthYear !== settings.birthYear ||
+    draft.sex !== settings.sex || draft.heightCm !== settings.heightCm || draft.weightUnit !== settings.weightUnit;
+
+  const save = () => {
+    setSettings({ name: draft.name.trim() || "You", birthYear: draft.birthYear, sex: draft.sex, heightCm: draft.heightCm, weightUnit: draft.weightUnit });
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  };
+
+  const age = ageFromBirthYear(draft.birthYear);
+
+  return (
+    <Card className="p-5">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Display name">
+          <input value={draft.name} onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value }))} className={FIELD} />
+        </Field>
+        <Field label="Birth year" hint={age ? `age ${age}` : "for Health Age"}>
+          <input
+            type="number" value={draft.birthYear ?? ""}
+            onChange={(e) => { const y = parseInt(e.target.value, 10); setDraft((d) => ({ ...d, birthYear: Number.isFinite(y) ? y : undefined })); }}
+            placeholder="e.g. 1998" className={cn(FIELD, "tabular")}
+          />
+        </Field>
+        <Field label="Sex" hint="optional">
+          <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
+            {(["male", "female", "other"] as const).map((v) => (
+              <button key={v} onClick={() => setDraft((d) => ({ ...d, sex: d.sex === v ? undefined : v }))}
+                className={cn("flex-1 px-3 py-2.5 font-medium capitalize transition-colors", draft.sex === v ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
+                {v}
+              </button>
+            ))}
+          </div>
+        </Field>
+        <Field label="Height" hint="cm">
+          <input
+            type="number" value={draft.heightCm ?? ""}
+            onChange={(e) => { const h = parseInt(e.target.value, 10); setDraft((d) => ({ ...d, heightCm: Number.isFinite(h) ? h : undefined })); }}
+            placeholder="e.g. 178" className={cn(FIELD, "tabular")}
+          />
+        </Field>
+        <Field label="Weight unit">
+          <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
+            {(["kg", "lb"] as const).map((u) => (
+              <button key={u} onClick={() => setDraft((d) => ({ ...d, weightUnit: u }))}
+                className={cn("flex-1 px-3 py-2.5 font-medium transition-colors", draft.weightUnit === u ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
+                {u}
+              </button>
+            ))}
+          </div>
+        </Field>
+      </div>
+
+      <div className="mt-5 flex items-center justify-end gap-3 border-t border-black/[0.05] pt-4">
+        <span className="text-[11px] text-ink-400">{dirty ? "Unsaved changes" : "Your wake time lives on the Sleep coach."}</span>
+        <button
+          onClick={save}
+          disabled={!dirty}
+          className={cn("flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-semibold transition", dirty ? "bg-recovery text-[#241f18]" : "bg-black/[0.06] text-ink-400")}
+        >
+          {saved ? <><Check size={14} /> Saved</> : "Save profile"}
+        </button>
+      </div>
+    </Card>
+  );
+}
+
 export default function ProfilePage() {
-  const { settings, setSettings, hydrated } = useApp();
+  const { settings } = useApp();
   const account = useAccount();
+  const hydrated = useApp((s) => s.hydrated);
   if (!hydrated) return <SkeletonPage />;
 
-  const age = ageFromBirthYear(settings.birthYear);
   const initial = (account.user?.name || account.user?.email || settings.name || "You").slice(0, 1).toUpperCase();
 
   return (
@@ -61,61 +140,8 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      {/* About you */}
-      <Section title="About you" sub="Used to personalize Health Age, your sleep coach and units.">
-        <Card className="p-5">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Display name">
-              <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} className={FIELD} />
-            </Field>
-            <Field label="Birth year" hint={age ? `age ${age}` : "for Health Age"}>
-              <input
-                type="number"
-                value={settings.birthYear ?? ""}
-                onChange={(e) => { const y = parseInt(e.target.value, 10); setSettings({ birthYear: Number.isFinite(y) ? y : undefined }); }}
-                placeholder="e.g. 1998"
-                className={cn(FIELD, "tabular")}
-              />
-            </Field>
-            <Field label="Sex" hint="optional">
-              <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
-                {(["male", "female", "other"] as const).map((v) => (
-                  <button key={v} onClick={() => setSettings({ sex: settings.sex === v ? undefined : v })}
-                    className={cn("flex-1 px-3 py-2.5 font-medium capitalize transition-colors", settings.sex === v ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
-                    {v}
-                  </button>
-                ))}
-              </div>
-            </Field>
-            <Field label="Height" hint="cm">
-              <input
-                type="number"
-                value={settings.heightCm ?? ""}
-                onChange={(e) => { const h = parseInt(e.target.value, 10); setSettings({ heightCm: Number.isFinite(h) ? h : undefined }); }}
-                placeholder="e.g. 178"
-                className={cn(FIELD, "tabular")}
-              />
-            </Field>
-            <Field label="Weight unit">
-              <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
-                {(["kg", "lb"] as const).map((u) => (
-                  <button key={u} onClick={() => setSettings({ weightUnit: u })}
-                    className={cn("flex-1 px-3 py-2.5 font-medium transition-colors", settings.weightUnit === u ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </Field>
-            <Field label="Preferred wake time" hint="for your sleep coach">
-              <input
-                type="time"
-                value={settings.wakeTime ?? ""}
-                onChange={(e) => setSettings({ wakeTime: e.target.value || undefined })}
-                className={cn(FIELD, "tabular")}
-              />
-            </Field>
-          </div>
-        </Card>
+      <Section title="About you" sub="Used to personalize Health Age and your units. Save to apply.">
+        <AboutYou />
       </Section>
 
       <Link href="/settings" className="group mt-4 block">

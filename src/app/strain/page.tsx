@@ -6,6 +6,7 @@ import { Card, ConfidenceBadge, EmptyState, Section } from "@/components/ui";
 import { StrainCurve, ZoneBars } from "@/components/charts";
 import { useApp } from "@/lib/data/store";
 import { countedActivities } from "@/lib/scoring/strain";
+import { strainTarget } from "@/lib/scoring/strain-target";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
 import { Flame } from "lucide-react";
@@ -96,6 +97,45 @@ export default function StrainPage() {
       pick={(s) => s.strain}
       baselineLabel={(s) => `Your typical daily strain is ${s.baseline} over the last two weeks (0–21 scale).`}
       algoNote="Strain sums each counted activity's load plus a term for all-day movement from your steps. Unrecognized short HR spikes are excluded unless you confirm them."
+      belowHero={(data) => {
+        const rec = data.today!.recovery;
+        const t = strainTarget(rec.available === false ? null : rec.score, data.today!.baseline.strain);
+        if (!t.available) return null;
+        const cur = data.today!.strain.available === false ? 0 : data.today!.strain.score;
+        const pct = Math.min(100, (cur / Math.max(1, t.high)) * 100);
+        return (
+          <Section title="Today's target" sub="How hard to go today — from your recovery">
+            <Card className="p-5">
+              <div className="flex flex-wrap items-center gap-4">
+                <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${DOMAIN_COLOR.strain}1f`, color: DOMAIN_COLOR.strain }}>
+                  <Flame size={22} />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] font-semibold text-ink-50">{t.headline}</div>
+                  <div className="text-[11px] text-ink-400">Aim for a strain of {t.low.toFixed(1)}–{t.high.toFixed(1)}</div>
+                </div>
+                <div className="text-right">
+                  <div className="tabular text-3xl font-bold leading-none" style={{ color: DOMAIN_COLOR.strain }}>{t.target.toFixed(1)}</div>
+                  <div className="text-[10px] uppercase tracking-wide text-ink-500">target</div>
+                </div>
+              </div>
+              {/* current vs target bar */}
+              <div className="mt-4">
+                <div className="relative h-2 overflow-hidden rounded-full bg-black/[0.06]">
+                  <div className="h-full rounded-full" style={{ width: `${pct}%`, background: DOMAIN_COLOR.strain }} />
+                </div>
+                <div className="mt-1 flex justify-between text-[11px] text-ink-400"><span>now {cur.toFixed(1)}</span><span>target {t.target.toFixed(1)}</span></div>
+              </div>
+              <p className="mt-3 text-xs leading-relaxed text-ink-400">{t.guidance}</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {t.activities.map((a) => (
+                  <span key={a} className="rounded-full border border-black/[0.08] bg-black/[0.02] px-3 py-1.5 text-[11px] font-medium text-ink-200">{a}</span>
+                ))}
+              </div>
+            </Card>
+          </Section>
+        );
+      }}
       extras={(data) => {
         const acts = data.today!.day.activities;
         const counted = countedActivities(data.today!.day);
