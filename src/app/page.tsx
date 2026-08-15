@@ -5,7 +5,9 @@ import { Logo } from "@/components/logo";
 import { APP_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  title: "CURA — your body, clearly",
+  // Absolute so the tab reads exactly "CURA — …" (matches the OAuth consent
+  // screen app name) rather than the layout's "… · CURA" template.
+  title: { absolute: "CURA — your body, clearly" },
   description:
     "CURA turns your wearable data into clear daily Recovery, Sleep, Strain and Energy scores, each explained in plain English, with personal patterns and trends.",
 };
