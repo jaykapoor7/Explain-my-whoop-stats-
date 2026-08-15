@@ -43,7 +43,7 @@ export function ScorePage({
   if (!data.today) {
     return (
       <div className="animate-fadeUp">
-        <PageHeader title={title} sub={question} />
+        <PageHeader title={title} sub={question} back />
         <ConnectGate title={title} />
       </div>
     );
@@ -58,7 +58,7 @@ export function ScorePage({
   if (score.available === false) {
     return (
       <div className="animate-fadeUp">
-        <PageHeader title={title} sub={question} right={<DaySwitcher />} />
+        <PageHeader title={title} sub={question} right={<DaySwitcher />} back />
         <Card className="mt-5 p-6 text-center">
           <p className="text-sm font-semibold text-ink-100">No {title.toLowerCase()} data for today</p>
           <p className="mx-auto mt-1.5 max-w-md text-xs leading-relaxed text-ink-400">{score.explanation}</p>
@@ -83,7 +83,7 @@ export function ScorePage({
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title={title} sub={question} right={<DaySwitcher />} />
+      <PageHeader title={title} sub={question} right={<DaySwitcher />} back />
 
       <Card className="mt-5 overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}12, ${color}03 45%, transparent)` }}>
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">

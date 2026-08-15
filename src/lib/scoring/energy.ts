@@ -11,6 +11,12 @@ import { countedActivities } from "./strain";
  *
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
+
+/** The neutral starting point of the energy tank — an average day with nothing
+ * pushing it up or down lands here. Charge and spend move you off it. Exported so
+ * the Energy page can show the exact same number it's built from. */
+export const ENERGY_NEUTRAL_BASE = 58;
+
 export function calcEnergy(
   day: DailySummary,
   baseline: PersonalBaseline,
@@ -48,7 +54,7 @@ export function calcEnergy(
   );
 
   const terms = [...charging, ...spend];
-  const score = clamp(58 + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = clamp(ENERGY_NEUTRAL_BASE + terms.reduce((a, c) => a + c.points, 0), 3, 99);
   const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
   const chargedInto = Math.round(charging.reduce((a, c) => a + Math.max(0, c.points), 0));

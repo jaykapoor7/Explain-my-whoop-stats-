@@ -21,7 +21,7 @@ export default function HealthAgePage() {
   const r = calcHealthAgeWeekly(data.days, actualAge);
   const accent = r.deltaYears <= 0 ? YOUNGER : OLDER;
 
-  const header = <PageHeader title="Health Age" sub="How old your body reads versus the calendar — and how to turn it back." />;
+  const header = <PageHeader title="Health Age" sub="How old your body reads versus the calendar — and how to turn it back." back />;
 
   // Not enough to show yet.
   if (!r.available) {
@@ -69,6 +69,7 @@ export default function HealthAgePage() {
         title="Health Age"
         sub="How old your body reads versus the calendar — and how to turn it back."
         right={<span className="tabular rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: `${accent}1f`, color: accent }}>{r.status}</span>}
+        back
       />
 
       {/* Hero */}

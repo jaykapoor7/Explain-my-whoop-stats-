@@ -2,8 +2,9 @@
 
 import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useInView } from "framer-motion";
-import { ChevronDown, HelpCircle } from "lucide-react";
+import { ArrowLeft, ChevronDown, HelpCircle } from "lucide-react";
 import { cn, signed } from "@/lib/format";
 import { Contributor } from "@/lib/types";
 
@@ -314,14 +315,42 @@ export function EmptyState({ title, body, icon }: { title: string; body: string;
   );
 }
 
-export function PageHeader({ title, sub, right }: { title: string; sub?: string; right?: ReactNode }) {
+/** A subtle "go back" control. Falls back to Today if there's no history to pop
+ * (e.g. the page was opened directly from a deep link or the widget). */
+export function BackButton({ className }: { className?: string }) {
+  const router = useRouter();
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/today");
+  };
   return (
-    <div className="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[2.5rem]">{title}</h1>
-        {sub && <p className="mt-1.5 max-w-xl text-[15px] leading-snug text-ink-400">{sub}</p>}
+    <button
+      onClick={goBack}
+      className={cn(
+        "group -ml-1 inline-flex items-center gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-[13px] font-medium text-ink-400 transition-colors hover:text-ink-100",
+        className,
+      )}
+      aria-label="Go back"
+    >
+      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/[0.05] transition-colors group-hover:bg-black/[0.1]">
+        <ArrowLeft size={14} />
+      </span>
+      Back
+    </button>
+  );
+}
+
+export function PageHeader({ title, sub, right, back }: { title: string; sub?: string; right?: ReactNode; back?: boolean }) {
+  return (
+    <div>
+      {back && <BackButton className="mb-3" />}
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[2.5rem]">{title}</h1>
+          {sub && <p className="mt-1.5 max-w-xl text-[15px] leading-snug text-ink-400">{sub}</p>}
+        </div>
+        {right}
       </div>
-      {right}
     </div>
   );
 }

@@ -37,10 +37,15 @@ export const METRIC_DEFS = [
   { key: "sleepHr", label: "sleeping heart rate", unit: "bpm", decimals: 0, dir: "lowerBetter", minObs: 7, get: (d) => pos(d.sleep.sleepHrBpm) },
   { key: "steps", label: "daily steps", unit: "", decimals: 0, dir: "higherBetter", minObs: 7, get: (d) => pos(d.steps) },
   { key: "activeCalories", label: "active calories", unit: "kcal", decimals: 0, dir: "higherBetter", minObs: 7, get: (d) => pos(d.activeCalories) },
-  { key: "strainLoad", label: "training load", unit: "", decimals: 1, dir: "neutral", minObs: 7, get: (d) => {
+  { key: "strainLoad", label: "activity load", unit: "", decimals: 1, dir: "neutral", minObs: 7, get: (d) => {
       const acts = countedActivities(d);
-      if (acts.length === 0 && d.steps <= 0) return null; // no movement data at all
-      return acts.reduce((s, a) => s + a.load, 0);
+      const hasSteps = typeof d.steps === "number" && isFinite(d.steps) && d.steps > 0;
+      if (acts.length === 0 && !hasSteps) return null; // no movement data at all
+      // Mirror the strain score: counted-workout load PLUS all-day movement from
+      // steps. Without the ambient term a step-only active day reads as zero load,
+      // making "load" look like it's falling on the very days you moved more.
+      const ambient = hasSteps ? Math.min(5, d.steps / 2500) : 0;
+      return acts.reduce((s, a) => s + a.load, 0) + ambient;
     } },
 ] as const satisfies readonly MetricDef[];
 
