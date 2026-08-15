@@ -73,6 +73,17 @@ export function clamp(v: number, lo: number, hi: number): number {
   return Math.min(hi, Math.max(lo, v));
 }
 
+/** Smooth soft-ceiling for 0–100 scores: values below `knee` pass through
+ * linearly; above it they compress and asymptote toward `cap`, so exceptional
+ * days approach but rarely hit the top (a realistic spread, not a pile-up at 99).
+ * A gentle symmetric floor keeps terrible days off a hard 0 too. */
+export function softScore(raw: number, knee = 82, cap = 99, floorKnee = 22, floor = 4): number {
+  let v = raw;
+  if (v > knee) v = knee + (cap - knee) * Math.tanh((v - knee) / 15);
+  else if (v < floorKnee) v = floorKnee - (floorKnee - floor) * Math.tanh((floorKnee - v) / 15);
+  return Math.round(clamp(v, floor, cap));
+}
+
 export const DOMAIN_COLOR: Record<Domain | "strain" | "sleep" | "energy" | "recovery", string> = {
   energy: "#eb9d18",
   recovery: "#13b57e",

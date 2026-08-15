@@ -1,5 +1,5 @@
 import { Contributor, DailySummary, EnergyScore, PersonalBaseline, ScoreResult } from "../types";
-import { clamp } from "../format";
+import { clamp, softScore } from "../format";
 import { build, hasHrv, term, unavailable } from "./sleep";
 import { countedActivities } from "./strain";
 
@@ -23,7 +23,7 @@ import { countedActivities } from "./strain";
  * recovery and a normal day behind you lands near here. Set on the generous side
  * so a typical day reads as usable energy rather than a harsh middling score.
  * Readiness and yesterday's load move you off it; NOT shown as a flat "neutral". */
-export const ENERGY_ANCHOR = 64;
+export const ENERGY_ANCHOR = 60;
 
 export interface EnergySplit {
   morningCapacity: number; // start-of-day score (0..100)
@@ -36,9 +36,9 @@ export function energySplit(e: ScoreResult): EnergySplit {
   if (e.available === false) return { morningCapacity: 0, spent: 0 };
   const capTerms = e.contributors.filter((c) => c.group !== "spend");
   const spend = e.contributors.filter((c) => c.group === "spend");
-  const morningCapacity = clamp(ENERGY_ANCHOR + capTerms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const morningCapacity = softScore(ENERGY_ANCHOR + capTerms.reduce((a, c) => a + c.points, 0));
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
-  return { morningCapacity: Math.round(morningCapacity), spent };
+  return { morningCapacity, spent };
 }
 
 export function calcEnergy(
@@ -58,18 +58,20 @@ export function calcEnergy(
 
   // ---------- Phase 1: morning capacity (what you woke up with) ----------
   const capacity: Contributor[] = [];
+  const sleepRef = baseline.sleep && baseline.sleep > 0 ? baseline.sleep : 72;
+  const recRef = baseline.recovery && baseline.recovery > 0 ? baseline.recovery : 66;
   if (sleepOk) {
-    const pts = Math.round(cl((sleep.score - 60) * 0.3, -16, 16));
-    capacity.push(term("Sleep", pts, `Last night scored ${Math.round(sleep.score)}/100`, {
+    const pts = Math.round(cl((sleep.score - sleepRef) * 0.35, -16, 14));
+    capacity.push(term("Sleep", pts, `Last night ${Math.round(sleep.score)} vs your ${Math.round(sleepRef)} typical`, {
       group: "capacity",
-      math: `Sleep ${Math.round(sleep.score)} vs a neutral 60, scaled ×0.3 → ${pts >= 0 ? "+" : ""}${pts}. Good nights charge the tank; poor ones start you lower.`,
+      math: `Sleep ${Math.round(sleep.score)} vs your ${Math.round(sleepRef)} typical → ${pts >= 0 ? "+" : ""}${pts}. A better-than-usual night charges the tank; worse starts you lower.`,
     }));
   }
   if (recoveryOk) {
-    const pts = Math.round(cl((recovery.score - 55) * 0.24, -14, 14));
-    capacity.push(term("Recovery", pts, `Woke at ${Math.round(recovery.score)}% recovery`, {
+    const pts = Math.round(cl((recovery.score - recRef) * 0.3, -14, 12));
+    capacity.push(term("Recovery", pts, `${Math.round(recovery.score)}% vs your ${Math.round(recRef)}% typical`, {
       group: "capacity",
-      math: `Recovery ${Math.round(recovery.score)}% vs a neutral 55, scaled ×0.24 → ${pts >= 0 ? "+" : ""}${pts}. Your autonomic readiness this morning.`,
+      math: `Recovery ${Math.round(recovery.score)}% vs your ${Math.round(recRef)}% typical → ${pts >= 0 ? "+" : ""}${pts}. Your autonomic readiness relative to your own normal.`,
     }));
   }
   // Judge HRV / RHR in units of YOUR OWN day-to-day spread (robust σ), not a
@@ -118,7 +120,7 @@ export function calcEnergy(
     }));
   }
 
-  const morningCapacity = clamp(ENERGY_ANCHOR + capacity.reduce((a, c) => a + c.points, 0), 3, 99);
+  const morningCapacity = softScore(ENERGY_ANCHOR + capacity.reduce((a, c) => a + c.points, 0));
 
   // ---------- Phase 2: spend (today's activity draws it down) ----------
   const spend = countedActivities(day).map((a) => {
@@ -130,7 +132,7 @@ export function calcEnergy(
   });
 
   const terms = [...capacity, ...spend];
-  const score = clamp(morningCapacity + spend.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = softScore(morningCapacity + spend.reduce((a, c) => a + c.points, 0));
   const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
   const spent = Math.round(Math.abs(spend.reduce((a, c) => a + c.points, 0)));
   const capWord = morningCapacity >= 70 ? "well-charged" : morningCapacity >= 50 ? "moderately charged" : "under-charged";

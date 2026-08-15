@@ -1,5 +1,5 @@
 import { Contributor, DailySummary, PersonalBaseline, RecoveryScore, ScoreResult } from "../types";
-import { clamp } from "../format";
+import { clamp, softScore } from "../format";
 import { build, hasHrv, hasRhr, lc, term, unavailable } from "./sleep";
 
 /**
@@ -15,7 +15,7 @@ import { build, hasHrv, hasRhr, lc, term, unavailable } from "./sleep";
  * a comfortable "ready" reading, WHOOP-style, rather than a harsh middling
  * score. Being above your baseline pushes into the green; below drops you toward
  * yellow/red. Every factor is a signed move off this base. */
-export const RECOVERY_BASE = 66;
+export const RECOVERY_BASE = 62;
 
 export function calcRecovery(
   day: DailySummary,
@@ -70,10 +70,11 @@ export function calcRecovery(
       `${day.rhr.bpm} bpm — ${sig1(zRhr)} vs your normal`,
       { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline — ${sig1(zRhr)} against your own ±${Math.round(rhrSigma)} bpm spread. Lower = more recovered → ${pts >= 0 ? "+" : ""}${pts}.` }));
   }
-  const sleepPts = Math.round(clampV((sleep.score - 60) * 0.4, -15, 15));
+  const sleepRef = baseline.sleep && baseline.sleep > 0 ? baseline.sleep : 72;
+  const sleepPts = Math.round(clampV((sleep.score - sleepRef) * 0.45, -15, 12));
   terms.push(term("Sleep quality", sleepPts,
-    `Last night scored ${Math.round(sleep.score)}/100`,
-    { math: `Last night's sleep scored ${Math.round(sleep.score)}/100. Measured vs a neutral 60 and scaled ×0.4 → ${sleepPts >= 0 ? "+" : ""}${sleepPts}.` }));
+    `Last night ${Math.round(sleep.score)} vs your ${Math.round(sleepRef)} typical`,
+    { math: `Last night's sleep scored ${Math.round(sleep.score)}/100 vs your ${Math.round(sleepRef)} typical — measured against your own normal, not a fixed reference → ${sleepPts >= 0 ? "+" : ""}${sleepPts}.` }));
   const debtPts = Math.round(clampV(-day.sleep.debtMin / 45, -4, 2));
   terms.push(term("Sleep debt", debtPts,
     day.sleep.debtMin > 0 ? `${fmtShort(day.sleep.debtMin)} accrued shortfall` : "well rested",
@@ -87,7 +88,7 @@ export function calcRecovery(
     `${prevStrain.toFixed(1)} yesterday vs ${baseline.strain.toFixed(1)} typical`,
     { math: `Yesterday's strain of ${prevStrain.toFixed(1)} vs your ${baseline.strain.toFixed(1)} two-week typical is a gap of ${loadGap >= 0 ? "+" : ""}${loadGap.toFixed(1)}. ${loadGap > 0 ? "Training above your norm costs recovery" : "Backing off returns some"} → ${loadPts >= 0 ? "+" : ""}${loadPts}.` }));
 
-  const score = clamp(RECOVERY_BASE + terms.reduce((a, c) => a + c.points, 0), 3, 99);
+  const score = softScore(RECOVERY_BASE + terms.reduce((a, c) => a + c.points, 0));
   const status = score >= 67 ? "Primed" : score >= 34 ? "Adequate" : "Compromised";
   const ranked = [...terms].sort((a, b) => Math.abs(b.points) - Math.abs(a.points));
   const topHurt = [...terms].filter((t) => t.points < 0).sort((a, b) => a.points - b.points)[0];

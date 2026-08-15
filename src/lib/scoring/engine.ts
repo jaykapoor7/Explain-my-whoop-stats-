@@ -79,6 +79,7 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
     steps: meanPos(window.map((d) => d.steps)) || days[i].steps,
     energy: mean(scoredWindow.filter((s) => s.energy.available !== false).map((s) => s.energy.score)) || 55,
     recovery: mean(scoredWindow.filter((s) => s.recovery.available !== false).map((s) => s.recovery.score)) || 55,
+    sleep: mean(scoredWindow.filter((s) => s.sleep.available !== false).map((s) => s.sleep.score)) || 72,
     hrvSigma,
     rhrSigma,
     hrvSustain,

@@ -219,6 +219,9 @@ export interface PersonalBaseline {
   steps: number;
   energy: number;
   recovery: number;
+  /** Your typical sleep score, so recovery/energy judge a night against your own
+   * normal rather than a fixed reference (prevents cross-pillar inflation). */
+  sleep?: number;
   /** Personal day-to-day spread (robust σ) of HRV / RHR, so a deviation is
    * judged in units of YOUR own variability rather than a fixed slope. */
   hrvSigma?: number;

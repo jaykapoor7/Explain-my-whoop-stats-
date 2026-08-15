@@ -1,5 +1,5 @@
 import { Contributor, DailySummary, PersonalBaseline, SleepScore } from "../types";
-import { clamp } from "../format";
+import { clamp, softScore } from "../format";
 
 /**
  * SleepScoreCalculator — deterministic mock. Blends duration vs need,
@@ -16,7 +16,7 @@ import { clamp } from "../format";
  * your typical stage architecture and efficiency. Meeting your need with ordinary
  * quality lands in the high 80s (WHOOP-style "sleep performance"). Every factor
  * is a signed move off this personal reference, not a fixed textbook target. */
-export const SLEEP_BASE = 68;
+export const SLEEP_BASE = 64;
 
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
 export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
@@ -77,7 +77,7 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
     term("Sleep debt", clamp(-s.debtMin / 45, -4, 2),
       s.debtMin > 0 ? `${fmtShort(s.debtMin)} rolling shortfall` : "no accrued debt"),
   ];
-  const score = clamp(SLEEP_BASE + terms.reduce((a, c) => a + c.points, 0), 5, 99);
+  const score = softScore(SLEEP_BASE + terms.reduce((a, c) => a + c.points, 0));
   return {
     raw: build("sleep", 100, score, terms, sleepStatus(score), sleepExplain(terms, s, deepRem)),
     features: { deepRemMin: deepRem },
