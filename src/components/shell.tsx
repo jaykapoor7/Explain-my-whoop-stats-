@@ -13,6 +13,7 @@ import {
   Settings,
   Sun,
   Target,
+  User,
   Users,
   UtensilsCrossed,
   X,
@@ -34,6 +35,7 @@ const NAV = [
   { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
   { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
   { href: "/friends", label: "Friends", icon: Users, color: "#e0894e" },
+  { href: "/profile", label: "Profile", icon: User, color: "#4a8f7a" },
   { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
 ];
 

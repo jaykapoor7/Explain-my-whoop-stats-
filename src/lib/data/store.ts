@@ -14,6 +14,8 @@ export interface Settings {
   weightUnit: "kg" | "lb";
   showLowConfidence: boolean;
   birthYear?: number; // for Health Age; optional
+  sex?: "male" | "female" | "other"; // optional, refines energy/calorie estimates
+  heightCm?: number; // optional profile detail
   whatsappNumber?: string; // digits incl. country code, for wa.me plan reminders
   browserReminders?: boolean; // fire local notifications for timed tasks while open
   wakeTime?: string; // preferred wake time "HH:MM" (24h) for the sleep coach

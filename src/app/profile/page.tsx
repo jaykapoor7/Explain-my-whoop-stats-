@@ -1,0 +1,139 @@
+"use client";
+
+import Link from "next/link";
+import { Cloud, Loader2, LogIn, LogOut, Settings as SettingsIcon } from "lucide-react";
+import { useAccount } from "@/components/account";
+import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
+import { useApp } from "@/lib/data/store";
+import { ageFromBirthYear } from "@/lib/scoring/health-age";
+import { cn } from "@/lib/format";
+
+const FIELD = "h-11 w-full rounded-xl border border-black/10 bg-black/[0.02] px-3.5 text-sm text-ink-100 outline-none transition focus:border-black/25";
+
+function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">{label}{hint && <span className="ml-1 normal-case text-ink-400">· {hint}</span>}</span>
+      <div className="mt-1.5">{children}</div>
+    </label>
+  );
+}
+
+export default function ProfilePage() {
+  const { settings, setSettings, hydrated } = useApp();
+  const account = useAccount();
+  if (!hydrated) return <SkeletonPage />;
+
+  const age = ageFromBirthYear(settings.birthYear);
+  const initial = (account.user?.name || account.user?.email || settings.name || "You").slice(0, 1).toUpperCase();
+
+  return (
+    <div className="animate-fadeUp">
+      <PageHeader title="Profile" sub="Who you are — and the details that personalize your scores." />
+
+      {/* Identity */}
+      <Card className="mt-5 p-5">
+        <div className="flex flex-wrap items-center gap-4">
+          {account.user?.picture ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={account.user.picture} alt="" className="h-16 w-16 rounded-full" referrerPolicy="no-referrer" />
+          ) : (
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-recovery/20 text-2xl font-bold text-recovery">{initial}</span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-lg font-semibold text-ink-50">{settings.name || account.user?.name || "You"}</div>
+            {account.signedIn ? (
+              <>
+                {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
+                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-good">
+                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</> : <><Cloud size={11} /> synced across your devices</>}
+                </div>
+              </>
+            ) : (
+              <div className="text-xs text-ink-400">Not signed in — data stays on this device.</div>
+            )}
+          </div>
+          {account.signedIn ? (
+            <button onClick={() => account.signOut()} className="flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.05]"><LogOut size={13} /> Sign out</button>
+          ) : (
+            <button onClick={account.signIn} className="flex items-center gap-2 rounded-full bg-recovery px-4 py-2 text-xs font-semibold text-[#241f18]"><LogIn size={14} /> Sign in</button>
+          )}
+        </div>
+      </Card>
+
+      {/* About you */}
+      <Section title="About you" sub="Used to personalize Health Age, your sleep coach and units.">
+        <Card className="p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Display name">
+              <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} className={FIELD} />
+            </Field>
+            <Field label="Birth year" hint={age ? `age ${age}` : "for Health Age"}>
+              <input
+                type="number"
+                value={settings.birthYear ?? ""}
+                onChange={(e) => { const y = parseInt(e.target.value, 10); setSettings({ birthYear: Number.isFinite(y) ? y : undefined }); }}
+                placeholder="e.g. 1998"
+                className={cn(FIELD, "tabular")}
+              />
+            </Field>
+            <Field label="Sex" hint="optional">
+              <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
+                {(["male", "female", "other"] as const).map((v) => (
+                  <button key={v} onClick={() => setSettings({ sex: settings.sex === v ? undefined : v })}
+                    className={cn("flex-1 px-3 py-2.5 font-medium capitalize transition-colors", settings.sex === v ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
+                    {v}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Height" hint="cm">
+              <input
+                type="number"
+                value={settings.heightCm ?? ""}
+                onChange={(e) => { const h = parseInt(e.target.value, 10); setSettings({ heightCm: Number.isFinite(h) ? h : undefined }); }}
+                placeholder="e.g. 178"
+                className={cn(FIELD, "tabular")}
+              />
+            </Field>
+            <Field label="Weight unit">
+              <div className="flex overflow-hidden rounded-xl border border-black/[0.1] text-xs">
+                {(["kg", "lb"] as const).map((u) => (
+                  <button key={u} onClick={() => setSettings({ weightUnit: u })}
+                    className={cn("flex-1 px-3 py-2.5 font-medium transition-colors", settings.weightUnit === u ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
+                    {u}
+                  </button>
+                ))}
+              </div>
+            </Field>
+            <Field label="Preferred wake time" hint="for your sleep coach">
+              <input
+                type="time"
+                value={settings.wakeTime ?? ""}
+                onChange={(e) => setSettings({ wakeTime: e.target.value || undefined })}
+                className={cn(FIELD, "tabular")}
+              />
+            </Field>
+          </div>
+        </Card>
+      </Section>
+
+      <Link href="/settings" className="group mt-4 block">
+        <Card className="flex items-center gap-3 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink-300"><SettingsIcon size={16} /></span>
+          <div className="min-w-0 flex-1">
+            <div className="text-[13px] font-semibold text-ink-100">Settings</div>
+            <div className="text-[11px] text-ink-400">Connections, data controls, privacy and the Lock Screen widget</div>
+          </div>
+          <span className="text-ink-400">→</span>
+        </Card>
+      </Link>
+
+      <p className="mt-8 text-center text-[11px] text-ink-500">
+        CURA · not a medical device ·{" "}
+        <Link href="/privacy" className="hover:text-ink-300">Privacy</Link> ·{" "}
+        <Link href="/terms" className="hover:text-ink-300">Terms</Link>
+      </p>
+    </div>
+  );
+}
