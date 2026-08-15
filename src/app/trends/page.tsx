@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { ConnectGate } from "@/components/connect";
-import { IntelligenceInsights, StageBanner } from "@/components/intelligence";
+import { IntelligenceInsights, StageBanner, WeeklyDigestCard } from "@/components/intelligence";
 import { TrendArea } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { correlate } from "@/lib/insights/insights";
@@ -117,8 +117,14 @@ export default function TrendsPage() {
         </div>
       </Card>
 
+      {data.model.digest.available && (
+        <Section title="This week" sub="Your biggest mover of the last 7 days — and the likeliest reason">
+          <WeeklyDigestCard digest={data.model.digest} />
+        </Section>
+      )}
+
       <Section title="What CURA is seeing" sub="Ranked by what matters — deviations, trends and patterns in your own data. Tap “why” to see the evidence.">
-        <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet — insights sharpen as your baseline fills in." />
+        <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet — insights sharpen as your baseline fills in." basisDays={data.model.dataQuality.coreCoverageDays} />
       </Section>
 
       <Section title="Relationships" sub="Correlation between paired metrics over your full history">

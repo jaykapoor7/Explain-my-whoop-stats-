@@ -13,6 +13,15 @@ import { build, term, unavailable } from "./sleep";
  * NOTE: placeholder weights. The finished algorithm will be designed separately.
  */
 
+/** Estimate the strain load of a session from its duration and average HR.
+ * The single source of truth for "what would this cost me?" — used both when
+ * mapping manually-entered workouts and by the Strain page's session planner,
+ * so a projection matches what actually gets logged. */
+export function estimateActivityLoad(minutes: number, avgHr: number): number {
+  const load = clamp(minutes * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
+  return Math.round(load * 10) / 10;
+}
+
 export function countedActivities(day: DailySummary): Activity[] {
   return day.activities.filter(
     (a) => (a.confidence !== "low" && a.resolved !== "ignored") || a.resolved === "confirmed" || a.resolved === "edited"

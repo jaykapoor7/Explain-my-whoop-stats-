@@ -1,9 +1,9 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import { Activity, ChevronDown, Info, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
+import { Activity, CalendarRange, ChevronDown, Info, Sparkles, TrendingDown, TrendingUp } from "lucide-react";
 import { Card } from "@/components/ui";
-import type { AnalyticsInsight, DailyState, Evidence, HealthTrajectory, PersonalHealthModel } from "@/lib/analytics";
+import type { AnalyticsInsight, DailyState, Evidence, HealthTrajectory, PersonalHealthModel, WeeklyDigest } from "@/lib/analytics";
 import { cn } from "@/lib/format";
 
 /**
@@ -158,10 +158,48 @@ export function DailyStateStrip({ model }: { model: PersonalHealthModel }) {
 }
 
 /** Ranked, explainable insights — each expandable to its evidence trail. */
-export function IntelligenceInsights({ insights, empty }: { insights: AnalyticsInsight[]; empty?: string }) {
+/** Weekly "what changed and why" — the single biggest 7-day mover paired with a
+ * likely driver from the relationship engine. */
+export function WeeklyDigestCard({ digest }: { digest: WeeklyDigest }) {
+  if (!digest.available) return null;
+  const improving = digest.improving;
+  const c = improving ? "#13b57e" : "#ef5a45";
+  return (
+    <Card className="p-5">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: `${c}1f`, color: c }}>
+          {improving ? <TrendingUp size={17} /> : <TrendingDown size={17} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-sm font-semibold text-ink-50">{digest.title}</p>
+            <ConfPill c={digest.confidence} />
+          </div>
+          <p className="mt-1 text-xs leading-relaxed text-ink-300">{digest.detail}</p>
+          {digest.driver && (
+            <p className="mt-2 flex items-start gap-1.5 rounded-lg bg-black/[0.03] px-3 py-2 text-xs leading-relaxed text-ink-400">
+              <Sparkles size={13} className="mt-0.5 shrink-0 text-ink-400" />
+              <span><span className="font-medium text-ink-200">Likely driver:</span> {digest.driver}</span>
+            </p>
+          )}
+          <p className="mt-2 flex items-center gap-1 text-[10px] uppercase tracking-wide text-ink-500">
+            <CalendarRange size={11} /> based on {digest.basisDays} days of your data
+          </p>
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+export function IntelligenceInsights({ insights, empty, basisDays }: { insights: AnalyticsInsight[]; empty?: string; basisDays?: number }) {
   if (!insights.length) return <Card className="p-5 text-sm text-ink-400">{empty ?? "Not enough history yet — insights sharpen as your baseline fills in."}</Card>;
   return (
     <div className="space-y-3">
+      {typeof basisDays === "number" && basisDays > 0 && (
+        <p className="flex items-center gap-1 px-1 text-[11px] text-ink-500">
+          <CalendarRange size={11} /> Drawn from {basisDays} days of your data — reliability grows as history fills in.
+        </p>
+      )}
       {insights.map((i) => (
         <Card key={i.id} className="p-4">
           <div className="flex items-start gap-3">

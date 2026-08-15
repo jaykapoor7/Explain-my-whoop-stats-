@@ -10,6 +10,7 @@ import { strainTarget } from "@/lib/scoring/strain-target";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
 import { Flame } from "lucide-react";
+import { SessionPlanner } from "@/components/session-planner";
 
 function ActivityRow({ a }: { a: Activity }) {
   const resolveActivity = useApp((s) => s.resolveActivity);
@@ -131,6 +132,10 @@ export default function StrainPage() {
                 {t.activities.map((a) => (
                   <span key={a} className="rounded-full border border-black/[0.08] bg-black/[0.02] px-3 py-1.5 text-[11px] font-medium text-ink-200">{a}</span>
                 ))}
+              </div>
+              {/* Close the loop: plan a session and see where it lands you vs target */}
+              <div className="mt-5 border-t border-black/[0.06] pt-4">
+                <SessionPlanner current={cur} target={t} />
               </div>
             </Card>
           </Section>

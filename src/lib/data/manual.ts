@@ -1,5 +1,5 @@
 import { Activity, DailySummary } from "../types";
-import { clamp } from "../format";
+import { estimateActivityLoad } from "../scoring/strain";
 
 /**
  * Build a full DailySummary from numbers a user typed in by hand — so ANY
@@ -39,7 +39,6 @@ export function manualDay(input: ManualInput): DailySummary {
   const w = input.workout;
   if (w && n(w.minutes) > 0) {
     const avgHr = Math.round(n(w.avgHr));
-    const load = clamp(w.minutes * 0.06 + (avgHr > 0 ? Math.max(0, avgHr - 100) * 0.045 : 2), 0.3, 19);
     activities.push({
       id: `manual-${date}-${w.type}`,
       date,
@@ -50,7 +49,7 @@ export function manualDay(input: ManualInput): DailySummary {
       maxHr: 0,
       calories: Math.round(w.minutes * (avgHr > 120 ? 9 : 6)),
       zones: [0, 0, 0, 0, 0],
-      load: Math.round(load * 10) / 10,
+      load: estimateActivityLoad(w.minutes, avgHr),
       confidence: "high",
     });
   }

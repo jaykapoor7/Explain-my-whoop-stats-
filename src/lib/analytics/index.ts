@@ -9,6 +9,7 @@ import { discoverRelationships, Relationship } from "./relationships";
 import { detectEvents, HealthEvent } from "./events";
 import { computeHealthAge, HealthAgeModel } from "./health-age";
 import { AnalyticsInsight, generateAnalyticsInsights } from "./insights";
+import { weeklyDigest, WeeklyDigest } from "./digest";
 
 /**
  * CURA Personal Health Model — the orchestrator.
@@ -52,6 +53,7 @@ export interface PersonalHealthModel {
   events: HealthEvent[];
   healthAge: HealthAgeModel;
   insights: AnalyticsInsight[];
+  digest: WeeklyDigest;
   dataQuality: DataQuality;
 }
 
@@ -97,11 +99,13 @@ export function analyzeUser(days: DailySummary[], opts: { actualAge?: number } =
   const events = detectEvents(sorted, baselines);
   const healthAge = computeHealthAge(sorted, opts.actualAge);
   const insights = generateAnalyticsInsights({ days: sorted, baselines, state, layered, events, relationships });
+  const quality = dataQuality(sorted);
+  const digest = weeklyDigest(layered, relationships, sorted, quality.coreCoverageDays);
   const { stage, message } = stageFor(baselines.hrv, baselines.rhr);
 
   return {
     stage, stageMessage: message, baselines, layered, state, trajectory, resilience,
-    relationships, events, healthAge, insights, dataQuality: dataQuality(sorted),
+    relationships, events, healthAge, insights, digest, dataQuality: quality,
   };
 }
 
@@ -115,5 +119,6 @@ export * from "./relationships";
 export * from "./events";
 export * from "./health-age";
 export * from "./insights";
+export * from "./digest";
 export * from "./response";
 export * from "./experiments";
