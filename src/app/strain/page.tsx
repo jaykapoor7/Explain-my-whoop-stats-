@@ -5,19 +5,22 @@ import { ScorePage } from "@/components/score-page";
 import { Card, ConfidenceBadge, EmptyState, Section } from "@/components/ui";
 import { StrainCurve, ZoneBars } from "@/components/charts";
 import { useApp } from "@/lib/data/store";
-import { countedActivities } from "@/lib/scoring/strain";
+import { countedActivities, estimateActivityLoad, maxHrFromAge } from "@/lib/scoring/strain";
 import { strainTarget } from "@/lib/scoring/strain-target";
+import { ageFromBirthYear } from "@/lib/scoring/health-age";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
 import { Flame } from "lucide-react";
 import { SessionPlanner } from "@/components/session-planner";
 
-function ActivityRow({ a }: { a: Activity }) {
+function ActivityRow({ a, restHr, maxHr }: { a: Activity; restHr: number; maxHr: number }) {
   const resolveActivity = useApp((s) => s.resolveActivity);
   const [editing, setEditing] = useState(false);
   const [newType, setNewType] = useState("Football");
   const needsReview = a.confidence === "low" && !a.resolved;
   const excluded = a.confidence === "low" && a.resolved !== "confirmed" && a.resolved !== "edited";
+  // Show the same personalised load the score uses (HR-reserve based).
+  const load = a.avgHr > 0 ? estimateActivityLoad(a.durationMin, a.avgHr, restHr, maxHr) : a.load;
 
   return (
     <Card className={cn("p-4", excluded && !needsReview && "opacity-55")}>
@@ -26,7 +29,7 @@ function ActivityRow({ a }: { a: Activity }) {
         <ConfidenceBadge level={a.confidence} />
         {excluded && !needsReview && <span className="text-[11px] text-ink-500">excluded from strain</span>}
         <span className="tabular ml-auto text-sm font-bold" style={{ color: DOMAIN_COLOR.strain }}>
-          {a.confidence === "low" && a.resolved !== "confirmed" && a.resolved !== "edited" ? "—" : a.load.toFixed(1)}
+          {a.confidence === "low" && a.resolved !== "confirmed" && a.resolved !== "edited" ? "—" : load.toFixed(1)}
         </span>
       </div>
       <div className="mt-1.5 text-xs text-ink-400">
@@ -89,6 +92,8 @@ function ActivityRow({ a }: { a: Activity }) {
 }
 
 export default function StrainPage() {
+  const birthYear = useApp((s) => s.settings.birthYear);
+  const maxHr = maxHrFromAge(ageFromBirthYear(birthYear));
   return (
     <ScorePage
       title="Strain"
@@ -97,7 +102,7 @@ export default function StrainPage() {
       ringLabel="Strain"
       pick={(s) => s.strain}
       baselineLabel={(s) => `Your typical daily strain is ${s.baseline} over the last two weeks (0–21 scale).`}
-      algoNote="Strain sums each counted activity's load plus a term for all-day movement from your steps. Unrecognized short HR spikes are excluded unless you confirm them."
+      algoNote="Each workout's load is personalised to your heart-rate reserve — how hard the session was relative to YOUR resting and max heart rate — so the same effort scores by your own fitness, not a generic scale. Strain sums those plus a term for all-day movement from your steps; unrecognized short HR spikes are excluded unless you confirm them."
       belowHero={(data) => {
         const rec = data.today!.recovery;
         const t = strainTarget(rec.available === false ? null : rec.score, data.today!.baseline.strain);
@@ -135,7 +140,7 @@ export default function StrainPage() {
               </div>
               {/* Close the loop: plan a session and see where it lands you vs target */}
               <div className="mt-5 border-t border-black/[0.06] pt-4">
-                <SessionPlanner current={cur} target={t} />
+                <SessionPlanner current={cur} target={t} restHr={data.today!.baseline.rhrBpm} maxHr={maxHr} />
               </div>
             </Card>
           </Section>
@@ -157,7 +162,7 @@ export default function StrainPage() {
             {acts.length ? (
               <div className="space-y-3">
                 {acts.map((a) => (
-                  <ActivityRow key={a.id} a={a} />
+                  <ActivityRow key={a.id} a={a} restHr={data.today!.baseline.rhrBpm} maxHr={maxHr} />
                 ))}
               </div>
             ) : (

@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { DailySummary, Goal, JournalEntry, Medication, MedicationEvent, Meal, NutritionTotals, PlannerTask } from "../types";
 import { applyGoalTargets, DEFAULT_GOALS, useApp } from "./store";
 import { computeScoredDays, nutritionTotals, ScoredDay } from "../scoring/engine";
+import { maxHrFromAge } from "../scoring/strain";
 import { generateInsights, Insight } from "../insights/insights";
 import { analyzeUser, PersonalHealthModel } from "../analytics";
 import { ageFromBirthYear } from "../scoring/health-age";
@@ -80,7 +81,10 @@ export function useHealth(): HealthData {
     }));
   }, [s.wearableDays, s.manualDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
 
-  const days = useMemo<ScoredDay[]>(() => computeScoredDays(merged), [merged]);
+  const days = useMemo<ScoredDay[]>(
+    () => computeScoredDays(merged, { maxHr: maxHrFromAge(ageFromBirthYear(s.settings.birthYear)) }),
+    [merged, s.settings.birthYear]
+  );
   const model = useMemo<PersonalHealthModel>(
     () => analyzeUser(merged, { actualAge: ageFromBirthYear(s.settings.birthYear) }),
     [merged, s.settings.birthYear]

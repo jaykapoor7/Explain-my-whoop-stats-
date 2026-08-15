@@ -55,8 +55,10 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
   };
 }
 
-/** Compute every day's scores in chronological order, wiring deltas + baselines. */
-export function computeScoredDays(days: DailySummary[]): ScoredDay[] {
+/** Compute every day's scores in chronological order, wiring deltas + baselines.
+ * `opts.maxHr` personalises the strain scale (age-derived); resting HR comes
+ * from each day's rolling personal baseline. */
+export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number } = {}): ScoredDay[] {
   const out: ScoredDay[] = [];
   for (let i = 0; i < days.length; i++) {
     const raw = days[i];
@@ -73,7 +75,7 @@ export function computeScoredDays(days: DailySummary[]): ScoredDay[] {
     const sleep = calcSleep(day).raw;
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
     const recovery = calcRecovery(day, baseline, sleep, prevStrain);
-    const strain = calcStrain(day);
+    const strain = calcStrain(day, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });
     const energy = calcEnergy(day, baseline, sleep, recovery, prevStrain);
 
     // deltas vs yesterday + baselines for display (only between days that both have the pillar)

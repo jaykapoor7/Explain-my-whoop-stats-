@@ -13,19 +13,26 @@ import { DOMAIN_COLOR, cn } from "@/lib/format";
  * so the projection matches reality.
  */
 
-const INTENSITIES: { key: string; label: string; hr: number; hint: string }[] = [
-  { key: "easy", label: "Easy", hr: 115, hint: "walk, mobility, zone-1" },
-  { key: "moderate", label: "Moderate", hr: 140, hint: "zone-2, steady cardio" },
-  { key: "hard", label: "Hard", hr: 162, hint: "tempo, strength, sport" },
-  { key: "allout", label: "All-out", hr: 178, hint: "intervals, race pace" },
+// Intensities are fractions of YOUR heart-rate reserve, so "Hard" is the same
+// relative effort for everyone but lands at each person's own bpm.
+const INTENSITIES: { key: string; label: string; frac: number; hint: string }[] = [
+  { key: "easy", label: "Easy", frac: 0.35, hint: "walk, mobility, zone-1" },
+  { key: "moderate", label: "Moderate", frac: 0.55, hint: "zone-2, steady cardio" },
+  { key: "hard", label: "Hard", frac: 0.75, hint: "tempo, strength, sport" },
+  { key: "allout", label: "All-out", frac: 0.9, hint: "intervals, race pace" },
 ];
 
-export function SessionPlanner({ current, target }: { current: number; target: StrainTarget }) {
+export function SessionPlanner({ current, target, restHr = 60, maxHr = 185 }: { current: number; target: StrainTarget; restHr?: number; maxHr?: number }) {
   const [intensity, setIntensity] = useState(INTENSITIES[1]);
   const [minutes, setMinutes] = useState(45);
   const col = DOMAIN_COLOR.strain;
 
-  const added = estimateActivityLoad(minutes, intensity.hr);
+  // Translate the chosen %reserve into this person's actual bpm, then score it
+  // with the same personalised model the strain page uses.
+  const rest = restHr > 0 ? restHr : 60;
+  const max = Math.max(maxHr > 0 ? maxHr : 185, rest + 50);
+  const hr = Math.round(rest + intensity.frac * (max - rest));
+  const added = estimateActivityLoad(minutes, hr, rest, max);
   const projected = Math.min(21, Math.round((current + added) * 10) / 10);
   const verdict =
     projected < target.low ? { text: "below your target — room for more", c: "#eb9d18" }
@@ -53,7 +60,7 @@ export function SessionPlanner({ current, target }: { current: number; target: S
           </button>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-ink-500">{intensity.hint} · ~{intensity.hr} bpm</p>
+      <p className="mt-1 text-[10px] text-ink-500">{intensity.hint} · ~{hr} bpm for you</p>
 
       {/* Duration */}
       <div className="mt-3 flex items-center gap-3">
