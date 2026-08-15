@@ -90,8 +90,11 @@ export default function SettingsPage() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-ink-50">{account.user?.name || "Signed in"}</div>
                 {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
-                <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-good">
-                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</> : <><Cloud size={11} /> synced across your devices</>}
+                <div className={cn("mt-1 flex items-center gap-1 text-[11px] font-medium", account.syncError || !account.syncDurable ? "text-warn" : "text-good")}>
+                  {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</>
+                    : account.syncError ? <><AlertTriangle size={11} /> sync error — not saved to your account</>
+                    : !account.syncDurable ? <><AlertTriangle size={11} /> this device only — no database connected</>
+                    : <><Cloud size={11} /> synced across your devices</>}
                 </div>
               </div>
               <button onClick={() => account.signOut()} className="flex items-center gap-1.5 rounded-full border border-black/15 px-4 py-2 text-xs font-medium text-ink-200 hover:bg-black/[0.05]"><LogOut size={13} /> Sign out</button>

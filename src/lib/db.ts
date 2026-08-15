@@ -90,9 +90,22 @@ class PgStore implements Store {
     const isLocal = /@(localhost|127\.0\.0\.1|::1)[:/]/.test(connectionString) || /\bsslmode=disable\b/.test(connectionString);
     const ssl = isLocal ? undefined : { rejectUnauthorized: false };
     this.pool = new Pool({ connectionString, ssl, max: 3 });
+    // An idle-client error must never crash the process or poison the pool.
+    this.pool.on("error", (e) => console.error("[db] idle pool client error:", e.message));
     this.ready = this.init();
   }
   private async init() {
+    // Resilient: if schema creation hits a transient pooler error, log it and
+    // resolve anyway (the tables almost certainly already exist from a prior
+    // run). Never leave `ready` as a rejected promise — that would make EVERY
+    // later read/write throw and silently kill sync for this server instance.
+    try {
+      await this.ddl();
+    } catch (e) {
+      console.error("[db] schema init failed (continuing — tables likely already exist):", e instanceof Error ? e.message : e);
+    }
+  }
+  private async ddl() {
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         sub text PRIMARY KEY, email text, name text, picture text,
@@ -158,6 +171,9 @@ class PgStore implements Store {
   }
   async saveSnapshot(sub: string, data: string, updatedAt: number) {
     await this.ready;
+    // Guarantee the parent user row exists so the snapshot's foreign key can
+    // never reject a legitimate write (e.g. if the account row was pruned).
+    await this.pool.query("INSERT INTO users (sub) VALUES ($1) ON CONFLICT (sub) DO NOTHING", [sub]);
     await this.pool.query(
       `INSERT INTO snapshots (sub, data, updated_at) VALUES ($1,$2,$3)
        ON CONFLICT (sub) DO UPDATE SET data=EXCLUDED.data, updated_at=EXCLUDED.updated_at`,
