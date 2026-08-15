@@ -13,8 +13,6 @@ import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { cn } from "@/lib/format";
 
-const FIELD = "h-11 w-full rounded-xl border border-black/10 bg-black/[0.02] px-3.5 text-sm text-ink-100 outline-none transition focus:border-black/25 focus:bg-black/[0.01]";
-
 /** A left-label / right-control settings row with a divider. */
 function Row({ label, hint, children, last }: { label: string; hint?: string; children: React.ReactNode; last?: boolean }) {
   return (
@@ -107,38 +105,18 @@ export default function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Profile">
+      <Section title="Profile & preferences">
         <Card className="px-5 py-1">
-          <div className="grid gap-4 py-4 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Display name</span>
-              <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} className={cn(FIELD, "mt-1.5")} />
-            </label>
-            <label className="block">
-              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Birth year <span className="normal-case text-ink-400">· for Health Age</span></span>
-              <input
-                type="number"
-                value={settings.birthYear ?? ""}
-                onChange={(e) => { const y = parseInt(e.target.value, 10); setSettings({ birthYear: Number.isFinite(y) ? y : undefined }); }}
-                placeholder="e.g. 1998"
-                className={cn(FIELD, "tabular mt-1.5")}
-              />
-            </label>
-          </div>
-          <div className="border-t border-black/[0.05]">
-            <Row label="Weight unit">
-              <div className="flex overflow-hidden rounded-lg border border-black/[0.1] text-xs">
-                {(["kg", "lb"] as const).map((u) => (
-                  <button key={u} onClick={() => setSettings({ weightUnit: u })} className={cn("px-4 py-1.5 font-medium transition-colors", settings.weightUnit === u ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}>
-                    {u}
-                  </button>
-                ))}
-              </div>
-            </Row>
-            <Row label="Show unrecognized HR blocks on Strain" hint="Short elevated-HR spikes that aren't clearly a workout." last>
-              <Toggle on={settings.showLowConfidence} onClick={() => setSettings({ showLowConfidence: !settings.showLowConfidence })} label="Toggle low-confidence visibility" />
-            </Row>
-          </div>
+          <Link href="/profile" className="group -mx-1 flex items-center justify-between gap-4 border-b border-black/[0.05] px-1 py-3.5">
+            <div className="min-w-0">
+              <div className="text-[13px] font-medium text-ink-100">Your profile</div>
+              <div className="mt-0.5 text-[11px] text-ink-400">Name, birth year, sex, height, weight unit and wake time</div>
+            </div>
+            <span className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5">→</span>
+          </Link>
+          <Row label="Show unrecognized HR blocks on Strain" hint="Short elevated-HR spikes that aren't clearly a workout." last>
+            <Toggle on={settings.showLowConfidence} onClick={() => setSettings({ showLowConfidence: !settings.showLowConfidence })} label="Toggle low-confidence visibility" />
+          </Row>
         </Card>
       </Section>
 
