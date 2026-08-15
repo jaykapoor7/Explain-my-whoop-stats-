@@ -23,7 +23,7 @@ import { countedActivities } from "./strain";
  * recovery and a normal day behind you lands near here. Set on the generous side
  * so a typical day reads as usable energy rather than a harsh middling score.
  * Readiness and yesterday's load move you off it; NOT shown as a flat "neutral". */
-export const ENERGY_ANCHOR = 60;
+export const ENERGY_ANCHOR = 52;
 
 export interface EnergySplit {
   morningCapacity: number; // start-of-day score (0..100)

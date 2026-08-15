@@ -72,9 +72,9 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
     // Going to bed and waking at consistent times strengthens your rhythm.
     term("Timing consistency", clamp((s.consistencyPct - 80) * 0.14, -7, 6),
       `${s.consistencyPct}% regular bed/wake times`),
-    // Carrying a rolling shortfall vs your need nudges the score down (kept
-    // small — recovery/energy also see debt, so this must not dominate).
-    term("Sleep debt", clamp(-s.debtMin / 45, -4, 2),
+    // Carrying a rolling shortfall vs your need is a real, published readiness
+    // drag — ~2 points per hour of debt, so a large shortfall clearly matters.
+    term("Sleep debt", clamp(-(s.debtMin / 60) * 2, -12, 2),
       s.debtMin > 0 ? `${fmtShort(s.debtMin)} rolling shortfall` : "no accrued debt"),
   ];
   const score = softScore(SLEEP_BASE + terms.reduce((a, c) => a + c.points, 0));
