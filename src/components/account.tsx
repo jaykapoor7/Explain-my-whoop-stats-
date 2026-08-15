@@ -83,27 +83,22 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
         const r = await fetch("/api/data", { cache: "no-store" });
         const j = (await r.json()) as { data: string | null; updatedAt: number; durable?: boolean };
         setSyncDurable(j.durable !== false);
-        const st = useApp.getState();
-        const localTs = st.cloudUpdatedAt;
-        // A device with nothing logged yet should always adopt the cloud copy
-        // rather than overwrite it with an empty snapshot.
-        const localEmpty =
-          st.wearableDays.length === 0 && st.manualDays.length === 0 && st.meals.length === 0 &&
-          st.medications.length === 0 && st.tasks.length === 0 && Object.keys(st.journal).length === 0;
-        if (j.data && (j.updatedAt > localTs || localEmpty)) {
+        // Always UNION-merge the cloud snapshot when it exists. hydrateFromCloud
+        // never drops local data, so merging is safe regardless of which device's
+        // clock produced `updatedAt` — cross-device clocks can't be compared
+        // reliably. The old `updatedAt > localTs` gate meant that with even small
+        // clock skew a device would treat genuinely-newer cloud data as older,
+        // skip the merge, and overwrite the cloud with its own snapshot — silently
+        // losing the other device's journal / tasks / goals. Merge first, then push
+        // the union so the cloud converges to everything this device now holds.
+        if (j.data) {
           applying.current = true;
           const parsed = JSON.parse(j.data) as Record<string, unknown>;
-          useApp.getState().hydrateFromCloud(parsed, j.updatedAt);
-          lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
+          useApp.getState().hydrateFromCloud(parsed, Math.max(j.updatedAt, useApp.getState().cloudUpdatedAt));
           applying.current = false;
-        } else if (!localEmpty) {
-          // Local has content and is newer (or cloud is empty) — seed the cloud.
-          lastSig.current = ""; // force a push
-          await push();
-        } else {
-          // Both empty — nothing to do; wait for real edits.
-          lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
         }
+        lastSig.current = ""; // force one reconciling push of the merged union
+        await push();
       } catch { /* offline — try again on next change */ }
       if (!disposed) setSyncing(false);
     })();
@@ -126,7 +121,11 @@ export function AccountProvider({ children }: { children: React.ReactNode }) {
     const r = await fetch("/api/data", { cache: "no-store" }).catch(() => null);
     if (!r?.ok) return;
     const j = (await r.json()) as { data: string | null; updatedAt: number };
-    if (j.data && j.updatedAt > useApp.getState().cloudUpdatedAt) {
+    // Merge whenever the cloud's snapshot differs from what we last saw — NOT
+    // gated on `>` (cross-device clock skew makes a genuinely-newer write look
+    // older). The merge is a union, so re-applying is harmless, and pullRemote
+    // never pushes, so this can't loop.
+    if (j.data && j.updatedAt !== useApp.getState().cloudUpdatedAt) {
       applying.current = true;
       useApp.getState().hydrateFromCloud(JSON.parse(j.data), j.updatedAt);
       lastSig.current = JSON.stringify(collectSyncState(useApp.getState()));
