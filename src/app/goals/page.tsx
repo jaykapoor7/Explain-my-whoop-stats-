@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { Check } from "lucide-react";
 import { Card, PageHeader, ProgressBar, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
-import { fmtDuration, fmtNum } from "@/lib/format";
+import { cn, fmtDuration, fmtNum } from "@/lib/format";
 import { Goal } from "@/lib/types";
 import { ScoredDay } from "@/lib/scoring/engine";
 
@@ -44,29 +45,31 @@ function display(goal: Goal, v: number): string {
   return goal.unit === "min" ? fmtDuration(v) : `${fmtNum(v, goal.kind === "weight" ? 1 : 0)} ${goal.unit}`;
 }
 
-export default function GoalsPage() {
-  const data = useHealth();
+/** The editable goals list — a real draft you Save, not live-writing inputs.
+ * Only mounted after hydration so the draft initialises from loaded targets. */
+function GoalsEditor({ rows }: { rows: { goal: Goal; value: number; caption: string; ok: boolean }[] }) {
   const setGoalTarget = useApp((s) => s.setGoalTarget);
-  if (!data.hydrated) return <SkeletonPage />;
+  // Draft of targets in each goal's own unit (minutes for sleep), keyed by id.
+  const [draft, setDraft] = useState<Record<string, number>>(() => Object.fromEntries(rows.map((r) => [r.goal.id, r.goal.target])));
+  const [saved, setSaved] = useState(false);
 
-  const t = data.today;
-  const week = data.days.slice(-7);
-  const weeklyStudyH =
-    Math.round(
-      (week.reduce((sum, s) => sum + (s.day.journal?.tags.find((x) => x.label === "Studying")?.durationMin ?? 0), 0) / 60) * 10
-    ) / 10;
+  const dirty = rows.some((r) => draft[r.goal.id] !== r.goal.target);
 
-  const hit = data.goals.filter((g) => met(g, currentValue(g, t, data.todayTotals, week, weeklyStudyH).value)).length;
+  const save = () => {
+    for (const r of rows) if (draft[r.goal.id] !== r.goal.target) setGoalTarget(r.goal.id, draft[r.goal.id]);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 1800);
+  };
+  const reset = () => setDraft(Object.fromEntries(rows.map((r) => [r.goal.id, r.goal.target])));
 
   return (
-    <div className="animate-fadeUp">
-      <PageHeader title="Goals" sub={`${hit} of ${data.goals.length} on track — targets feed Today, Nutrition and the Planner.`} />
-
+    <>
       <div className="mt-5 space-y-3">
-        {data.goals.map((g) => {
-          const { value, caption } = currentValue(g, t, data.todayTotals, week, weeklyStudyH);
-          const ok = met(g, value);
+        {rows.map(({ goal: g, value, caption, ok }) => {
           const color = GOAL_COLOR[g.kind] ?? "#8b93a1";
+          const inHours = g.unit === "min"; // sleep stored in minutes, entered in hours
+          const target = draft[g.id] ?? g.target;
+          const changed = target !== g.target;
           return (
             <Card key={g.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
@@ -76,31 +79,28 @@ export default function GoalsPage() {
                     <Check size={10} strokeWidth={3} /> on track
                   </span>
                 )}
-                {(() => {
-                  // Sleep is stored in minutes but is far more natural to enter in hours.
-                  const inHours = g.unit === "min";
-                  return (
-                    <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-400">
-                      <span>target</span>
-                      <input
-                        type="number"
-                        step={inHours ? 0.5 : g.kind === "weight" ? 0.1 : 1}
-                        value={inHours ? g.target / 60 : g.target}
-                        onChange={(e) => {
-                          const v = Math.max(0, parseFloat(e.target.value) || 0);
-                          setGoalTarget(g.id, inHours ? Math.round(v * 60) : v);
-                        }}
-                        className="tabular h-7 w-20 rounded-lg border border-black/12 bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none"
-                      />
-                      <span>{inHours ? "h" : g.unit}</span>
-                    </div>
-                  );
-                })()}
+                <div className="ml-auto flex items-center gap-1.5 text-xs text-ink-400">
+                  <span>target</span>
+                  <input
+                    type="number"
+                    step={inHours ? 0.5 : g.kind === "weight" ? 0.1 : 1}
+                    value={inHours ? target / 60 : target}
+                    onChange={(e) => {
+                      const v = Math.max(0, parseFloat(e.target.value) || 0);
+                      setDraft((d) => ({ ...d, [g.id]: inHours ? Math.round(v * 60) : v }));
+                    }}
+                    className={cn(
+                      "tabular h-7 w-20 rounded-lg border bg-ink-875 px-2 text-right text-xs text-ink-100 outline-none transition",
+                      changed ? "border-recovery/60" : "border-black/12",
+                    )}
+                  />
+                  <span>{inHours ? "h" : g.unit}</span>
+                </div>
               </div>
               <div className="mt-2.5">
                 <ProgressBar
-                  value={g.direction === "at-most" ? Math.min(value, g.target * 1.4) : value}
-                  max={g.direction === "at-most" ? g.target * 1.4 : g.target}
+                  value={g.direction === "at-most" ? Math.min(value, target * 1.4) : value}
+                  max={g.direction === "at-most" ? target * 1.4 : target}
                   color={color}
                   invertOver={g.direction === "at-most"}
                 />
@@ -110,7 +110,8 @@ export default function GoalsPage() {
                   <span className="tabular text-ink-200">{display(g, value)}</span> {caption}
                 </span>
                 <span>
-                  {g.direction === "at-most" ? "cap" : g.direction === "at-least" ? "at least" : "target"} {display(g, g.target)}
+                  {g.direction === "at-most" ? "cap" : g.direction === "at-least" ? "at least" : "target"}{" "}
+                  <span className={cn(changed && "font-semibold text-recovery")}>{display(g, target)}</span>
                 </span>
               </div>
             </Card>
@@ -118,11 +119,52 @@ export default function GoalsPage() {
         })}
       </div>
 
+      {/* Inline save footer — consistent with Profile, Journal and manual entry */}
+      <div className="mt-4 flex items-center justify-end gap-3">
+        {dirty && (
+          <button onClick={reset} className="rounded-full border border-black/15 px-4 py-2.5 text-xs font-medium text-ink-200 hover:bg-black/[0.05]">Discard</button>
+        )}
+        <span className="mr-auto text-[11px] text-ink-400">{dirty ? "Unsaved changes to your targets." : "Targets are saved and feeding every screen."}</span>
+        <button
+          onClick={save}
+          disabled={!dirty}
+          className={cn("flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-semibold transition", dirty ? "bg-recovery text-[#241f18]" : "bg-black/[0.06] text-ink-400")}
+        >
+          {saved ? <><Check size={14} /> Saved</> : "Save targets"}
+        </button>
+      </div>
+    </>
+  );
+}
+
+export default function GoalsPage() {
+  const data = useHealth();
+  if (!data.hydrated) return <SkeletonPage />;
+
+  const t = data.today;
+  const week = data.days.slice(-7);
+  const weeklyStudyH =
+    Math.round(
+      (week.reduce((sum, s) => sum + (s.day.journal?.tags.find((x) => x.label === "Studying")?.durationMin ?? 0), 0) / 60) * 10
+    ) / 10;
+
+  const rows = data.goals.map((g) => {
+    const { value, caption } = currentValue(g, t, data.todayTotals, week, weeklyStudyH);
+    return { goal: g, value, caption, ok: met(g, value) };
+  });
+  const hit = rows.filter((r) => r.ok).length;
+
+  return (
+    <div className="animate-fadeUp">
+      <PageHeader title="Goals" sub={`${hit} of ${data.goals.length} on track — targets feed Today, Nutrition and the Planner.`} />
+
+      <GoalsEditor rows={rows} />
+
       <div className="mt-6">
         <Why summary="How goals connect to the rest of the app">
           Calorie, protein and weight goals set the targets on the Nutrition page; the sleep and steps goals define
           &quot;on-track&quot; on Today; training and academic goals are read from your logged activities and journal.
-          Change a target here and every screen updates.
+          Save a target here and every screen updates.
         </Why>
       </div>
     </div>

@@ -110,7 +110,7 @@ export default function SettingsPage() {
           <Link href="/profile" className="group -mx-1 flex items-center justify-between gap-4 border-b border-black/[0.05] px-1 py-3.5">
             <div className="min-w-0">
               <div className="text-[13px] font-medium text-ink-100">Your profile</div>
-              <div className="mt-0.5 text-[11px] text-ink-400">Name, birth year, sex, height, weight unit and wake time</div>
+              <div className="mt-0.5 text-[11px] text-ink-400">Name, birth year, sex, height and weight unit</div>
             </div>
             <span className="shrink-0 text-ink-400 transition-transform group-hover:translate-x-0.5">→</span>
           </Link>
