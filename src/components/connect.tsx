@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Copy, Loader2, LogIn, Plug, RefreshCw, Smartphone, TriangleAlert, Watch } from "lucide-react";
+import { CheckCircle2, LogIn, RefreshCw, Smartphone, TriangleAlert, Watch } from "lucide-react";
 import { Card } from "@/components/ui";
 import { AddDeviceButton } from "@/components/device-pairing";
 import { useAccount } from "@/components/account";
@@ -17,7 +17,7 @@ interface FitbitStatus {
 export function useFitbit() {
   const setWearableDays = useApp((s) => s.setWearableDays);
   const [status, setStatus] = useState<FitbitStatus | null>(null);
-  const [busy, setBusy] = useState<"sync" | "save" | null>(null);
+  const [busy, setBusy] = useState<"sync" | null>(null);
   const [message, setMessage] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
   const refresh = useCallback(async () => {
@@ -39,7 +39,7 @@ export function useFitbit() {
     try {
       const r = await syncWearable();
       setWearableDays(r.days, r.syncedAt);
-      setMessage({ kind: "ok", text: `Synced ${r.count} days from Fitbit.` });
+      setMessage({ kind: "ok", text: `Synced ${r.count} days.` });
     } catch (e) {
       setMessage({ kind: "err", text: e instanceof Error && e.message === "not_connected" ? "Not connected yet." : "Sync failed — try reconnecting." });
     } finally {
@@ -47,44 +47,22 @@ export function useFitbit() {
     }
   }, [setWearableDays]);
 
-  const saveCreds = useCallback(async (id: string, secret: string) => {
-    setBusy("save");
-    const r = await fetch("/api/fitbit/config", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId: id, clientSecret: secret }),
-    }).catch(() => null);
-    setBusy(null);
-    if (!r?.ok) {
-      const j = (await r?.json().catch(() => null)) as { message?: string } | null;
-      setMessage({ kind: "err", text: j?.message ?? "Couldn't save those credentials." });
-      return false;
-    }
-    window.location.href = "/api/fitbit/connect";
-    return true;
-  }, []);
-
   const disconnect = useCallback(async () => {
     await fetch("/api/fitbit/disconnect", { method: "POST" }).catch(() => {});
     refresh();
   }, [refresh]);
 
-  return { status, busy, message, sync, saveCreds, disconnect, refresh, setMessage };
+  return { status, busy, message, sync, disconnect, refresh, setMessage };
 }
 
-/** Full connect card: one-tap connect, self-host setup, device pairing + sync. */
-export function FitbitCard({ autoSyncOnConnected = false, advanced = false, openAdvanced = false }: { autoSyncOnConnected?: boolean; advanced?: boolean; openAdvanced?: boolean }) {
-  const { status, busy, message, sync, saveCreds, disconnect } = useFitbit();
+/** Connect card: one-tap sign-in, sync, add device, disconnect. */
+export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnected?: boolean }) {
+  const { status, busy, message, sync, disconnect } = useFitbit();
   const account = useAccount();
   const lastSync = useApp((s) => s.lastSync);
   const connectedData = useApp((s) => s.wearableDays.length > 0);
-  const [clientId, setClientId] = useState("");
-  const [clientSecret, setClientSecret] = useState("");
-  const [origin, setOrigin] = useState("");
-  const [showSetup, setShowSetup] = useState(openAdvanced);
 
   useEffect(() => {
-    setOrigin(window.location.origin);
     const p = new URLSearchParams(window.location.search);
     if ((p.get("fitbit") === "connected" || p.get("paired") === "1") && autoSyncOnConnected) {
       sync();
@@ -92,11 +70,6 @@ export function FitbitCard({ autoSyncOnConnected = false, advanced = false, open
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const redirect = `${origin}/api/fitbit/callback`;
-  // One-tap path: the deployment ships its own Google app, or the user already
-  // saved credentials on this device. Either way, connecting is a single tap.
-  const oneTap = !!status && (status.envConfigured || status.configured);
 
   return (
     <Card className="p-5">
@@ -106,7 +79,7 @@ export function FitbitCard({ autoSyncOnConnected = false, advanced = false, open
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-sm font-semibold text-ink-50">Fitbit &amp; connected devices</h3>
+            <h3 className="text-sm font-semibold text-ink-50">Fitbit &amp; Google Health</h3>
             {status?.connected ? (
               <span className="flex items-center gap-1 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good">
                 <CheckCircle2 size={10} /> Connected
@@ -119,8 +92,7 @@ export function FitbitCard({ autoSyncOnConnected = false, advanced = false, open
             {account.signedIn && account.user?.email ? (
               <>Signed in as <span className="font-medium text-ink-200">{account.user.email}</span>. </>
             ) : null}
-            Sleep, HRV, resting HR, workouts, steps, calories and weight via the Google Health API — signing in with
-            Google both creates your account and connects your data, which then syncs to every device you sign in on.
+            Sleep, HRV, resting heart rate, workouts, steps, calories and weight — synced to every device you sign in on.
           </p>
 
           {/* --- Not connected: connect this device --- */}
@@ -139,68 +111,6 @@ export function FitbitCard({ autoSyncOnConnected = false, advanced = false, open
                   connected device, use <span className="font-medium text-ink-400">Add a device</span> to scan a QR.
                 </p>
               </div>
-
-              {/* Self-hosting: bring-your-own Google app. Only surfaced in Settings
-                  (advanced), never on the landing / connect gates. */}
-              {advanced && !oneTap && (
-                <div className="mt-3 rounded-xl border border-black/[0.07] bg-black/[0.02]">
-                  <button
-                    onClick={() => setShowSetup((v) => !v)}
-                    className="flex w-full items-center gap-2 px-3.5 py-2.5 text-left text-xs font-medium text-ink-200"
-                  >
-                    <span className="flex-1">Self-hosting? Connect your own Google app</span>
-                    <ChevronDown size={14} className={`text-ink-400 transition-transform ${showSetup ? "rotate-180" : ""}`} />
-                  </button>
-                  {showSetup && (
-                    <div className="border-t border-black/[0.05] px-3.5 py-3">
-                      <p className="text-xs leading-relaxed text-ink-300">
-                        In the{" "}
-                        <a href="https://console.cloud.google.com" target="_blank" rel="noreferrer" className="text-nutrition hover:underline">
-                          Google Cloud console
-                        </a>
-                        : enable the <span className="font-semibold text-ink-100">Google Health API</span>, configure the
-                        OAuth consent screen (add yourself as a test user), then create an{" "}
-                        <span className="font-semibold text-ink-100">OAuth client ID → Web application</span> with this redirect URI:
-                      </p>
-                      <div className="mt-2 flex items-center gap-2 rounded-lg bg-ink-900 px-2.5 py-1.5">
-                        <code className="min-w-0 flex-1 truncate text-[11px] text-ink-200">{redirect}</code>
-                        <button onClick={() => navigator.clipboard?.writeText(redirect)} className="shrink-0 text-ink-400 hover:text-ink-100" title="Copy">
-                          <Copy size={12} />
-                        </button>
-                      </div>
-                      <div className="mt-2.5 grid gap-2">
-                        <input
-                          value={clientId}
-                          onChange={(e) => setClientId(e.target.value)}
-                          placeholder="Client ID (…apps.googleusercontent.com)"
-                          className="h-9 w-full rounded-lg border border-black/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
-                        />
-                        <div className="flex gap-2">
-                          <input
-                            value={clientSecret}
-                            onChange={(e) => setClientSecret(e.target.value)}
-                            placeholder="Client secret (GOCSPX-…)"
-                            type="password"
-                            className="h-9 min-w-0 flex-1 rounded-lg border border-black/12 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25"
-                          />
-                          <button
-                            onClick={() => saveCreds(clientId, clientSecret)}
-                            disabled={!clientId.trim() || !clientSecret.trim() || busy !== null}
-                            className="flex shrink-0 items-center gap-1.5 rounded-full bg-recovery px-4 text-xs font-semibold text-[#241f18] disabled:opacity-40"
-                          >
-                            {busy === "save" ? <Loader2 size={13} className="animate-spin" /> : <Plug size={13} />} Save
-                          </button>
-                        </div>
-                      </div>
-                      <p className="mt-2 text-[10px] leading-relaxed text-ink-500">
-                        To skip this for everyone, set <code className="text-ink-300">GOOGLE_CLIENT_ID</code> /{" "}
-                        <code className="text-ink-300">GOOGLE_CLIENT_SECRET</code> on the deployment. Health scopes are
-                        Restricted — in Testing only added test users can connect; public use needs Google verification.
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
           )}
 

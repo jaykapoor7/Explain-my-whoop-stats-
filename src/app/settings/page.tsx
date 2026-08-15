@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { AlertTriangle, ChevronDown, Cloud, Info, Loader2, LogIn, LogOut, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
+import { AlertTriangle, Cloud, Info, LogIn, LogOut, Loader2, RotateCcw, ShieldCheck, Trash2 } from "lucide-react";
 import { FitbitCard } from "@/components/connect";
 import { Connections } from "@/components/connections";
-import { ManualEntry } from "@/components/manual-entry";
-import { WidgetSetup } from "@/components/widget-setup";
-import { SyncDiagnostics } from "@/components/sync-diagnostics";
 import { useAccount } from "@/components/account";
 import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
@@ -41,14 +38,15 @@ function Toggle({ on, onClick, label }: { on: boolean; onClick: () => void; labe
 export default function SettingsPage() {
   const { settings, setSettings, resetAll, hydrated } = useApp();
   const account = useAccount();
-  const [notice, setNotice] = useState<{ kind: "setup" | "error"; reason?: string } | null>(null);
+  const [notice, setNotice] = useState<{ kind: "setup" | "error" } | null>(null);
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const f = p.get("fitbit");
-    if (f === "setup") setNotice({ kind: "setup" });
-    else if (f === "error") setNotice({ kind: "error", reason: p.get("reason") ?? undefined });
-    if (f === "setup" || f === "error") window.history.replaceState({}, "", "/settings");
+    if (f === "setup" || f === "error") {
+      setNotice({ kind: f });
+      window.history.replaceState({}, "", "/settings");
+    }
   }, []);
 
   if (!hydrated) return <SkeletonPage />;
@@ -61,19 +59,14 @@ export default function SettingsPage() {
         <Card className="mt-5 flex items-start gap-3 border border-warn/25 bg-warn/[0.06] p-4">
           <Info size={17} className="mt-0.5 shrink-0 text-warn" />
           <p className="text-[13px] leading-relaxed text-ink-200">
-            Google sign-in isn&apos;t set up on this deployment yet, so there was nothing to sign in to. Once the app&apos;s
-            Google credentials are configured, the button works with a single tap. Self-hosting? Add your own credentials
-            under <span className="font-medium">Data source</span> below.
+            We couldn&apos;t start sign-in just now. Please try again in a moment.
           </p>
         </Card>
       )}
       {notice?.kind === "error" && (
         <Card className="mt-5 flex items-start gap-3 border border-bad/25 bg-bad/[0.06] p-4">
           <AlertTriangle size={17} className="mt-0.5 shrink-0 text-bad" />
-          <p className="text-[13px] leading-relaxed text-ink-200">
-            Sign-in didn&apos;t complete{notice.reason ? ` (${notice.reason})` : ""}. This usually means the redirect URI
-            or credentials don&apos;t match. Check your Google OAuth client, then try again.
-          </p>
+          <p className="text-[13px] leading-relaxed text-ink-200">Sign-in didn&apos;t complete. Please try again.</p>
         </Card>
       )}
 
@@ -92,8 +85,8 @@ export default function SettingsPage() {
                 {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
                 <div className={cn("mt-1 flex items-center gap-1 text-[11px] font-medium", account.syncError || !account.syncDurable ? "text-warn" : "text-good")}>
                   {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</>
-                    : account.syncError ? <><AlertTriangle size={11} /> sync error — not saved to your account</>
-                    : !account.syncDurable ? <><AlertTriangle size={11} /> this device only — no database connected</>
+                    : account.syncError ? <><AlertTriangle size={11} /> sync error — try again shortly</>
+                    : !account.syncDurable ? <><AlertTriangle size={11} /> sync unavailable right now</>
                     : <><Cloud size={11} /> synced across your devices</>}
                 </div>
               </div>
@@ -123,20 +116,12 @@ export default function SettingsPage() {
         </Card>
       </Section>
 
-      <Section title="Data source" sub="Sign in with Google to connect your Fitbit / Google Health data — it then syncs to every device you sign in on.">
-        <FitbitCard autoSyncOnConnected advanced openAdvanced={notice?.kind === "setup"} />
+      <Section title="Connected wearable" sub="Sign in with Google to connect your Fitbit / Google Health data.">
+        <FitbitCard autoSyncOnConnected />
       </Section>
 
-      <Section title="Other wearables" sub="Connect Oura, WHOOP, Fitbit or Polar directly — sign in once and CURA auto-syncs and scores them the same way.">
+      <Section title="Other wearables" sub="Connect Oura, WHOOP or Polar directly — CURA syncs and scores them the same way.">
         <Connections />
-      </Section>
-
-      <Section title="Add data manually" sub="No supported device? Enter your daily numbers by hand — any wearable works.">
-        <ManualEntry />
-      </Section>
-
-      <Section title="iPhone Lock Screen widget" sub="Show your Recovery, Energy and Sleep on your Lock Screen.">
-        <WidgetSetup />
       </Section>
 
       <Section title="Privacy">
@@ -175,18 +160,6 @@ export default function SettingsPage() {
           )}
         </Card>
       </Section>
-
-      <details className="group mt-10">
-        <summary className="flex cursor-pointer list-none items-center gap-2 text-[13px] font-medium text-ink-300 [&::-webkit-details-marker]:hidden">
-          <ChevronDown size={15} className="text-ink-400 transition-transform group-open:rotate-180" />
-          Advanced
-        </summary>
-        <div className="mt-4">
-          <Section className="mt-0" title="Sync diagnostics" sub="See exactly what the last sync pulled, and which numbers are measured vs estimated.">
-            <SyncDiagnostics />
-          </Section>
-        </div>
-      </details>
 
       <p className="mt-10 text-center text-[11px] text-ink-500">
         CURA · not a medical device ·{" "}

@@ -2,7 +2,6 @@ import "server-only";
 import type { DailySummary } from "../types";
 import { ouraFetchDays } from "./oura";
 import { whoopFetchDays } from "./whoop";
-import { fitbitFetchDays } from "./fitbit";
 import { polarFetchDays } from "./polar";
 
 /**
@@ -64,18 +63,10 @@ export const PROVIDERS: Record<string, ProviderDef> = {
     tokenAuth: "body",
     fetchDays: whoopFetchDays,
   },
-  fitbit: {
-    id: "fitbit",
-    name: "Fitbit",
-    color: "#13b57e",
-    tagline: "Direct · sleep, HR, steps",
-    authorizeUrl: "https://www.fitbit.com/oauth2/authorize",
-    tokenUrl: "https://api.fitbit.com/oauth2/token",
-    scopes: "sleep heartrate activity profile",
-    pkce: true,
-    tokenAuth: "basic",
-    fetchDays: fitbitFetchDays,
-  },
+  // NOTE: no separate "Fitbit direct" entry here — Fitbit is the primary
+  // connection via the "Fitbit & Google Health" card above (Google sign-in +
+  // the Google Health API), so listing it again here as a second, disconnected
+  // provider would be a confusing duplicate.
   polar: {
     id: "polar",
     name: "Polar",
