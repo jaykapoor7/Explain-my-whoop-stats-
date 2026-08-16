@@ -14,12 +14,12 @@ import { clamp, softScore } from "../format";
 // score it, so the app never fabricates "0h slept" or penalizes absent data.
 /** Reference point = "you at your own baseline": your personal sleep need,
  * your typical stage architecture and efficiency. Meeting your need with ordinary
- * quality lands in the high 80s (WHOOP-style "sleep performance"). Every factor
- * is a signed move off this personal reference, not a fixed textbook target.
- * Calibrated so a solid night lands in the high 80s, tracking the Fitbit/Google
- * Health sleep score (same data source): duration ~50%, deep/REM ~25%,
- * restoration ~25%. */
-export const SLEEP_BASE = 70;
+ * quality lands in the low 90s — in line with Apple Health / Google / Fitbit
+ * sleep scores, which credit a full, unbroken night generously. Every factor is
+ * a signed move off this personal reference, not a fixed textbook target.
+ * Calibrated so a solid night lands in the low 90s and a genuinely poor one still
+ * drops into the 40s–50s: duration ~50%, deep/REM ~25%, restoration ~25%. */
+export const SLEEP_BASE = 76;
 
 export const hasSleep = (d: DailySummary) => d.sleep.asleepMin > 0 || d.sleep.inBedMin > 0;
 export const hasHrv = (d: DailySummary) => d.hrv.rmssdMs > 0;
@@ -53,10 +53,14 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
   // literally sums to the score. Targets: deep ≈ 18% and REM ≈ 21% of sleep,
   // efficiency ≈ 86%+, wake-ups ≈ 2, timing regularity ≈ 80%.
   // Meeting your personal sleep NEED is the dominant lever — WHOOP-style "sleep
-  // performance" (% of need met). Hitting your need scores strongly; extra sleep
-  // gives a small bonus; falling short costs progressively but gently.
+  // performance" (% of need met). Consumer sleep scores (Apple/Google/Fitbit)
+  // credit a near-full night generously: getting ~90%+ of your need is already a
+  // strong night, hitting it fully is excellent, and only a real shortfall is
+  // penalised — steeply once you're well under. The knee sits at ~82% of need so
+  // an ordinary good night isn't docked for being a little under your fuller
+  // (70th-percentile) nights.
   const pctNeed = s.needMin > 0 ? s.asleepMin / s.needMin : 1;
-  const durPts = clamp((pctNeed - 0.87) * 130, -24, 18);
+  const durPts = clamp((pctNeed - 0.82) * 115, -26, 16);
   const terms: Contributor[] = [
     term("Sleep duration", durPts,
       `${hrs.toFixed(1)}h asleep vs ${(s.needMin / 60).toFixed(1)}h need (${Math.round(pctNeed * 100)}% of need)`),
