@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, Cloud, Loader2, LogIn, LogOut, Settings as SettingsIcon } from "lucide-react";
 import { useAccount } from "@/components/account";
-import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
+import { Card, IconBadge, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useApp } from "@/lib/data/store";
 import { ageFromBirthYear } from "@/lib/scoring/health-age";
 import { cn } from "@/lib/format";
@@ -111,7 +111,7 @@ export default function ProfilePage() {
       <PageHeader title="Profile" sub="Who you are — and the details that personalize your scores." />
 
       {/* Identity */}
-      <Card className="mt-5 p-5">
+      <Card className="tint mt-5 p-5" style={{ ["--accent" as string]: "#13b57e" }}>
         <div className="flex flex-wrap items-center gap-4">
           {account.user?.picture ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -140,13 +140,13 @@ export default function ProfilePage() {
         </div>
       </Card>
 
-      <Section title="About you" sub="Used to personalize Health Age and your units. Save to apply.">
+      <Section title="About you" sub="Used to personalize Health Age and your units. Save to apply." accent="#13b57e">
         <AboutYou />
       </Section>
 
       <Link href="/settings" className="group mt-4 block">
-        <Card className="flex items-center gap-3 p-4 transition-all group-hover:-translate-y-0.5 group-hover:shadow-lift">
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink-300"><SettingsIcon size={16} /></span>
+        <Card className="card-interactive flex items-center gap-3 p-4">
+          <IconBadge color="#83765f" size={36}><SettingsIcon size={16} /></IconBadge>
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-semibold text-ink-100">Settings</div>
             <div className="text-[11px] text-ink-400">Connections, data controls, privacy and the Lock Screen widget</div>

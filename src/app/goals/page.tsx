@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Check } from "lucide-react";
-import { Card, PageHeader, ProgressBar, SkeletonPage, Why } from "@/components/ui";
+import { Check, Dumbbell, Flame, Footprints, GraduationCap, Moon, Scale, Target, Beef } from "lucide-react";
+import { Card, IconBadge, PageHeader, ProgressBar, SkeletonPage, Why } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { cn, fmtDuration, fmtNum } from "@/lib/format";
@@ -12,6 +12,11 @@ import { ScoredDay } from "@/lib/scoring/engine";
 const GOAL_COLOR: Record<string, string> = {
   weight: "#c9b98a", calories: "#5cc8ff", protein: "#38d39f", sleep: "#8b8cff",
   steps: "#8ee06a", training: "#ff7a5c", academic: "#9fb6ff",
+};
+
+const GOAL_ICON: Record<string, React.ReactNode> = {
+  weight: <Scale size={16} />, calories: <Flame size={16} />, protein: <Beef size={16} />, sleep: <Moon size={16} />,
+  steps: <Footprints size={16} />, training: <Dumbbell size={16} />, academic: <GraduationCap size={16} />,
 };
 
 function currentValue(goal: Goal, t: ScoredDay | undefined, tot: { kcal: number; protein: number }, week: ScoredDay[], weeklyStudyH: number): { value: number; caption: string } {
@@ -73,6 +78,7 @@ function GoalsEditor({ rows }: { rows: { goal: Goal; value: number; caption: str
           return (
             <Card key={g.id} className="p-4">
               <div className="flex flex-wrap items-center gap-2">
+                <IconBadge color={color} size={30}>{GOAL_ICON[g.kind] ?? <Target size={16} />}</IconBadge>
                 <span className="text-sm font-semibold text-ink-100">{g.label}</span>
                 {ok && (
                   <span className="flex items-center gap-1 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good">
@@ -157,6 +163,17 @@ export default function GoalsPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader title="Goals" sub={`${hit} of ${data.goals.length} on track — targets feed Today, Nutrition and the Planner.`} />
+
+      <Card className="tint mt-5 flex items-center gap-4" style={{ ["--accent" as string]: "#13b57e" }}>
+        <IconBadge color="#13b57e" size={44}><Target size={20} /></IconBadge>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-1.5">
+            <span className="tabular font-display text-3xl font-bold text-recovery">{hit}</span>
+            <span className="text-sm text-ink-400">of {data.goals.length} goals on track</span>
+          </div>
+          <div className="mt-2.5"><ProgressBar value={hit} max={data.goals.length} color="#13b57e" /></div>
+        </div>
+      </Card>
 
       <GoalsEditor rows={rows} />
 
