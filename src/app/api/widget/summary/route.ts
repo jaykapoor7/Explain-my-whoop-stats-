@@ -4,7 +4,8 @@ import { db } from "@/lib/db";
 import { computeScoredDays, nutritionTotals } from "@/lib/scoring/engine";
 import { maxHrFromAge } from "@/lib/scoring/strain";
 import { ageFromBirthYear } from "@/lib/scoring/health-age";
-import type { DailySummary, Meal } from "@/lib/types";
+import { fmtTime, isoOf } from "@/lib/format";
+import type { DailySummary, Meal, PlannerTask } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -42,6 +43,8 @@ export async function GET(req: NextRequest) {
     activityResolutions?: Record<string, "confirmed" | "ignored" | "edited">;
     activityTypeEdits?: Record<string, string>;
     settings?: { birthYear?: number };
+    tasks?: PlannerTask[];
+    taskDone?: Record<string, boolean>;
   };
   try {
     parsed = JSON.parse(snap.data) as typeof parsed;
@@ -80,14 +83,58 @@ export async function GET(req: NextRequest) {
   const tzRaw = url.searchParams.get("tz");
   const tzOffsetMin = tzRaw != null && Number.isFinite(Number(tzRaw)) ? Number(tzRaw) : undefined;
   const scored = computeScoredDays(days, { maxHr, now: Date.now(), tzOffsetMin });
-  const last = scored[scored.length - 1];
 
-  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, updatedAt: snap.updatedAt });
+  // The user's local calendar day (for meals eaten "today", and the planner).
+  const localToday = tzOffsetMin != null ? isoOf(new Date(Date.now() + tzOffsetMin * 60_000), true) : isoOf(new Date());
 
-  // Meals are a separate top-level list in the snapshot (not nested per day),
-  // same as the web app's `todayTotals` — filter to the latest scored date.
-  const todayMeals = (parsed.meals ?? []).filter((m) => m.date === last.day.date);
+  // IMPORTANT (midnight bug): don't blank the widget just because the clock
+  // rolled past midnight and no data has synced for the new day yet. Show the
+  // most recent day that actually has readings, so scores never fall to zero /
+  // "offline" overnight. Only genuinely-empty accounts return nulls.
+  const hasSignal = (d: (typeof scored)[number]) =>
+    d.recovery.available !== false || d.sleep.available !== false || d.strain.available !== false || d.energy.available !== false;
+  let last = scored[scored.length - 1];
+  for (let i = scored.length - 1; i >= 0; i--) {
+    if (hasSignal(scored[i])) { last = scored[i]; break; }
+  }
+
+  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, tasks: [], events: [], updatedAt: snap.updatedAt });
+
+  // Macros = what's been eaten on the user's real local day (resets naturally at
+  // midnight, unlike the scores above which carry the last real reading).
+  const todayMeals = (parsed.meals ?? []).filter((m) => m.date === localToday);
   const totals = nutritionTotals({ meals: todayMeals });
+
+  // --- Planner: to-do list (tasks) + today's timed schedule (events) ---------
+  // Read the same snapshot the web app persists; done state can be overridden by
+  // the per-device taskDone map. Pre-sort so the widget can just take the first
+  // N in array order.
+  const allTasks = parsed.tasks ?? [];
+  const doneMap = parsed.taskDone ?? {};
+  const isDone = (t: PlannerTask) => doneMap[t.id] ?? t.done;
+  const prRank = (p: PlannerTask["priority"]) => (p === "high" ? 0 : p === "medium" ? 1 : 2);
+
+  const tasks = allTasks
+    .filter((t) => t.todo)
+    .sort((a, b) => Number(isDone(a)) - Number(isDone(b)) || prRank(a.priority) - prRank(b.priority))
+    .slice(0, 8)
+    .map((t) => ({
+      id: String(t.id),
+      title: t.title,
+      done: isDone(t),
+      due: t.start ? fmtTime(t.start) : undefined,
+      priority: t.priority,
+    }));
+
+  const events = allTasks
+    .filter((t) => !t.todo && t.date === localToday)
+    .sort((a, b) => (a.start ?? "99:99").localeCompare(b.start ?? "99:99"))
+    .slice(0, 6)
+    .map((t) => ({
+      id: String(t.id),
+      title: t.title,
+      time: t.start ? fmtTime(t.start) : "",
+    }));
 
   const num = (r: { available?: boolean; score: number }) => (r.available === false ? null : Math.round(r.score));
   const res = NextResponse.json({
@@ -105,6 +152,8 @@ export async function GET(req: NextRequest) {
     protein: totals.protein,
     carbs: totals.carbs,
     fat: totals.fat,
+    tasks,
+    events,
     updatedAt: snap.updatedAt,
   });
   // Let the widget cache briefly; scores only change on sync.
