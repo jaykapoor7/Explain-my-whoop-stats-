@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Send, Sparkles, X } from "lucide-react";
+import { MessageCircle, Send, X } from "lucide-react";
 import { useHealth } from "@/lib/data/use-health";
 import { answer, SUGGESTIONS } from "@/lib/assistant/engine";
 import { cn } from "@/lib/format";
@@ -44,14 +44,13 @@ export function Coach() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Open CURA coach"
-        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full text-white shadow-lift transition-transform hover:scale-105 active:scale-95 lg:bottom-6 lg:right-6"
-        style={{ background: "linear-gradient(135deg, #12b47c, #3f8fd6 55%, #7b5cf0)" }}
+        className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-ink-50 text-ink-950 shadow-lift transition-transform hover:scale-105 active:scale-95 lg:bottom-6 lg:right-6"
       >
         <AnimatePresence mode="wait" initial={false}>
           {open ? (
             <motion.span key="x" initial={{ rotate: -90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: 90, opacity: 0 }}><X size={22} /></motion.span>
           ) : (
-            <motion.span key="s" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><Sparkles size={22} /></motion.span>
+            <motion.span key="s" initial={{ rotate: 90, opacity: 0 }} animate={{ rotate: 0, opacity: 1 }} exit={{ rotate: -90, opacity: 0 }}><MessageCircle size={22} /></motion.span>
           )}
         </AnimatePresence>
       </button>
@@ -68,7 +67,7 @@ export function Coach() {
           >
             {/* header */}
             <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-4 py-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-xl text-white" style={{ background: "linear-gradient(135deg, #12b47c, #7b5cf0)" }}><Sparkles size={15} /></span>
+              <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-recovery/15 text-recovery"><MessageCircle size={15} /></span>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-semibold text-ink-50">CURA Coach</div>
                 <div className="text-[10px] text-ink-400">Answers from your own data, on-device</div>
