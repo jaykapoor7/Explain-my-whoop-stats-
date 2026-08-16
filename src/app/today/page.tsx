@@ -1,13 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, ChevronRight, Flame, Footprints, ListChecks, NotebookPen, Pill, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronRight, Clock, Flame, Footprints, ListChecks, NotebookPen, Pill, UtensilsCrossed } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, IconBadge, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
 import { HealthAgeStrip } from "@/components/health-age";
+import { DayTimeline } from "@/components/day-timeline";
 import { DailyStateStrip, IntelligenceInsights, StageBanner } from "@/components/intelligence";
 import { DaySwitcher } from "@/components/day-switcher";
 import { useHealth } from "@/lib/data/use-health";
+import { countedActivities } from "@/lib/scoring/strain";
+import { maxHrFromAge } from "@/lib/scoring/strain";
+import { ageFromBirthYear } from "@/lib/scoring/health-age";
+import { useApp } from "@/lib/data/store";
 import { DOMAIN_COLOR, fmtDateLong, fmtDuration, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { ScoredDay } from "@/lib/scoring/engine";
 
@@ -46,11 +51,15 @@ function explainDay(s: ScoredDay): string {
 
 export default function TodayPage() {
   const data = useHealth();
+  const birthYear = useApp((s) => s.settings.birthYear);
   if (!data.hydrated) return <SkeletonPage />;
 
   const t = data.today;
   // No wearable data yet → the CURA landing (sign in) instead of an empty shell.
   if (!t) return <Landing />;
+
+  const maxHr = maxHrFromAge(ageFromBirthYear(birthYear));
+  const hasTimeline = countedActivities(t.day).length > 0 || (!!t.day.sleep.wake && t.day.sleep.wake.length >= 16);
 
   const goals = data.goals;
   const kcalGoal = goals.find((g) => g.kind === "calories")?.target ?? 2400;
@@ -137,6 +146,17 @@ export default function TodayPage() {
       )}
 
       {t && <div className="mt-4"><HealthAgeStrip /></div>}
+
+      {t && hasTimeline && (
+        <Section
+          title={data.isLatest ? "Your day so far" : "How the day unfolded"}
+          sub="Wake, sessions and where your energy stands"
+          accent={DOMAIN_COLOR.energy}
+          icon={<Clock size={15} />}
+        >
+          <DayTimeline day={t} isLatest={data.isLatest} maxHr={maxHr} />
+        </Section>
+      )}
 
       {t && (
       <div className="mt-6 lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-5">

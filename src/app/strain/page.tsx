@@ -2,16 +2,72 @@
 
 import { useState } from "react";
 import { ScorePage } from "@/components/score-page";
-import { Card, ConfidenceBadge, EmptyState, Section } from "@/components/ui";
+import { Card, ConfidenceBadge, EmptyState, IconBadge, Section, StatusPill } from "@/components/ui";
 import { StrainCurve, ZoneBars } from "@/components/charts";
 import { useApp } from "@/lib/data/store";
 import { countedActivities, estimateActivityLoad, maxHrFromAge } from "@/lib/scoring/strain";
+import { trainingLoad, TrainingLoad } from "@/lib/scoring/load";
 import { strainTarget } from "@/lib/scoring/strain-target";
 import { ageFromBirthYear } from "@/lib/scoring/health-age";
 import { DOMAIN_COLOR, cn, fmtNum, fmtTime } from "@/lib/format";
 import { Activity } from "@/lib/types";
-import { Flame } from "lucide-react";
+import { Flame, TrendingUp } from "lucide-react";
 import { SessionPlanner } from "@/components/session-planner";
+
+const LOAD_COLOR: Record<TrainingLoad["status"], string> = {
+  detraining: "#a4977f", balanced: "#13b57e", ramping: "#eb9d18", overreaching: "#ef5a45",
+};
+
+/** Acute (7-day) vs chronic (28-day) training load — the workload view of strain. */
+function TrainingLoadSection({ tl }: { tl: TrainingLoad }) {
+  const c = LOAD_COLOR[tl.status];
+  const barMax = Math.max(tl.acute, tl.chronic, 6) * 1.15;
+  const Bar = ({ label, value, fill }: { label: string; value: number; fill: string }) => (
+    <div>
+      <div className="flex items-baseline justify-between text-xs">
+        <span className="font-medium text-ink-200">{label}</span>
+        <span className="tabular text-ink-400"><span className="font-semibold text-ink-100">{value.toFixed(1)}</span> / 21</span>
+      </div>
+      <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-black/[0.06]">
+        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (value / barMax) * 100)}%`, background: fill }} />
+      </div>
+    </div>
+  );
+  return (
+    <Section title="Training load" sub="Acute (7-day) vs chronic (28-day) — are you ramping up or backing off?" accent={DOMAIN_COLOR.strain} icon={<TrendingUp size={15} />}>
+      <Card className="tint p-5" style={{ ["--accent" as string]: c }}>
+        {tl.available ? (
+          <>
+            <div className="flex flex-wrap items-center gap-4">
+              <IconBadge color={c} size={46}><TrendingUp size={20} /></IconBadge>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[15px] font-semibold text-ink-50">{tl.label}</span>
+                  <StatusPill text={`${tl.ratio.toFixed(2)}× ratio`} color={c} />
+                  <ConfidenceBadge level={tl.confidence} />
+                </div>
+                <p className="mt-0.5 text-[11px] text-ink-400">acute:chronic ratio — around 0.8–1.3 is a balanced, sustainable zone</p>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <Bar label="Acute · last 7 days" value={tl.acute} fill={c} />
+              <Bar label="Chronic · last 28 days" value={tl.chronic} fill="#c8bba2" />
+            </div>
+            <p className="mt-4 text-xs leading-relaxed text-ink-300">{tl.guidance}</p>
+            {tl.confidence !== "high" && (
+              <p className="mt-2 text-[11px] text-ink-500">Based on {tl.chronicDays} days so far — this sharpens as your history fills in.</p>
+            )}
+          </>
+        ) : (
+          <div className="flex items-center gap-3">
+            <IconBadge color="#a4977f" size={40}><TrendingUp size={18} /></IconBadge>
+            <p className="text-xs leading-relaxed text-ink-400">{tl.guidance}</p>
+          </div>
+        )}
+      </Card>
+    </Section>
+  );
+}
 
 function ActivityRow({ a, restHr, maxHr }: { a: Activity; restHr: number; maxHr: number }) {
   const resolveActivity = useApp((s) => s.resolveActivity);
@@ -149,8 +205,10 @@ export default function StrainPage() {
       extras={(data) => {
         const acts = data.today!.day.activities;
         const counted = countedActivities(data.today!.day);
+        const tl = trainingLoad(data.days);
         return (
           <>
+          <TrainingLoadSection tl={tl} />
           {counted.length > 0 && (
             <Section title="Strain through the day" sub="How your load accumulated across the day">
               <Card>
