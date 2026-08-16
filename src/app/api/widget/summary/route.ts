@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "storage" }, { status: 500 });
   }
-  if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, updatedAt: 0 });
+  if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, updatedAt: 0 });
 
   let parsed: {
     wearableDays?: DailySummary[];
@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
     if (hasSignal(scored[i])) { last = scored[i]; break; }
   }
 
-  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, tasks: [], events: [], updatedAt: snap.updatedAt });
+  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, tasks: [], events: [], updatedAt: snap.updatedAt });
 
   // Macros = what's been eaten on the user's real local day (resets naturally at
   // midnight, unlike the scores above which carry the last real reading).
@@ -149,6 +149,7 @@ export async function GET(req: NextRequest) {
     strain: last.strain.available === false ? null : Math.round(last.strain.score * 10) / 10,
     strainStatus: last.strain.available === false ? null : last.strain.status,
     calories: totals.kcal,
+    caloriesBurnt: Math.round(last.day.activeCalories + last.day.restingCalories),
     protein: totals.protein,
     carbs: totals.carbs,
     fat: totals.fat,
