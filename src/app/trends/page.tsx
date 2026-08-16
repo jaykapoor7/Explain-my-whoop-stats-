@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
+import { CalendarDays, GitCompareArrows, Sparkles } from "lucide-react";
+import { Card, Chip, PageHeader, Section, SegmentedControl, SkeletonPage } from "@/components/ui";
 import { ConnectGate } from "@/components/connect";
 import { IntelligenceInsights, StageBanner, WeeklyDigestCard } from "@/components/intelligence";
 import { TrendArea } from "@/components/charts";
@@ -71,13 +72,11 @@ export default function TrendsPage() {
         title="Trends & Insights"
         sub="What is changing — and what appears to affect you."
         right={
-          <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
-            {RANGES.map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>
-                {r}d
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={range}
+            onChange={setRange}
+            options={RANGES.map((r) => ({ value: r, label: `${r}d` }))}
+          />
         }
       />
 
@@ -85,17 +84,7 @@ export default function TrendsPage() {
 
       <div className="mt-5 flex flex-wrap gap-1.5">
         {SERIES.map((s) => (
-          <button
-            key={s.key}
-            onClick={() => setSeriesKey(s.key)}
-            className={cn(
-              "rounded-full px-3 py-1.5 text-xs font-medium transition",
-              seriesKey === s.key ? "text-[#241f18]" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]"
-            )}
-            style={seriesKey === s.key ? { background: s.color } : undefined}
-          >
-            {s.label}
-          </button>
+          <Chip key={s.key} label={s.label} color={s.color} active={seriesKey === s.key} onClick={() => setSeriesKey(s.key)} />
         ))}
       </div>
 
@@ -118,28 +107,32 @@ export default function TrendsPage() {
       </Card>
 
       {data.model.digest.available && (
-        <Section title="This week" sub="Your biggest mover of the last 7 days — and the likeliest reason">
+        <Section title="This week" sub="Your biggest mover of the last 7 days — and the likeliest reason" accent="#13b57e" icon={<CalendarDays size={15} />}>
           <WeeklyDigestCard digest={data.model.digest} />
         </Section>
       )}
 
-      <Section title="What CURA is seeing" sub="Ranked by what matters — deviations, trends and patterns in your own data. Tap “why” to see the evidence.">
+      <Section title="What CURA is seeing" sub="Ranked by what matters — deviations, trends and patterns in your own data. Tap “why” to see the evidence." accent="#7b68ee" icon={<Sparkles size={15} />}>
         <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet — insights sharpen as your baseline fills in." basisDays={data.model.dataQuality.coreCoverageDays} />
       </Section>
 
-      <Section title="Relationships" sub="Correlation between paired metrics over your full history">
+      <Section title="Relationships" sub="Correlation between paired metrics over your full history" accent="#2298cf" icon={<GitCompareArrows size={15} />}>
         <div className="grid gap-3 sm:grid-cols-2">
           {RELATIONSHIPS.map((rel) => {
             const c = correlate(data.days, rel.a, rel.b, rel.lag);
             if (!c) return null;
             const strength = Math.abs(c.r) >= 0.5 ? "strong" : Math.abs(c.r) >= 0.3 ? "moderate" : "weak";
+            const rc = c.r >= 0 ? "#13b57e" : "#ef5a45";
             return (
               <Card key={rel.label} className="p-4">
                 <div className="flex items-baseline justify-between">
                   <span className="text-[13px] font-semibold text-ink-100">{rel.label}</span>
-                  <span className="tabular text-xs text-ink-400">r = {fmtNum(c.r, 2)}</span>
+                  <span className="tabular text-xs font-semibold" style={{ color: rc }}>r = {fmtNum(c.r, 2)}</span>
                 </div>
-                <p className="mt-1 text-xs text-ink-400">
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.05]">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(1, Math.abs(c.r)) * 100}%`, background: rc, opacity: 0.85 }} />
+                </div>
+                <p className="mt-1.5 text-xs text-ink-400">
                   {strength} {c.r >= 0 ? "positive" : "negative"} relationship · n = {c.n} days
                 </p>
               </Card>
