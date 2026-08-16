@@ -45,16 +45,18 @@ body > * { position: relative; z-index: 1; }
 
 .tabular { font-variant-numeric: tabular-nums; }
 
-/* Premium cream card: near-white surface, warm hairline, soft warm shadow. */
+/* Cream card: near-white surface defined by a crisp warm hairline and a
+   restrained, close shadow — surfaces sit on the page rather than floating off
+   it. Real elevation (hover, overlays) is reserved for shadow-lift. */
 .card {
   position: relative;
-  border-radius: 1.25rem;
-  border: 1px solid rgba(59, 46, 20, 0.08);
+  border-radius: 1.15rem;
+  border: 1px solid rgba(59, 46, 20, 0.1);
   background: linear-gradient(180deg, #fefcf8, #fbf7ef);
   box-shadow:
     0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
-    0 1px 2px -1px rgba(59, 46, 20, 0.08),
-    0 16px 40px -26px rgba(59, 46, 20, 0.32);
+    0 1px 1px 0 rgba(59, 46, 20, 0.04),
+    0 4px 10px -6px rgba(59, 46, 20, 0.1);
 }
 .card::before {
   content: "";

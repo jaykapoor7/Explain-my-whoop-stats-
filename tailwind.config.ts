@@ -45,8 +45,11 @@ const config: Config = {
       },
       borderRadius: { xl2: "1.25rem" },
       boxShadow: {
-        card: "0 1px 0 0 rgba(255,255,255,0.04) inset, 0 10px 30px -18px rgba(0,0,0,0.7)",
-        lift: "0 1px 0 0 rgba(255,255,255,0.06) inset, 0 18px 44px -22px rgba(0,0,0,0.8)",
+        // Warm-toned to match the cream theme (the old dark-black shadows read
+        // muddy on a light surface). `lift` is the genuine-elevation shadow used
+        // for hover, CTAs and overlays; `card` is a quieter resting shadow.
+        card: "0 1px 0 0 rgba(255,255,255,0.6) inset, 0 4px 10px -6px rgba(59,46,20,0.1)",
+        lift: "0 1px 0 0 rgba(255,255,255,0.6) inset, 0 12px 28px -14px rgba(59,46,20,0.28)",
       },
       keyframes: {
         fadeUp: { from: { opacity: "0", transform: "translateY(8px)" }, to: { opacity: "1", transform: "translateY(0)" } },
