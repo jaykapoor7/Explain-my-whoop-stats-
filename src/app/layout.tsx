@@ -1,10 +1,18 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Space_Grotesk } from "next/font/google";
+import { Inter, Fraunces } from "next/font/google";
 import "./globals.css";
 import { Shell } from "@/components/shell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
-const display = Space_Grotesk({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-display" });
+// A warm, characterful serif for headings — editorial personality that reads as
+// designed, not defaulted. Optical-size axis keeps big display type expressive
+// while smaller titles stay composed. Body stays on Inter for legibility.
+const display = Fraunces({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: { default: "CURA", template: "%s · CURA" },
