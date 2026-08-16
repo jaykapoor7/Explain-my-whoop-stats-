@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
-import { Card, EmptyState, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
+import { CalendarDays, ChevronLeft, ChevronRight, Flame, LineChart, Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { Card, EmptyState, IconBadge, PageHeader, ProgressBar, Section, SegmentedControl, SkeletonPage, Why } from "@/components/ui";
 import { MiniBars } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
@@ -233,18 +233,21 @@ export default function NutritionPage() {
         <AnimatePresence>{adding && <AddFood date={selected} onClose={() => setAdding(false)} />}</AnimatePresence>
       </div>
 
-      <Card>
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <div>
-            <span className="tabular text-3xl font-bold text-ink-50">{fmtNum(Math.abs(remaining))}</span>
-            <span className="ml-1.5 text-sm text-ink-400">kcal {remaining >= 0 ? "remaining" : "over"}</span>
+      <Card className="tint" style={{ ["--accent" as string]: DOMAIN_COLOR.nutrition }}>
+        <div className="flex items-center gap-4">
+          <IconBadge color={DOMAIN_COLOR.nutrition} size={44}><Flame size={20} /></IconBadge>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <div className="flex items-baseline gap-1.5">
+                <span className="tabular font-display text-3xl font-bold" style={{ color: remaining >= 0 ? DOMAIN_COLOR.nutrition : "#ef5a45" }}>{fmtNum(Math.abs(remaining))}</span>
+                <span className="text-sm text-ink-400">kcal {remaining >= 0 ? "remaining" : "over"}</span>
+              </div>
+              <span className="tabular text-xs text-ink-400">{fmtNum(tot.kcal)} eaten · {fmtNum(burn)} burned</span>
+            </div>
+            <div className="mt-2.5">
+              <ProgressBar value={tot.kcal} max={kcalGoal} color={DOMAIN_COLOR.nutrition} invertOver />
+            </div>
           </div>
-          <span className="tabular text-xs text-ink-400">
-            {fmtNum(tot.kcal)} eaten · {fmtNum(burn)} burned
-          </span>
-        </div>
-        <div className="mt-3">
-          <ProgressBar value={tot.kcal} max={kcalGoal} color={DOMAIN_COLOR.nutrition} invertOver />
         </div>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <MacroRow label="Protein" value={tot.protein} goal={proteinGoal} color="#5cc8ff" />
@@ -262,7 +265,7 @@ export default function NutritionPage() {
         </Why>
       </Card>
 
-      <Section title={`${relativeDay(selected)}'s meals`}>
+      <Section title={`${relativeDay(selected)}'s meals`} accent={DOMAIN_COLOR.nutrition} icon={<UtensilsCrossed size={15} />}>
         {dayMeals.length ? (
           <div className="space-y-3">
             {(Object.keys(MEAL_LABEL) as MealKind[]).map((kind) => {
@@ -308,14 +311,15 @@ export default function NutritionPage() {
       <Section
         title="Progress"
         sub={`${adherent} logged day${adherent === 1 ? "" : "s"} within your calorie cap in the last ${rangeDays}`}
+        accent={DOMAIN_COLOR.nutrition}
+        icon={<LineChart size={15} />}
         action={
-          <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
-            {(["day", "week", "month"] as const).map((r) => (
-              <button key={r} onClick={() => setRange(r)} className={cn("px-3 py-1.5 font-medium capitalize", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>
-                {r}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={range}
+            onChange={setRange}
+            accent={DOMAIN_COLOR.nutrition}
+            options={[{ value: "day", label: "Day" }, { value: "week", label: "Week" }, { value: "month", label: "Month" }]}
+          />
         }
       >
         <Card>
