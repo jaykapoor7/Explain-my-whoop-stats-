@@ -90,7 +90,7 @@ export function ScorePage({
     <div className="animate-fadeUp">
       <PageHeader title={title} sub={question} right={<DaySwitcher />} back />
 
-      <Card className="mt-5 overflow-hidden" style={{ background: `linear-gradient(135deg, ${color}12, ${color}03 45%, transparent)` }}>
+      <Card className="tint mt-5 overflow-hidden" style={{ ["--accent" as string]: color }}>
         <div className="flex flex-col items-center gap-5 sm:flex-row sm:gap-7">
           <ScoreRing score={score.score} scale={score.scale} color={color} label={ringLabel} />
           <div className="w-full min-w-0 flex-1 text-center sm:text-left">
@@ -116,7 +116,7 @@ export function ScorePage({
 
       {belowHero?.(data)}
 
-      <Section title="What affected you" sub="Signed contributions — these sum to today's score">
+      <Section title="What affected you" sub="Signed contributions — these sum to today's score" accent={color}>
         <Card>
           <ContributorLedger contributors={score.contributors} />
         </Card>
@@ -125,6 +125,7 @@ export function ScorePage({
       <Section
         title="Trend"
         sub={`Dashed line is your ${range}-day baseline`}
+        accent={color}
         action={<RangeToggle range={range} setRange={setRange} />}
       >
         <Card>
@@ -189,12 +190,12 @@ function MathOp({ icon }: { icon: string }) {
 
 export function RangeToggle({ range, setRange, options = [7, 30] }: { range: number; setRange: (r: never) => void; options?: number[] }) {
   return (
-    <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
+    <div className="inline-flex rounded-full border border-black/[0.08] bg-black/[0.03] p-0.5 text-xs">
       {options.map((r) => (
         <button
           key={r}
           onClick={() => setRange(r as never)}
-          className={cn("px-3 py-1.5 font-medium transition-colors", range === r ? "bg-black/[0.1] text-ink-50" : "text-ink-400 hover:text-ink-200")}
+          className={cn("rounded-full px-3 py-1 font-semibold transition-colors", range === r ? "bg-ink-50 text-ink-950" : "text-ink-400 hover:text-ink-200")}
         >
           {r}d
         </button>

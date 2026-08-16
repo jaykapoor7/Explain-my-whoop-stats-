@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { CalendarCheck, Check, CheckCircle2, Clock, Pill, Plus, ShieldAlert, Sparkles, Trash2, X } from "lucide-react";
-import { Card, PageHeader, ProgressBar, Section, SkeletonPage, StatusPill } from "@/components/ui";
+import { Card, IconBadge, PageHeader, ProgressBar, Section, SkeletonPage, StatusPill } from "@/components/ui";
 import { useHealth, deriveMedEvents } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { addDays, cn, fmtDate, fmtTime, todayISO } from "@/lib/format";
@@ -47,13 +47,13 @@ function AddMed({ onClose }: { onClose: () => void }) {
             <option value="without">Without food</option>
           </select>
           {f.frequency !== "as-needed" && (
-            <input type="time" value={f.time1} onChange={(e) => setF({ ...f, time1: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time1} onChange={(e) => setF({ ...f, time1: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:light]" />
           )}
           {(f.frequency === "twice" || f.frequency === "thrice") && (
-            <input type="time" value={f.time2} onChange={(e) => setF({ ...f, time2: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time2} onChange={(e) => setF({ ...f, time2: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:light]" />
           )}
           {f.frequency === "thrice" && (
-            <input type="time" value={f.time3} onChange={(e) => setF({ ...f, time3: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:dark]" />
+            <input type="time" value={f.time3} onChange={(e) => setF({ ...f, time3: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:light]" />
           )}
           <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Notes (optional)" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none sm:col-span-2" />
         </div>
@@ -156,31 +156,34 @@ export default function MedicationPage() {
       ) : (
         <>
           {denom > 0 && (
-            <Card>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                  <span className="tabular text-3xl font-bold text-ink-50">{adherence}%</span>
-                  <span className="ml-1.5 text-sm text-ink-400">14-day adherence</span>
+            <Card className="tint" style={{ ["--accent" as string]: ACCENT }}>
+              <div className="flex items-center gap-4">
+                <IconBadge color={ACCENT} size={44}><CheckCircle2 size={20} /></IconBadge>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="tabular font-display text-3xl font-bold" style={{ color: ACCENT }}>{adherence}%</span>
+                      <span className="text-sm text-ink-400">14-day adherence</span>
+                    </div>
+                    <span className="text-xs text-ink-400">{logged} of {denom} scheduled doses taken</span>
+                  </div>
+                  <div className="mt-2.5">
+                    <ProgressBar value={adherence} max={100} color={ACCENT} />
+                  </div>
                 </div>
-                <span className="text-xs text-ink-400">{logged} of {denom} scheduled doses taken</span>
-              </div>
-              <div className="mt-3">
-                <ProgressBar value={adherence} max={100} color={ACCENT} />
               </div>
             </Card>
           )}
 
-          <Section title="Today's schedule">
+          <Section title="Today's schedule" accent={ACCENT} icon={<CalendarCheck size={15} />}>
             <div className="space-y-3">
               {data.todayMedEvents.filter((e) => e.scheduled).map((e) => {
                 const med = medications.find((m) => m.id === e.medicationId)!;
                 const meta = STATUS_META[e.status];
                 return (
-                  <Card key={e.id} className="p-4">
+                  <Card key={e.id} className={cn("overflow-hidden p-4", e.status === "taken" && "ring-1 ring-good/20")}>
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: `${ACCENT}1a`, color: ACCENT }}>
-                        <Pill size={15} />
-                      </span>
+                      <IconBadge color={ACCENT} size={32}><Pill size={15} /></IconBadge>
                       <div className="min-w-0 flex-1">
                         <div className="text-sm font-semibold text-ink-100">
                           {med.name} <span className="ml-1 text-xs font-normal text-ink-400">{med.dose}</span>
@@ -193,18 +196,23 @@ export default function MedicationPage() {
                       <StatusPill text={meta.label} color={meta.color} />
                     </div>
                     <div className="mt-3 flex gap-2">
-                      {([["taken", Check, "Taken"], ["delayed", Clock, "Delayed"], ["skipped", X, "Skipped"]] as const).map(([status, Icon, label]) => (
-                        <button
-                          key={status}
-                          onClick={() => setMedStatus(e.id, status, status === "skipped" ? undefined : new Date().toTimeString().slice(0, 5))}
-                          className={cn(
-                            "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
-                            e.status === status ? "border-transparent bg-black/[0.12] text-ink-50" : "border-black/12 text-ink-300 hover:bg-black/[0.06]"
-                          )}
-                        >
-                          <Icon size={12} /> {label}
-                        </button>
-                      ))}
+                      {([["taken", Check, "Taken"], ["delayed", Clock, "Delayed"], ["skipped", X, "Skipped"]] as const).map(([status, Icon, label]) => {
+                        const on = e.status === status;
+                        const c = STATUS_META[status].color;
+                        return (
+                          <button
+                            key={status}
+                            onClick={() => setMedStatus(e.id, status, status === "skipped" ? undefined : new Date().toTimeString().slice(0, 5))}
+                            className={cn(
+                              "flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                              on ? "border-transparent text-white" : "border-black/12 text-ink-300 hover:bg-black/[0.06]"
+                            )}
+                            style={on ? { background: c } : undefined}
+                          >
+                            <Icon size={12} /> {label}
+                          </button>
+                        );
+                      })}
                     </div>
                   </Card>
                 );
@@ -215,11 +223,12 @@ export default function MedicationPage() {
             </div>
           </Section>
 
-          <Section title="Your medications">
+          <Section title="Your medications" accent={ACCENT} icon={<Pill size={15} />}>
             <div className="grid gap-3 sm:grid-cols-2">
               {medications.map((m) => (
-                <Card key={m.id} className="p-4">
-                  <div className="flex items-start justify-between gap-2">
+                <Card key={m.id} className="flex items-start gap-3 p-4">
+                  <IconBadge color={ACCENT} size={36}><Pill size={16} /></IconBadge>
+                  <div className="flex flex-1 items-start justify-between gap-2">
                     <div>
                       <div className="text-sm font-semibold text-ink-100">{m.name}</div>
                       <div className="mt-1 text-xs text-ink-400">
