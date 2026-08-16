@@ -87,6 +87,109 @@ body {
 }
 @keyframes shimmer { 100% { transform: translateX(100%); } }
 
+/* ---------------------------------------------------------------------------
+   Design-system utilities shared across every page. Kept here (not Tailwind)
+   so cards, inputs and custom controls stay pixel-identical everywhere.
+--------------------------------------------------------------------------- */
+
+/* Interactive card: a card that lifts and warms its shadow on hover. */
+.card-interactive {
+  cursor: pointer;
+  transition: transform 0.22s cubic-bezier(0.22, 0.61, 0.36, 1), box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  border-color: rgba(59, 46, 20, 0.14);
+  box-shadow:
+    0 1px 0 0 rgba(255, 255, 255, 0.7) inset,
+    0 2px 4px -2px rgba(59, 46, 20, 0.1),
+    0 26px 54px -30px rgba(59, 46, 20, 0.42);
+}
+
+/* Accent-tinted surface, driven by --accent set inline. Used for heroes/banners. */
+.tint {
+  background:
+    linear-gradient(155deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 3%, transparent) 46%, transparent),
+    linear-gradient(180deg, #fefcf8, #fbf7ef);
+}
+
+/* Unified input surface. */
+.field {
+  border-radius: 0.75rem;
+  border: 1px solid rgba(59, 46, 20, 0.12);
+  background: #fffefb;
+  color: #332e23;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.field:focus {
+  border-color: color-mix(in srgb, var(--accent, #a4977f) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #a4977f) 14%, transparent);
+}
+.field::placeholder { color: #a4977f; }
+
+/* ---- Premium range slider (used by Journal ratings). ---- */
+input[type="range"].slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+  --pct: 50%;
+  --accent: #13b57e;
+}
+input[type="range"].slider::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    var(--accent) 0%,
+    color-mix(in srgb, var(--accent) 78%, white) var(--pct),
+    rgba(59, 46, 20, 0.09) var(--pct),
+    rgba(59, 46, 20, 0.09) 100%
+  );
+}
+input[type="range"].slider::-moz-range-track {
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(59, 46, 20, 0.09);
+}
+input[type="range"].slider::-moz-range-progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+}
+input[type="range"].slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 20px;
+  width: 20px;
+  margin-top: -6px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 2px 6px -1px rgba(59, 46, 20, 0.28);
+  transition: transform 0.12s ease;
+}
+input[type="range"].slider::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  border-radius: 999px;
+  background: #fff;
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 2px 6px -1px rgba(59, 46, 20, 0.28);
+}
+input[type="range"].slider:active::-webkit-slider-thumb { transform: scale(1.15); }
+input[type="range"].slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* Subtle entrance for staggered lists. */
+@keyframes riseIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+.rise { animation: riseIn 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) both; }
+
 @media (prefers-reduced-motion: reduce) {
   * { animation-duration: 0.01ms !important; }
+  .card-interactive:hover { transform: none; }
 }

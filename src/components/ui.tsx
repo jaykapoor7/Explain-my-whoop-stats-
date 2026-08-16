@@ -44,7 +44,23 @@ export function Card({ className, children, ...props }: React.HTMLAttributes<HTM
   );
 }
 
-export function Section({ title, sub, action, children, className }: { title: string; sub?: string; action?: ReactNode; children: ReactNode; className?: string }) {
+export function Section({
+  title,
+  sub,
+  action,
+  children,
+  className,
+  icon,
+  accent,
+}: {
+  title: string;
+  sub?: string;
+  action?: ReactNode;
+  children: ReactNode;
+  className?: string;
+  icon?: ReactNode;
+  accent?: string;
+}) {
   return (
     <motion.section
       className={cn("mt-8", className)}
@@ -54,14 +70,142 @@ export function Section({ title, sub, action, children, className }: { title: st
       transition={{ duration: 0.5, ease: [0.22, 0.61, 0.36, 1] }}
     >
       <div className="mb-3.5 flex items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-bold tracking-tight text-ink-50">{title}</h2>
-          {sub && <p className="mt-1 text-[13px] text-ink-400">{sub}</p>}
+        <div className="flex items-center gap-2.5">
+          {icon && accent && <IconBadge color={accent} size={30}>{icon}</IconBadge>}
+          {!icon && accent && <span className="h-5 w-1 rounded-full" style={{ background: accent }} />}
+          <div>
+            <h2 className="font-display text-xl font-bold tracking-tight text-ink-50">{title}</h2>
+            {sub && <p className="mt-1 text-[13px] text-ink-400">{sub}</p>}
+          </div>
         </div>
         {action}
       </div>
       {children}
     </motion.section>
+  );
+}
+
+/** Rounded-square tinted icon holder — the recurring accent glyph used app-wide. */
+export function IconBadge({ color, size = 36, children, className }: { color: string; size?: number; children: ReactNode; className?: string }) {
+  return (
+    <span
+      className={cn("flex shrink-0 items-center justify-center rounded-xl", className)}
+      style={{ width: size, height: size, background: `${color}1c`, color, boxShadow: `inset 0 0 0 1px ${color}22` }}
+    >
+      {children}
+    </span>
+  );
+}
+
+/** A pill toggle / tag. Filled when active, hairline outline when not. */
+export function Chip({
+  label,
+  color = "#a98b3f",
+  active = false,
+  onClick,
+  icon,
+  className,
+}: {
+  label: ReactNode;
+  color?: string;
+  active?: boolean;
+  onClick?: () => void;
+  icon?: ReactNode;
+  className?: string;
+}) {
+  const Comp = onClick ? "button" : "span";
+  return (
+    <Comp
+      onClick={onClick}
+      className={cn(
+        "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-all",
+        onClick && "hover:-translate-y-px",
+        active ? "text-white shadow-sm" : "border border-black/[0.1] text-ink-300 hover:bg-black/[0.04]",
+        className,
+      )}
+      style={active ? { background: color, boxShadow: `0 4px 12px -4px ${color}88` } : undefined}
+    >
+      {icon}
+      {label}
+    </Comp>
+  );
+}
+
+/** Segmented control — a compact set of mutually-exclusive options. */
+export function SegmentedControl<T extends string | number>({
+  value,
+  onChange,
+  options,
+  accent = "#211c14",
+}: {
+  value: T;
+  onChange: (v: T) => void;
+  options: { value: T; label: ReactNode }[];
+  accent?: string;
+}) {
+  return (
+    <div className="inline-flex rounded-full border border-black/[0.08] bg-black/[0.03] p-0.5">
+      {options.map((o) => {
+        const on = o.value === value;
+        return (
+          <button
+            key={String(o.value)}
+            onClick={() => onChange(o.value)}
+            className={cn(
+              "relative rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors",
+              on ? "text-white" : "text-ink-400 hover:text-ink-200",
+            )}
+          >
+            {on && (
+              <motion.span
+                layoutId={`seg-${accent}-${options.map((x) => x.value).join()}`}
+                className="absolute inset-0 rounded-full"
+                style={{ background: accent }}
+                transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              />
+            )}
+            <span className="relative z-10">{o.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A compact labelled stat with an optional accent. */
+export function StatTile({ label, value, unit, color, icon, sub }: { label: string; value: ReactNode; unit?: string; color?: string; icon?: ReactNode; sub?: string }) {
+  return (
+    <div className="card p-4">
+      <div className="flex items-center gap-2">
+        {icon && color && <IconBadge color={color} size={28}>{icon}</IconBadge>}
+        <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-ink-400">{label}</span>
+      </div>
+      <div className="mt-2 flex items-baseline gap-1">
+        <span className="tabular font-display text-2xl font-bold text-ink-50" style={color ? { color } : undefined}>{value}</span>
+        {unit && <span className="text-xs text-ink-400">{unit}</span>}
+      </div>
+      {sub && <p className="mt-0.5 text-[11px] text-ink-500">{sub}</p>}
+    </div>
+  );
+}
+
+/** Diverging bar around a centre line — negative (good) left, positive (bad) right.
+ * Used for Health-Age factor contributions. */
+export function DivergingBar({ value, max, posColor, negColor }: { value: number; max: number; posColor: string; negColor: string }) {
+  const frac = Math.min(1, Math.abs(value) / max);
+  const neg = value < 0;
+  return (
+    <div className="relative h-2 w-full rounded-full bg-black/[0.05]">
+      <span className="absolute left-1/2 top-1/2 h-3 w-px -translate-x-1/2 -translate-y-1/2 bg-black/15" />
+      <motion.div
+        className="absolute top-0 h-full rounded-full"
+        style={{ background: neg ? negColor : posColor, [neg ? "right" : "left"]: "50%" } as React.CSSProperties}
+        initial={{ width: 0 }}
+        whileInView={{ width: `${frac * 50}%` }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.7, ease: [0.22, 0.61, 0.36, 1] }}
+      />
+    </div>
   );
 }
 
