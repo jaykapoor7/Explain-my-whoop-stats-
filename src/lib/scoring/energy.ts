@@ -1,7 +1,7 @@
 import { Contributor, DailySummary, EnergyScore, PersonalBaseline, ScoreResult } from "../types";
 import { clamp, softScore } from "../format";
 import { build, hasHrv, term, unavailable } from "./sleep";
-import { countedActivities } from "./strain";
+import { countedActivities, estimateActivityLoad } from "./strain";
 
 /**
  * EnergyCalculator — deterministic, 0..100.
@@ -46,7 +46,8 @@ export function calcEnergy(
   baseline: PersonalBaseline,
   sleep: ScoreResult,
   recovery: ScoreResult,
-  prevStrain: number
+  prevStrain: number,
+  hr: { restHr?: number; maxHr?: number } = {}
 ): EnergyScore {
   const sleepOk = sleep.available !== false;
   const recoveryOk = recovery.available !== false;
@@ -123,13 +124,31 @@ export function calcEnergy(
   const morningCapacity = softScore(ENERGY_ANCHOR + capacity.reduce((a, c) => a + c.points, 0));
 
   // ---------- Phase 2: spend (today's activity draws it down) ----------
+  // Same personalised load Strain shows for this activity (HR-reserve based,
+  // via the user's own resting/max HR) — spent 1:1, not discounted, so the
+  // number here always matches what "What affected you" shows on Strain.
+  const loadOf = (a: (typeof day.activities)[number]) => (a.avgHr > 0 ? estimateActivityLoad(a.durationMin, a.avgHr, hr.restHr, hr.maxHr) : a.load);
   const spend = countedActivities(day).map((a) => {
-    const pts = Math.round(cl(-a.load * 0.85, -20, 0));
+    const load = loadOf(a);
+    const pts = -Math.round(clamp(load, 0, 21));
     return term(a.type, pts, `${a.durationMin}m${a.avgHr > 0 ? ` at avg ${a.avgHr} bpm` : ""}`, {
       group: "spend",
-      math: `${a.type} carried ${a.load.toFixed(1)} strain; energy spent ≈ load ×0.85 → ${pts}.`,
+      math: `${a.type} carried ${load.toFixed(1)} strain — the same load shown on Strain — spent 1:1 → ${pts}.`,
     });
   });
+  // All-day movement spends too, even with no formal workout — mirrors
+  // Strain's "Daily movement" ambient term so a normal active day (walking,
+  // errands) isn't stuck at a flat 0 spend just because you didn't log a gym
+  // session. Capped low so it can't dominate a real workout day.
+  if (day.steps > 0) {
+    const ambient = -Math.round(clamp(day.steps / 2500, 0, 5));
+    if (ambient !== 0) {
+      spend.push(term("Daily movement", ambient, `${day.steps.toLocaleString()} steps`, {
+        group: "spend",
+        math: `${day.steps.toLocaleString()} steps today — all-day movement spends a little energy even without a workout → ${ambient}.`,
+      }));
+    }
+  }
 
   const terms = [...capacity, ...spend];
   const score = softScore(morningCapacity + spend.reduce((a, c) => a + c.points, 0));

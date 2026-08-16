@@ -115,7 +115,7 @@ export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number }
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
     const recovery = calcRecovery(day, baseline, sleep, prevStrain);
     const strain = calcStrain(day, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });
-    const energy = calcEnergy(day, baseline, sleep, recovery, prevStrain);
+    const energy = calcEnergy(day, baseline, sleep, recovery, prevStrain, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });
 
     // deltas vs yesterday + baselines for display (only between days that both have the pillar)
     if (i > 0) {
