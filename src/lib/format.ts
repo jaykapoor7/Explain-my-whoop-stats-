@@ -11,8 +11,11 @@ export function todayISO(): string {
   return isoOf(d);
 }
 
-export function isoOf(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export function isoOf(d: Date, utc = false): string {
+  const y = utc ? d.getUTCFullYear() : d.getFullYear();
+  const m = utc ? d.getUTCMonth() : d.getMonth();
+  const day = utc ? d.getUTCDate() : d.getDate();
+  return `${y}-${String(m + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
 export function addDays(iso: string, n: number): string {

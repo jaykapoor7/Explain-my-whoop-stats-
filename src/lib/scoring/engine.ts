@@ -100,10 +100,25 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
  * from each day's rolling personal baseline. `opts.now` (epoch ms, real
  * wall-clock time) lets Energy keep draining across the day from ordinary
  * wakefulness — applied ONLY to whichever day is actually today, never to
- * completed history, so past days' scores and baselines stay stable. */
-export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number; now?: number } = {}): ScoredDay[] {
+ * completed history, so past days' scores and baselines stay stable.
+ *
+ * `opts.tzOffsetMin` (minutes east of UTC, e.g. +330 for IST) fixes which
+ * calendar day counts as "today" from the user's perspective. In the browser
+ * that's implicit (isoOf reads local time); server-side callers like the widget
+ * endpoint run in UTC, so they MUST pass the user's offset — otherwise the live
+ * intraday energy decay lands on the wrong day near midnight and the widget's
+ * Energy diverges from the web app's. */
+export function computeScoredDays(
+  days: DailySummary[],
+  opts: { maxHr?: number; now?: number; tzOffsetMin?: number } = {}
+): ScoredDay[] {
   const out: ScoredDay[] = [];
-  const liveDate = opts.now != null ? isoOf(new Date(opts.now)) : null;
+  const liveDate =
+    opts.now == null
+      ? null
+      : opts.tzOffsetMin != null
+        ? isoOf(new Date(opts.now + opts.tzOffsetMin * 60_000), true) // UTC getters on the shifted instant
+        : isoOf(new Date(opts.now));
   for (let i = 0; i < days.length; i++) {
     const raw = days[i];
     // Fill in a personalised sleep need + rolling debt from history, so the

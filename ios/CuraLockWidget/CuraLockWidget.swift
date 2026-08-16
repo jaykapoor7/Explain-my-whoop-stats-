@@ -21,7 +21,15 @@ enum CuraAPI {
     private static let cacheKey = "cura_last_summary"
 
     static func fetch() async -> (CuraSummary?, stale: Bool) {
-        guard let url = URL(string: CuraConfig.summaryURL) else { return (cached(), true) }
+        guard var comps = URLComponents(string: CuraConfig.summaryURL) else { return (cached(), true) }
+        // Send this device's UTC offset (minutes east of UTC) so the server picks
+        // the same "today" the web app does when applying the live energy decay —
+        // otherwise the widget can decide the day in UTC and drift near midnight.
+        let tzMinutes = TimeZone.current.secondsFromGMT() / 60
+        var items = comps.queryItems ?? []
+        items.append(URLQueryItem(name: "tz", value: String(tzMinutes)))
+        comps.queryItems = items
+        guard let url = comps.url else { return (cached(), true) }
         var req = URLRequest(url: url)
         req.setValue("Bearer \(CuraConfig.widgetToken)", forHTTPHeaderField: "Authorization")
         req.timeoutInterval = 12

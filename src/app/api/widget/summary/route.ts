@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { verifyWidgetToken } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { computeScoredDays, nutritionTotals } from "@/lib/scoring/engine";
+import { maxHrFromAge } from "@/lib/scoring/strain";
+import { ageFromBirthYear } from "@/lib/scoring/health-age";
 import type { DailySummary, Meal } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -33,7 +35,14 @@ export async function GET(req: NextRequest) {
   }
   if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, updatedAt: 0 });
 
-  let parsed: { wearableDays?: DailySummary[]; manualDays?: DailySummary[]; meals?: Meal[] };
+  let parsed: {
+    wearableDays?: DailySummary[];
+    manualDays?: DailySummary[];
+    meals?: Meal[];
+    activityResolutions?: Record<string, "confirmed" | "ignored" | "edited">;
+    activityTypeEdits?: Record<string, string>;
+    settings?: { birthYear?: number };
+  };
   try {
     parsed = JSON.parse(snap.data) as typeof parsed;
   } catch {
@@ -41,14 +50,36 @@ export async function GET(req: NextRequest) {
   }
 
   // Reconstruct the merged day stream (manual + wearable, wearable wins per date)
-  // exactly like the web app, then run the shared scoring engine.
+  // EXACTLY like the web app (use-health.ts): merge by date, then apply the
+  // user's activity resolutions and type edits, since those change the strain
+  // load — and therefore the energy spend — the engine computes.
+  const resolutions = parsed.activityResolutions ?? {};
+  const typeEdits = parsed.activityTypeEdits ?? {};
   const byDate = new Map<string, DailySummary>();
   for (const d of parsed.manualDays ?? []) byDate.set(d.date, d);
   for (const d of parsed.wearableDays ?? []) byDate.set(d.date, d);
-  const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-  // Pass real "now" so Energy reflects ordinary wakefulness drain across the
-  // day (not just synced activity) — the whole point of checking the widget.
-  const scored = computeScoredDays(days, { now: Date.now() });
+  const days = [...byDate.values()]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((d) => ({
+      ...d,
+      activities: d.activities.map((a) => {
+        const res = resolutions[a.id];
+        const type = typeEdits[a.id];
+        return res || type ? { ...a, resolved: res, type: type ?? a.type } : a;
+      }),
+    }));
+
+  // Match the web app number-for-number:
+  //  · maxHr from the user's birth year (use-health.ts derives it the same way);
+  //    without it the engine defaults to maxHr 185, shifting every activity load
+  //    and the energy spent on it.
+  //  · tz offset from the widget's ?tz= (minutes east of UTC) so "today" — and
+  //    thus the live intraday energy decay — is picked in the user's local time,
+  //    not the server's UTC. Falls back to UTC if the widget didn't send it.
+  const maxHr = maxHrFromAge(ageFromBirthYear(parsed.settings?.birthYear));
+  const tzRaw = url.searchParams.get("tz");
+  const tzOffsetMin = tzRaw != null && Number.isFinite(Number(tzRaw)) ? Number(tzRaw) : undefined;
+  const scored = computeScoredDays(days, { maxHr, now: Date.now(), tzOffsetMin });
   const last = scored[scored.length - 1];
 
   if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, updatedAt: snap.updatedAt });
