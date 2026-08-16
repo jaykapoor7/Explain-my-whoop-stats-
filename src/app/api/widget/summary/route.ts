@@ -178,37 +178,15 @@ export async function GET(req: NextRequest) {
 
   const num = (r: { available?: boolean; score: number }) => (r.available === false ? null : Math.round(r.score));
 
-  // Energy is a WAKE-PERIOD battery, not a calendar-day score: it resets when
-  // you sleep, not at midnight. So once the clock rolls past 00:00 and the new
-  // day has no sleep/HRV yet, Recovery and Sleep legitimately go null — but you
-  // should still be able to check Energy until you actually sleep. If the picked
-  // day has no Energy, carry the last real Energy forward and keep draining it
-  // for the hours you've been awake (same curve the live score uses).
-  let energyVal = num(last.energy);
-  let energyStatus = last.energy.available === false ? null : last.energy.status;
-  if (energyVal == null) {
-    const eDay = [...scored].reverse().find((d) => d.energy.available !== false);
-    if (eDay?.day.sleep.wake) {
-      // Interpret the wake wall-clock in the user's timezone when we know it.
-      const wakeMs = tzOffsetMin != null
-        ? Date.parse(eDay.day.sleep.wake + "Z") - tzOffsetMin * 60_000
-        : Date.parse(eDay.day.sleep.wake);
-      let v = eDay.energy.score;
-      if (isFinite(wakeMs) && Date.now() > wakeMs) {
-        const hoursAwake = Math.min(18, Math.max(0, (Date.now() - wakeMs) / 3_600_000));
-        v -= Math.round(Math.min(14, Math.max(0, hoursAwake * 0.9)));
-      }
-      energyVal = Math.max(1, Math.min(99, Math.round(v)));
-      energyStatus = energyVal >= 70 ? "Charged" : energyVal >= 45 ? "Steady" : energyVal >= 25 ? "Draining" : "Depleted";
-    }
-  }
-
+  // Energy carries across midnight (it's a wake-period battery, not a calendar
+  // score) — handled centrally in computeScoredDays, so `last.energy` already
+  // holds the carried, still-draining value on a fresh post-midnight day.
   const res = NextResponse.json({
     date: last.day.date,
     recovery: num(last.recovery),
     recoveryStatus: last.recovery.available === false ? null : last.recovery.status,
-    energy: energyVal,
-    energyStatus,
+    energy: num(last.energy),
+    energyStatus: last.energy.available === false ? null : last.energy.status,
     sleep: num(last.sleep),
     sleepStatus: last.sleep.available === false ? null : last.sleep.status,
     sleepHours: last.day.sleep.asleepMin > 0 ? Math.round((last.day.sleep.asleepMin / 60) * 10) / 10 : null,

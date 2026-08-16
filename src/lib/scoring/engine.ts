@@ -3,7 +3,7 @@ import { calcSleep } from "./sleep";
 import { personalSleepNeed, sleepDebtMin } from "./sleep-coach";
 import { calcStrain } from "./strain";
 import { calcRecovery } from "./recovery";
-import { calcEnergy } from "./energy";
+import { calcEnergy, carryEnergy } from "./energy";
 import { isoOf } from "../format";
 
 /** A day with every derived score attached. The unit the whole UI consumes. */
@@ -152,6 +152,20 @@ export function computeScoredDays(
     energy.baseline = Math.round(baseline.energy);
 
     out.push({ day, baseline, sleep, recovery, strain, energy, nutrition: nutritionTotals(day) });
+  }
+
+  // Energy is a wake-period battery: if the most recent day has no morning data
+  // yet (past midnight, not slept since), carry the last real Energy forward and
+  // keep it draining for the hours awake — so "how much do I have left" stays
+  // answerable across midnight instead of blanking. Only for a live "now".
+  if (opts.now != null && out.length && out[out.length - 1].energy.available === false) {
+    const liveDay = out[out.length - 1];
+    for (let j = out.length - 2; j >= 0; j--) {
+      if (out[j].energy.available !== false) {
+        liveDay.energy = carryEnergy(out[j].energy, out[j].day.sleep.wake, opts.now, opts.tzOffsetMin);
+        break;
+      }
+    }
   }
   return out;
 }

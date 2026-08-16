@@ -213,6 +213,47 @@ export function calcEnergy(
   );
 }
 
+/**
+ * Energy is a WAKE-PERIOD battery, not a calendar-day score — it resets when you
+ * sleep, not at midnight. Once the clock rolls past 00:00 and the new day has no
+ * sleep/HRV yet, `calcEnergy` returns "no data" (you can't score a morning you
+ * haven't had). But you should still be able to check how much you have left
+ * until you actually sleep. This carries the last real Energy forward and keeps
+ * it draining for the hours you've been awake — the same curve the live score
+ * uses — so the number stays meaningful across midnight instead of blanking.
+ */
+export function carryEnergy(src: EnergyScore, wakeIso: string | undefined, now: number, tzOffsetMin?: number): EnergyScore {
+  const wakeMs = wakeIso
+    ? tzOffsetMin != null
+      ? Date.parse(wakeIso + "Z") - tzOffsetMin * 60_000
+      : Date.parse(wakeIso)
+    : NaN;
+  let decay = 0;
+  if (isFinite(wakeMs) && now > wakeMs) {
+    const hoursAwake = clamp((now - wakeMs) / 3_600_000, 0, 18);
+    decay = Math.round(clamp(hoursAwake * 0.9, 0, 14));
+  }
+  const contributors = [...src.contributors];
+  if (decay > 0) {
+    contributors.push(
+      term("Time awake", -decay, "carried across midnight", {
+        group: "spend",
+        math: `You haven't slept since your last reading, so yesterday's battery carries over and keeps easing — about ${decay} for the hours you've been awake. It resets to a fresh morning capacity once you sleep.`,
+      }),
+    );
+  }
+  const score = Math.max(1, Math.min(99, Math.round(src.score - decay)));
+  const status = score >= 70 ? "Charged" : score >= 45 ? "Steady" : score >= 25 ? "Draining" : "Depleted";
+  return build(
+    "energy",
+    100,
+    score,
+    contributors,
+    status,
+    "You haven't slept since your last reading, so your energy carries over from then and keeps easing with time awake — it resets to a fresh morning capacity once you sleep.",
+  );
+}
+
 function fmtShort(min: number): string {
   return min >= 60 ? `${Math.floor(min / 60)}h ${Math.round(min % 60)}m` : `${Math.round(min)}m`;
 }
