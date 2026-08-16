@@ -176,9 +176,9 @@ export default function TodayPage() {
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href="/nutrition">
             <Card className="card-interactive h-full p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color={DOMAIN_COLOR.nutrition} size={26}><UtensilsCrossed size={13} /></IconBadge> Nutrition <ChevronRight size={13} className="text-ink-500/50 transition-transform group-hover:translate-x-0.5" /></span>
-                <span className="tabular text-xs text-ink-400">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color={DOMAIN_COLOR.nutrition} size={26}><UtensilsCrossed size={13} /></IconBadge> Nutrition <ChevronRight size={13} className="shrink-0 text-ink-500/50 transition-transform group-hover:translate-x-0.5" /></span>
+                <span className="tabular shrink-0 whitespace-nowrap text-xs text-ink-400">
                   <span className="text-ink-100">{fmtNum(data.todayTotals.kcal)}</span> / {fmtNum(kcalGoal)} kcal
                 </span>
               </div>
@@ -196,11 +196,11 @@ export default function TodayPage() {
           {t && (
             <Link href="/strain">
               <Card className="card-interactive h-full p-4">
-                <div className="flex items-baseline justify-between">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100">
-                    <IconBadge color={DOMAIN_COLOR.strain} size={26}><Footprints size={13} /></IconBadge> Activity <ChevronRight size={13} className="text-ink-500/50" />
+                    <IconBadge color={DOMAIN_COLOR.strain} size={26}><Footprints size={13} /></IconBadge> Activity <ChevronRight size={13} className="shrink-0 text-ink-500/50" />
                   </span>
-                  <span className="tabular text-xs text-ink-400">
+                  <span className="tabular shrink-0 whitespace-nowrap text-xs text-ink-400">
                     <span className="text-ink-100">{fmtNum(t.day.steps)}</span> / {fmtNum(stepsGoal)} steps
                   </span>
                 </div>
@@ -217,9 +217,9 @@ export default function TodayPage() {
 
           <Link href="/medication">
             <Card className="card-interactive h-full p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#e089d2" size={26}><Pill size={13} /></IconBadge> Medication <ChevronRight size={13} className="text-ink-500/50" /></span>
-                <span className="tabular text-xs text-ink-400">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#e089d2" size={26}><Pill size={13} /></IconBadge> Medication <ChevronRight size={13} className="shrink-0 text-ink-500/50" /></span>
+                <span className="tabular shrink-0 whitespace-nowrap text-xs text-ink-400">
                   {meds.length ? (
                     <>
                       <span className="text-ink-100">{medsTaken}</span> / {meds.length} taken
@@ -240,9 +240,9 @@ export default function TodayPage() {
 
           <Link href="/journal">
             <Card className="card-interactive h-full p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#a98b3f" size={26}><NotebookPen size={13} /></IconBadge> Mood &amp; journal <ChevronRight size={13} className="text-ink-500/50" /></span>
-                <span className="tabular text-xs text-ink-400">
+              <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#a98b3f" size={26}><NotebookPen size={13} /></IconBadge> Mood &amp; journal <ChevronRight size={13} className="shrink-0 text-ink-500/50" /></span>
+                <span className="tabular shrink-0 whitespace-nowrap text-xs text-ink-400">
                   {mood !== undefined ? <><span className="text-ink-100">{mood}</span> / 10</> : "not logged"}
                 </span>
               </div>
@@ -259,9 +259,9 @@ export default function TodayPage() {
 
       <Section className="mt-0" title="Plan" accent="#5b6fd6" icon={<ListChecks size={15} />} action={<Link href="/planner" className="text-xs font-medium text-ink-300 hover:text-ink-100">Planner →</Link>}>
         <Card className="p-4">
-          <div className="flex items-baseline justify-between">
+          <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
             <span className="text-[13px] font-semibold text-ink-100">Today</span>
-            <span className="tabular text-xs text-ink-400">
+            <span className="tabular shrink-0 whitespace-nowrap text-xs text-ink-400">
               <span className="text-ink-100">{tasksDone}</span> / {tasksToday.length} done
             </span>
           </div>
