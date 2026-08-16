@@ -149,8 +149,10 @@ export async function GET(req: NextRequest) {
     return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
   };
   const medOverrides = parsed.medOverrides ?? {};
+  const localDow = new Date(localToday + "T12:00:00Z").getUTCDay(); // 0=Sun … 6=Sat
   const meds = (parsed.medications ?? [])
     .filter((med) => med.startDate <= localToday && (!med.endDate || med.endDate >= localToday))
+    .filter((med) => med.frequency !== "weekly" || (med.days ?? []).includes(localDow))
     .flatMap((med) => {
       const times = med.frequency === "as-needed" ? [] : med.times.length ? med.times : ["08:00"];
       return times.map((time) => {

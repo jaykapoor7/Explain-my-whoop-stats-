@@ -119,7 +119,7 @@ export interface NutritionTotals {
 
 // ---------------- Medication ----------------
 
-export type MedFrequency = "once" | "twice" | "thrice" | "as-needed";
+export type MedFrequency = "once" | "twice" | "thrice" | "weekly" | "as-needed";
 
 export interface Medication {
   id: string;
@@ -127,6 +127,8 @@ export interface Medication {
   dose: string; // "10 mg"
   frequency: MedFrequency;
   times: string[]; // ["08:00", "20:00"]
+  /** For "weekly" meds: which weekdays it's taken (0 = Sun … 6 = Sat). */
+  days?: number[];
   withFood: "with" | "without" | "either";
   startDate: ISODate;
   endDate?: ISODate;

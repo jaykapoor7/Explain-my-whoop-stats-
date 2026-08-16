@@ -18,12 +18,17 @@ const STATUS_META: Record<MedStatus, { label: string; color: string }> = {
   pending: { label: "Pending", color: "#6b7482" },
 };
 
+const DOW_SHORT = ["S", "M", "T", "W", "T", "F", "S"];
+const DOW_NAME = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
 function AddMed({ onClose }: { onClose: () => void }) {
   const addMedication = useApp((s) => s.addMedication);
-  const [f, setF] = useState({ name: "", dose: "", frequency: "once" as MedFrequency, time1: "08:00", time2: "20:00", time3: "14:00", withFood: "either" as Medication["withFood"], notes: "" });
+  const [f, setF] = useState({ name: "", dose: "", frequency: "once" as MedFrequency, time1: "08:00", time2: "20:00", time3: "14:00", days: [new Date().getDay()] as number[], withFood: "either" as Medication["withFood"], notes: "" });
 
   const times =
-    f.frequency === "once" ? [f.time1] : f.frequency === "twice" ? [f.time1, f.time2] : f.frequency === "thrice" ? [f.time1, f.time3, f.time2] : [];
+    f.frequency === "as-needed" ? [] : f.frequency === "twice" ? [f.time1, f.time2] : f.frequency === "thrice" ? [f.time1, f.time3, f.time2] : [f.time1];
+  const toggleDay = (d: number) =>
+    setF((s) => ({ ...s, days: s.days.includes(d) ? s.days.filter((x) => x !== d) : [...s.days, d].sort((a, b) => a - b) }));
 
   return (
     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}>
@@ -39,6 +44,7 @@ function AddMed({ onClose }: { onClose: () => void }) {
             <option value="once">Once daily</option>
             <option value="twice">Twice daily</option>
             <option value="thrice">Three times daily</option>
+            <option value="weekly">Once a week</option>
             <option value="as-needed">As needed</option>
           </select>
           <select value={f.withFood} onChange={(e) => setF({ ...f, withFood: e.target.value as Medication["withFood"] })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none">
@@ -55,11 +61,33 @@ function AddMed({ onClose }: { onClose: () => void }) {
           {f.frequency === "thrice" && (
             <input type="time" value={f.time3} onChange={(e) => setF({ ...f, time3: e.target.value })} className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none [color-scheme:light]" />
           )}
+          {f.frequency === "weekly" && (
+            <div className="sm:col-span-2">
+              <span className="text-[11px] font-medium uppercase tracking-wide text-ink-500">Repeat on</span>
+              <div className="mt-1.5 flex gap-1.5">
+                {DOW_SHORT.map((d, i) => {
+                  const on = f.days.includes(i);
+                  return (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => toggleDay(i)}
+                      aria-label={DOW_NAME[i]}
+                      className={cn("flex h-9 flex-1 items-center justify-center rounded-lg text-xs font-semibold transition", on ? "text-white" : "border border-black/12 text-ink-400 hover:bg-black/[0.05]")}
+                      style={on ? { background: ACCENT } : undefined}
+                    >
+                      {d}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
           <input value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} placeholder="Notes (optional)" className="h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none sm:col-span-2" />
         </div>
         <div className="mt-3 flex justify-end">
           <button
-            disabled={!f.name.trim()}
+            disabled={!f.name.trim() || (f.frequency === "weekly" && !f.days.length)}
             onClick={() => {
               addMedication({
                 id: `med-${Date.now()}`,
@@ -67,6 +95,7 @@ function AddMed({ onClose }: { onClose: () => void }) {
                 dose: f.dose.trim() || "—",
                 frequency: f.frequency,
                 times,
+                days: f.frequency === "weekly" ? f.days : undefined,
                 withFood: f.withFood,
                 startDate: todayISO(),
                 notes: f.notes.trim() || undefined,
@@ -232,7 +261,11 @@ export default function MedicationPage() {
                     <div>
                       <div className="text-sm font-semibold text-ink-100">{m.name}</div>
                       <div className="mt-1 text-xs text-ink-400">
-                        {m.dose} · {m.frequency === "as-needed" ? "as needed" : m.times.map(fmtTime).join(", ")}
+                        {m.dose} · {m.frequency === "as-needed"
+                          ? "as needed"
+                          : m.frequency === "weekly"
+                            ? `${(m.days ?? []).length ? (m.days ?? []).map((d) => DOW_NAME[d]).join(", ") : "weekly"} · ${m.times.map(fmtTime).join(", ")}`
+                            : m.times.map(fmtTime).join(", ")}
                       </div>
                       {m.notes && <div className="mt-1.5 text-xs text-ink-500">{m.notes}</div>}
                     </div>

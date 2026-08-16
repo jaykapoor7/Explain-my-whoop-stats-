@@ -32,7 +32,9 @@ export function deriveMedEvents(meds: Medication[], date: string, overrides: Rec
   const out: MedicationEvent[] = [];
   for (const med of meds) {
     if (med.startDate > date || (med.endDate && med.endDate < date)) continue;
-    const times = med.frequency === "as-needed" ? [] : med.times.length ? med.times : ["08:00"];
+    // Weekly meds only fire on their chosen weekdays.
+    const onDay = med.frequency !== "weekly" || (med.days ?? []).includes(new Date(date + "T12:00:00").getDay());
+    const times = med.frequency === "as-needed" || !onDay ? [] : med.times.length ? med.times : ["08:00"];
     for (const time of times) {
       const id = `${date}-${med.id}-${time}`;
       const o = overrides[id];
