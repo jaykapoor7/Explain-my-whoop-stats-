@@ -19,9 +19,14 @@ struct CuraSummary: Codable {
 
 enum CuraAPI {
     private static let cacheKey = "cura_last_summary"
+    private static let lastOkKey = "cura_last_ok_at"
+    // Only surface the "offline" indicator after we've been unable to reach CURA
+    // for this long. A single slow request (e.g. a serverless cold start) should
+    // NOT flip the widget to offline while we still have recent good data.
+    private static let offlineAfter: TimeInterval = 12 * 60 * 60
 
     static func fetch() async -> (CuraSummary?, stale: Bool) {
-        guard var comps = URLComponents(string: CuraConfig.summaryURL) else { return (cached(), true) }
+        guard var comps = URLComponents(string: CuraConfig.summaryURL) else { return staleResult() }
         // Send this device's UTC offset (minutes east of UTC) so the server picks
         // the same "today" the web app does when applying the live energy decay —
         // otherwise the widget can decide the day in UTC and drift near midnight.
@@ -29,19 +34,36 @@ enum CuraAPI {
         var items = comps.queryItems ?? []
         items.append(URLQueryItem(name: "tz", value: String(tzMinutes)))
         comps.queryItems = items
-        guard let url = comps.url else { return (cached(), true) }
+        guard let url = comps.url else { return staleResult() }
         var req = URLRequest(url: url)
         req.setValue("Bearer \(CuraConfig.widgetToken)", forHTTPHeaderField: "Authorization")
-        req.timeoutInterval = 12
-        do {
-            let (data, resp) = try await URLSession.shared.data(for: req)
-            guard (resp as? HTTPURLResponse)?.statusCode == 200 else { return (cached(), true) }
-            let summary = try JSONDecoder().decode(CuraSummary.self, from: data)
-            UserDefaults.standard.set(data, forKey: cacheKey) // cache latest for offline
-            return (summary, false)
-        } catch {
-            return (cached(), true) // offline / error → show last known values
+        req.timeoutInterval = 25 // serverless cold starts can take a while
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+
+        // Try twice — a transient failure or a cold backend shouldn't drop us to
+        // "offline" when a quick retry usually succeeds.
+        for attempt in 0..<2 {
+            do {
+                let (data, resp) = try await URLSession.shared.data(for: req)
+                guard (resp as? HTTPURLResponse)?.statusCode == 200 else { throw URLError(.badServerResponse) }
+                let summary = try JSONDecoder().decode(CuraSummary.self, from: data)
+                UserDefaults.standard.set(data, forKey: cacheKey)          // cache latest
+                UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastOkKey)
+                return (summary, false)
+            } catch {
+                if attempt == 0 { try? await Task.sleep(nanoseconds: 800_000_000) } // 0.8s backoff
+            }
         }
+        // Both attempts failed: keep showing the last known values, and only mark
+        // the widget "offline" if it's been genuinely unreachable for a long time.
+        return staleResult()
+    }
+
+    /// Cached values, flagged offline only if we haven't succeeded in a long time.
+    private static func staleResult() -> (CuraSummary?, stale: Bool) {
+        let last = UserDefaults.standard.object(forKey: lastOkKey) as? Double
+        let lostForAWhile = last == nil || (Date().timeIntervalSince1970 - last!) > offlineAfter
+        return (cached(), lostForAWhile)
     }
 
     private static func cached() -> CuraSummary? {
@@ -74,8 +96,11 @@ struct CuraProvider: TimelineProvider {
         Task {
             let (summary, stale) = await CuraAPI.fetch()
             let entry = CuraEntry(date: Date(), summary: summary, stale: stale)
-            // Refresh roughly every 30 minutes; scores only change on sync.
-            let next = Calendar.current.date(byAdding: .minute, value: 30, to: Date()) ?? Date().addingTimeInterval(1800)
+            // Normally every ~30 min (scores only change on sync, and iOS budgets
+            // widget refreshes). If we're showing offline, try again sooner to
+            // recover quickly once connectivity/the backend is back.
+            let minutes = stale ? 15 : 30
+            let next = Calendar.current.date(byAdding: .minute, value: minutes, to: Date()) ?? Date().addingTimeInterval(TimeInterval(minutes * 60))
             completion(Timeline(entries: [entry], policy: .after(next)))
         }
     }

@@ -28,12 +28,23 @@ export async function GET(req: NextRequest) {
   const sub = verifyWidgetToken(bearer || url.searchParams.get("token") || undefined);
   if (!sub) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
 
+  // Read the snapshot, retrying once on a transient storage error. Managed
+  // Postgres poolers (Supabase/pgbouncer) occasionally drop a cold connection;
+  // a bare 500 here makes the widget flip to "offline", so a quick retry keeps
+  // it showing real data instead.
   let snap: { data: string; updatedAt: number } | null = null;
-  try {
-    snap = await db().getSnapshot(sub);
-  } catch {
-    return NextResponse.json({ error: "storage" }, { status: 500 });
+  let storageErr = false;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      snap = await db().getSnapshot(sub);
+      storageErr = false;
+      break;
+    } catch {
+      storageErr = true;
+      if (attempt === 0) await new Promise((r) => setTimeout(r, 250));
+    }
   }
+  if (storageErr) return NextResponse.json({ error: "storage" }, { status: 503 });
   if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, medications: [], updatedAt: 0 });
 
   let parsed: {
