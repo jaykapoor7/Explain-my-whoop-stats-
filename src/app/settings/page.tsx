@@ -53,7 +53,7 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title="Settings" sub="Your profile, connected data and privacy — all in one place." />
+      <PageHeader back title="Settings" sub="Your profile, connected data and privacy — all in one place." />
 
       {notice?.kind === "setup" && (
         <Card className="mt-5 flex items-start gap-3 border border-warn/25 bg-warn/[0.06] p-4">

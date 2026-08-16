@@ -201,6 +201,7 @@ export default function NutritionPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
+        back
         title="Nutrition"
         sub="Calories and macros against your goals."
         right={

@@ -200,7 +200,7 @@ export default function FriendsPage() {
   if (!account.signedIn) {
     return (
       <div className="animate-fadeUp">
-        <PageHeader title="Friends" sub="Form a group and compete on recovery, sleep and strain — on any wearable." />
+        <PageHeader back title="Friends" sub="Form a group and compete on recovery, sleep and strain — on any wearable." />
         <Card className="mt-5 p-8 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-recovery/12 text-recovery"><Trophy size={22} /></span>
           <h3 className="mt-4 font-display text-lg font-bold text-ink-50">Sign in to compete</h3>
@@ -220,6 +220,7 @@ export default function FriendsPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
+        back
         title="Friends"
         sub="Form a group and compete on recovery, sleep and strain — cross-platform."
         right={

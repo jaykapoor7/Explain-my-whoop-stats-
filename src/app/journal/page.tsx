@@ -118,7 +118,7 @@ export default function JournalPage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title="Journal" sub="Log the life around the data — it becomes your personal experiment system." />
+      <PageHeader back title="Journal" sub="Log the life around the data — it becomes your personal experiment system." />
 
       {/* Week date strip */}
       <div className="mt-5 flex items-center gap-2">

@@ -162,7 +162,7 @@ export default function GoalsPage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader title="Goals" sub={`${hit} of ${data.goals.length} on track — targets feed Today, Nutrition and the Planner.`} />
+      <PageHeader back title="Goals" sub={`${hit} of ${data.goals.length} on track — targets feed Today, Nutrition and the Planner.`} />
 
       <Card className="tint mt-5 flex items-center gap-4" style={{ ["--accent" as string]: "#13b57e" }}>
         <IconBadge color="#13b57e" size={44}><Target size={20} /></IconBadge>

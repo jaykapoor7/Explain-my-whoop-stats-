@@ -138,6 +138,7 @@ export default function MedicationPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
+        back
         title="Medication"
         sub="Schedule, adherence and history — treated as sensitive data."
         right={

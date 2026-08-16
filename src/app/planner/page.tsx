@@ -278,6 +278,7 @@ export default function PlannerPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
+        back
         title="Planner"
         sub="Plan your days around your body — with a to-do list and WhatsApp reminders."
         right={

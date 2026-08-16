@@ -54,7 +54,7 @@ export default function TrendsPage() {
   if (!data.days.length)
     return (
       <div className="animate-fadeUp">
-        <PageHeader title="Trends & Insights" sub="What is changing — and what appears to affect you." />
+        <PageHeader back title="Trends & Insights" sub="What is changing — and what appears to affect you." />
         <ConnectGate title="Trends" />
       </div>
     );
@@ -69,6 +69,7 @@ export default function TrendsPage() {
   return (
     <div className="animate-fadeUp">
       <PageHeader
+        back
         title="Trends & Insights"
         sub="What is changing — and what appears to affect you."
         right={
