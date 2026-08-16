@@ -1,6 +1,7 @@
 "use client";
 
 import { ReactNode, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useInView } from "framer-motion";
@@ -522,7 +523,9 @@ export function BackButton({ className }: { className?: string }) {
 export function FloatingBack() {
   const router = useRouter();
   const [show, setShow] = useState(false);
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setShow(window.scrollY > 140);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
@@ -532,7 +535,11 @@ export function FloatingBack() {
     if (typeof window !== "undefined" && window.history.length > 1) router.back();
     else router.push("/today");
   };
-  return (
+  // Portal to <body> so it escapes the page's transformed (animate-fadeUp)
+  // ancestor — otherwise `position: fixed` anchors to that element and scrolls
+  // away with the page instead of staying pinned to the viewport.
+  if (!mounted) return null;
+  return createPortal(
     <AnimatePresence>
       {show && (
         <motion.button
@@ -550,7 +557,8 @@ export function FloatingBack() {
           Back
         </motion.button>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 
