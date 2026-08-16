@@ -516,10 +516,49 @@ export function BackButton({ className }: { className?: string }) {
   );
 }
 
+/** A back control that follows you down the page: hidden at the top (the inline
+ * BackButton covers that), then floats in fixed at the top-left once you scroll
+ * past the header, so you can leave a long detail page from anywhere. */
+export function FloatingBack() {
+  const router = useRouter();
+  const [show, setShow] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setShow(window.scrollY > 140);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+  const goBack = () => {
+    if (typeof window !== "undefined" && window.history.length > 1) router.back();
+    else router.push("/today");
+  };
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.button
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.2, ease: [0.22, 0.61, 0.36, 1] }}
+          onClick={goBack}
+          aria-label="Go back"
+          className="fixed left-4 top-4 z-30 flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-ink-900/85 py-1.5 pl-1.5 pr-3.5 text-[13px] font-medium text-ink-200 shadow-lift backdrop-blur-md transition-colors hover:text-ink-50 lg:left-[15.25rem]"
+        >
+          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-black/[0.06]">
+            <ArrowLeft size={14} />
+          </span>
+          Back
+        </motion.button>
+      )}
+    </AnimatePresence>
+  );
+}
+
 export function PageHeader({ title, sub, right, back }: { title: string; sub?: string; right?: ReactNode; back?: boolean }) {
   return (
     <div>
       {back && <BackButton className="mb-3" />}
+      {back && <FloatingBack />}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[2.5rem]">{title}</h1>
