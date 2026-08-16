@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, BellOff, Check, ChevronLeft, ChevronRight, ListTodo, Plus, Send, Trash2, X } from "lucide-react";
-import { Card, PageHeader, Section, SkeletonPage, StatusPill } from "@/components/ui";
+import { Bell, BellOff, Check, ChevronLeft, ChevronRight, HeartPulse, ListTodo, Plus, Send, Trash2, X } from "lucide-react";
+import { Card, IconBadge, PageHeader, Section, SkeletonPage } from "@/components/ui";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { addDays, cn, fmtDate, fmtTime, isoOf, relativeDay, todayISO } from "@/lib/format";
@@ -17,6 +17,8 @@ const KIND_LABEL: Record<TaskKind, string> = {
   task: "Task", class: "Class", exam: "Exam", assignment: "Assignment",
   work: "Work", event: "Event", workout: "Workout",
 };
+const PRIORITY_COLOR: Record<TaskPriority, string> = { high: "#ef5a45", medium: "#eb9d18", low: "#a4977f" };
+const ACCENT = "#5b6fd6";
 
 /** Build a wa.me link. With a saved number it opens that chat; otherwise the WhatsApp share sheet. */
 function waLink(text: string, number?: string) {
@@ -39,6 +41,17 @@ function planMessage(dateLabel: string, scheduled: PlannerTask[], todos: Planner
     for (const t of openTodos) lines.push(`▫️ ${t.title}`);
   }
   return lines.join("\n");
+}
+
+function MetaChip({ children, color }: { children: React.ReactNode; color?: string }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[10px] font-medium"
+      style={color ? { background: `${color}1c`, color } : { background: "rgba(0,0,0,0.05)", color: "#83765f" }}
+    >
+      {children}
+    </span>
+  );
 }
 
 function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
@@ -67,14 +80,17 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
     onClose();
   };
 
-  const field = "h-10 rounded-xl border border-black/10 bg-ink-875 px-3 text-sm text-ink-100 outline-none focus:border-black/25";
+  const field = "field h-10 px-3 text-sm";
 
   return (
-    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+    <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden" style={{ ["--accent" as string]: ACCENT }}>
       <Card className="mb-4">
         <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold text-ink-100">New {asTodo ? "to-do" : "item"}</span>
-          <button onClick={onClose} className="text-ink-400" aria-label="Close"><X size={16} /></button>
+          <span className="flex items-center gap-2 text-sm font-semibold text-ink-100">
+            <IconBadge color={ACCENT} size={28}><Plus size={15} /></IconBadge>
+            New {asTodo ? "to-do" : "item"}
+          </span>
+          <button onClick={onClose} className="text-ink-400 hover:text-ink-100" aria-label="Close"><X size={16} /></button>
         </div>
         <input
           autoFocus
@@ -108,7 +124,7 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
             <input type="checkbox" checked={asTodo} onChange={(e) => setAsTodo(e.target.checked)} className="accent-[#5b6fd6]" />
             Add to to-do list (no date)
           </label>
-          <button onClick={submit} disabled={!title.trim()} className="rounded-full bg-[#5b6fd6] px-4 py-2 text-xs font-semibold text-white disabled:opacity-40">
+          <button onClick={submit} disabled={!title.trim()} className="rounded-full px-4 py-2 text-xs font-semibold text-white disabled:opacity-40" style={{ background: ACCENT }}>
             Add
           </button>
         </div>
@@ -117,40 +133,73 @@ function AddTask({ date, onClose }: { date: string; onClose: () => void }) {
   );
 }
 
-function TaskRow({ t, onWhatsApp }: { t: PlannerTask; onWhatsApp?: () => void }) {
+/** A checkbox that fills with the accent when done. */
+function TaskCheck({ done, onToggle, color = "#13b57e" }: { done: boolean; onToggle: () => void; color?: string }) {
+  return (
+    <button
+      onClick={onToggle}
+      className={cn("flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition", done ? "border-transparent text-[#241f18]" : "border-black/25 hover:border-black/45")}
+      style={done ? { background: color } : undefined}
+      aria-label="Toggle done"
+    >
+      {done && <Check size={13} strokeWidth={3} />}
+    </button>
+  );
+}
+
+/** One row on the day's agenda timeline. */
+function TimelineItem({ t, last, whatsappNumber }: { t: PlannerTask; last: boolean; whatsappNumber?: string }) {
   const toggleTask = useApp((s) => s.toggleTask);
   const removeTask = useApp((s) => s.removeTask);
+  const c = KIND_COLOR[t.kind];
   return (
-    <Card className="flex items-center gap-3 p-3.5">
-      <button
-        onClick={() => toggleTask(t.id, !t.done)}
-        className={cn(
-          "flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition",
-          t.done ? "border-transparent bg-good text-[#241f18]" : "border-black/25 hover:border-black/45"
-        )}
-        aria-label="Toggle done"
-      >
-        {t.done && <Check size={13} strokeWidth={3} />}
-      </button>
-      <div className="min-w-0 flex-1">
-        <div className={cn("truncate text-sm", t.done ? "text-ink-500 line-through" : "text-ink-100")}>{t.title}</div>
-        <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[11px] text-ink-500">
-          <span className="rounded-full px-1.5 py-px font-medium" style={{ background: `${KIND_COLOR[t.kind]}1f`, color: KIND_COLOR[t.kind] }}>
-            {KIND_LABEL[t.kind]}
-          </span>
-          {t.start && <span className="tabular">{fmtTime(t.start)}</span>}
-          {t.estMin ? <span>{t.estMin}m</span> : null}
-          {t.priority === "high" && <span className="font-medium text-bad">high</span>}
-        </div>
+    <div className="flex gap-3">
+      <div className="tabular w-16 shrink-0 pt-3.5 text-right text-[11px] font-semibold text-ink-400">{t.start ? fmtTime(t.start) : "—"}</div>
+      <div className="relative flex flex-col items-center pt-4">
+        <span className="h-3 w-3 shrink-0 rounded-full ring-4 ring-[#faf6ee]" style={{ background: c }} />
+        {!last && <span className="mt-1 w-px flex-1 bg-black/[0.09]" />}
       </div>
-      {onWhatsApp && (
-        <button onClick={onWhatsApp} className="text-ink-500 transition-colors hover:text-[#25D366]" aria-label="Send to WhatsApp" title="Send to WhatsApp">
+      <Card className="mb-2.5 flex flex-1 items-center gap-3 p-3.5">
+        <TaskCheck done={t.done} onToggle={() => toggleTask(t.id, !t.done)} color={c} />
+        <div className="min-w-0 flex-1">
+          <div className={cn("truncate text-sm font-medium", t.done ? "text-ink-500 line-through" : "text-ink-100")}>{t.title}</div>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5">
+            <MetaChip color={c}>{KIND_LABEL[t.kind]}</MetaChip>
+            {t.estMin ? <MetaChip>{t.estMin}m</MetaChip> : null}
+            {t.priority === "high" && <MetaChip color="#ef5a45">high</MetaChip>}
+          </div>
+        </div>
+        <button onClick={() => window.open(waLink(`▫️ ${t.start ? fmtTime(t.start) + " · " : ""}${t.title}`, whatsappNumber), "_blank")} className="text-ink-400 transition-colors hover:text-[#25D366]" aria-label="Send to WhatsApp" title="Send to WhatsApp">
           <Send size={14} />
         </button>
-      )}
-      <button onClick={() => removeTask(t.id)} className="text-ink-500 hover:text-bad" aria-label="Delete">
-        <Trash2 size={14} />
-      </button>
+        <button onClick={() => removeTask(t.id)} className="text-ink-400 hover:text-bad" aria-label="Delete">
+          <Trash2 size={14} />
+        </button>
+      </Card>
+    </div>
+  );
+}
+
+/** A to-do row with a kind/priority accent bar. */
+function TodoRow({ t }: { t: PlannerTask }) {
+  const toggleTask = useApp((s) => s.toggleTask);
+  const removeTask = useApp((s) => s.removeTask);
+  const c = PRIORITY_COLOR[t.priority];
+  return (
+    <Card className="flex items-center gap-3 overflow-hidden p-0">
+      <span className="h-full w-1 self-stretch" style={{ background: t.done ? "rgba(0,0,0,0.08)" : c }} />
+      <div className="flex flex-1 items-center gap-3 py-3 pr-3.5">
+        <TaskCheck done={t.done} onToggle={() => toggleTask(t.id, !t.done)} />
+        <div className="min-w-0 flex-1">
+          <div className={cn("truncate text-sm", t.done ? "text-ink-500 line-through" : "text-ink-100")}>{t.title}</div>
+          {t.priority !== "medium" && !t.done && (
+            <div className="mt-1"><MetaChip color={c}>{t.priority} priority</MetaChip></div>
+          )}
+        </div>
+        <button onClick={() => removeTask(t.id)} className="text-ink-400 hover:text-bad" aria-label="Delete">
+          <Trash2 size={14} />
+        </button>
+      </div>
     </Card>
   );
 }
@@ -211,7 +260,10 @@ export default function PlannerPage() {
         : rec >= 34
           ? "Moderate recovery — a normal workload is fine; keep the hardest block before evening."
           : "Low recovery — shorter blocks today, and swap intense training for a walk.";
+  const recColor = rec === undefined ? "#a4977f" : rec >= 67 ? "#13b57e" : rec >= 34 ? "#eb9d18" : "#ef5a45";
 
+  const doneCount = scheduled.filter((t) => t.done).length;
+  const openTodos = todos.filter((t) => !t.done).length;
   const dayLabel = fmtDate(selected, { weekday: "short", month: "short", day: "numeric" });
   const sendDay = () => window.open(waLink(planMessage(dayLabel, scheduled, todos), settings.whatsappNumber), "_blank");
 
@@ -237,21 +289,30 @@ export default function PlannerPage() {
             <button onClick={sendDay} className="flex items-center gap-1.5 rounded-full border border-[#25D366]/40 bg-[#25D366]/10 px-3 py-2 text-xs font-semibold text-[#1c9e4b]">
               <Send size={13} /> <span className="hidden sm:inline">WhatsApp</span>
             </button>
-            <button onClick={() => setAdding((v) => !v)} className="flex items-center gap-1.5 rounded-full bg-[#5b6fd6] px-3.5 py-2 text-xs font-semibold text-white">
+            <button onClick={() => setAdding((v) => !v)} className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-xs font-semibold text-white" style={{ background: ACCENT }}>
               <Plus size={14} /> Add
             </button>
           </div>
         }
       />
 
-      <Card className="mt-5 flex items-start gap-3 p-4">
-        <StatusPill text={rec === undefined ? "No data" : `Recovery ${rec}%`} color="#13b57e" />
-        <p className="text-xs leading-relaxed text-ink-300">{suggestion}</p>
+      {/* Recovery-aware banner */}
+      <Card className="tint mt-5 flex items-center gap-4 p-4" style={{ ["--accent" as string]: recColor }}>
+        <IconBadge color={recColor} size={44}><HeartPulse size={20} /></IconBadge>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="text-sm font-semibold text-ink-100">{rec === undefined ? "No recovery data" : `Recovery ${rec}%`}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wide" style={{ color: recColor }}>
+              {rec === undefined ? "" : rec >= 67 ? "Primed" : rec >= 34 ? "Steady" : "Take it easy"}
+            </span>
+          </div>
+          <p className="mt-0.5 text-xs leading-relaxed text-ink-400">{suggestion}</p>
+        </div>
       </Card>
 
       {/* Week date strip */}
       <div className="mt-4 flex items-center gap-2">
-        <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 hover:text-ink-100" aria-label="Previous week">
+        <button onClick={() => setWeekStart(addDays(weekStart, -7))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 transition hover:bg-black/[0.04] hover:text-ink-100" aria-label="Previous week">
           <ChevronLeft size={16} />
         </button>
         <div className="grid flex-1 grid-cols-7 gap-1.5">
@@ -263,19 +324,17 @@ export default function PlannerPage() {
               <button
                 key={d}
                 onClick={() => setSelected(d)}
-                className={cn(
-                  "flex flex-col items-center rounded-xl border py-2 transition",
-                  isSel ? "border-transparent bg-[#5b6fd6] text-white shadow-lift" : "border-black/[0.06] text-ink-300 hover:bg-black/[0.03]"
-                )}
+                className={cn("flex flex-col items-center rounded-xl border py-2 transition", isSel ? "border-transparent text-white shadow-lift" : "border-black/[0.06] text-ink-300 hover:bg-black/[0.03]")}
+                style={isSel ? { background: ACCENT } : undefined}
               >
                 <span className={cn("text-[10px] font-medium uppercase", isSel ? "text-white/80" : "text-ink-500")}>{fmtDate(d, { weekday: "short" })}</span>
-                <span className={cn("tabular mt-0.5 text-[15px] font-bold", isToday && !isSel && "text-[#5b6fd6]")}>{fmtDate(d, { day: "numeric" })}</span>
-                <span className={cn("mt-1 h-1 w-1 rounded-full", n ? (isSel ? "bg-white" : "bg-[#5b6fd6]") : "bg-transparent")} />
+                <span className="tabular mt-0.5 text-[15px] font-bold" style={isToday && !isSel ? { color: ACCENT } : undefined}>{fmtDate(d, { day: "numeric" })}</span>
+                <span className={cn("mt-1 h-1 w-1 rounded-full", n ? (isSel ? "bg-white" : "") : "bg-transparent")} style={n && !isSel ? { background: ACCENT } : undefined} />
               </button>
             );
           })}
         </div>
-        <button onClick={() => setWeekStart(addDays(weekStart, 7))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 hover:text-ink-100" aria-label="Next week">
+        <button onClick={() => setWeekStart(addDays(weekStart, 7))} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-black/[0.08] text-ink-400 transition hover:bg-black/[0.04] hover:text-ink-100" aria-label="Next week">
           <ChevronRight size={16} />
         </button>
       </div>
@@ -290,12 +349,13 @@ export default function PlannerPage() {
           className="mt-6"
           title={`Schedule · ${relativeDay(selected)}`}
           sub={fmtDate(selected, { weekday: "long", month: "long", day: "numeric" })}
-          action={scheduled.length ? <button onClick={sendDay} className="flex items-center gap-1 text-xs font-medium text-[#1c9e4b]"><Send size={12} /> Send</button> : undefined}
+          accent={ACCENT}
+          action={scheduled.length ? <span className="tabular rounded-full bg-black/[0.04] px-2.5 py-1 text-[11px] font-semibold text-ink-400">{doneCount}/{scheduled.length} done</span> : undefined}
         >
           {scheduled.length ? (
-            <div className="space-y-2">
-              {scheduled.map((t) => (
-                <TaskRow key={t.id} t={t} onWhatsApp={() => window.open(waLink(`▫️ ${t.start ? fmtTime(t.start) + " · " : ""}${t.title}`, settings.whatsappNumber), "_blank")} />
+            <div>
+              {scheduled.map((t, i) => (
+                <TimelineItem key={t.id} t={t} last={i === scheduled.length - 1} whatsappNumber={settings.whatsappNumber} />
               ))}
             </div>
           ) : (
@@ -306,8 +366,8 @@ export default function PlannerPage() {
         </Section>
 
         {/* To-do list */}
-        <Section className="mt-6" title="To-do list" sub={todos.filter((t) => !t.done).length ? `${todos.filter((t) => !t.done).length} open` : "all clear"}>
-          <Card className="mb-3 flex items-center gap-2 p-2.5">
+        <Section className="mt-6" title="To-do list" sub={openTodos ? `${openTodos} open` : "all clear"} accent="#13b57e" icon={<ListTodo size={15} />}>
+          <Card className="mb-3 flex items-center gap-2 p-2.5" style={{ ["--accent" as string]: "#13b57e" }}>
             <ListTodo size={16} className="ml-1 shrink-0 text-ink-400" />
             <input
               value={quickTodo}
@@ -324,7 +384,7 @@ export default function PlannerPage() {
           </Card>
           {todos.length ? (
             <div className="space-y-2">
-              {todos.map((t) => <TaskRow key={t.id} t={t} />)}
+              {todos.map((t) => <TodoRow key={t.id} t={t} />)}
             </div>
           ) : (
             <p className="rounded-xl border border-dashed border-black/[0.1] px-4 py-6 text-center text-xs text-ink-500">Your to-do list is empty.</p>
