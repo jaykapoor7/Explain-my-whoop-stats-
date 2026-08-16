@@ -5,7 +5,7 @@ import { computeScoredDays, nutritionTotals } from "@/lib/scoring/engine";
 import { maxHrFromAge } from "@/lib/scoring/strain";
 import { ageFromBirthYear } from "@/lib/scoring/health-age";
 import { fmtTime, isoOf } from "@/lib/format";
-import type { DailySummary, Meal, PlannerTask } from "@/lib/types";
+import type { DailySummary, Meal, Medication, MedStatus, PlannerTask } from "@/lib/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "storage" }, { status: 500 });
   }
-  if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, updatedAt: 0 });
+  if (!snap?.data) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, medications: [], updatedAt: 0 });
 
   let parsed: {
     wearableDays?: DailySummary[];
@@ -45,6 +45,8 @@ export async function GET(req: NextRequest) {
     settings?: { birthYear?: number };
     tasks?: PlannerTask[];
     taskDone?: Record<string, boolean>;
+    medications?: Medication[];
+    medOverrides?: Record<string, { status: MedStatus; takenAt?: string }>;
   };
   try {
     parsed = JSON.parse(snap.data) as typeof parsed;
@@ -98,7 +100,7 @@ export async function GET(req: NextRequest) {
     if (hasSignal(scored[i])) { last = scored[i]; break; }
   }
 
-  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, tasks: [], events: [], updatedAt: snap.updatedAt });
+  if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, tasks: [], events: [], medications: [], updatedAt: snap.updatedAt });
 
   // Macros = what's been eaten on the user's real local day (resets naturally at
   // midnight, unlike the scores above which carry the last real reading).
@@ -136,6 +138,42 @@ export async function GET(req: NextRequest) {
       time: t.start ? fmtTime(t.start) : "",
     }));
 
+  // --- Medication: today's scheduled doses ----------------------------------
+  // Rebuild the same per-dose events the web app derives (deriveMedEvents), then
+  // flag overdue server-side (past the scheduled time, on today, still untaken).
+  // "now" in the user's local minutes-of-day, so overdue matches their clock.
+  const localNow = new Date(Date.now() + (tzOffsetMin ?? 0) * 60_000);
+  const nowMinutes = (tzOffsetMin != null ? localNow.getUTCHours() : localNow.getHours()) * 60 + (tzOffsetMin != null ? localNow.getUTCMinutes() : localNow.getMinutes());
+  const toMinutes = (hhmm: string) => {
+    const m = hhmm.match(/(\d{1,2}):(\d{2})/);
+    return m ? parseInt(m[1], 10) * 60 + parseInt(m[2], 10) : 0;
+  };
+  const medOverrides = parsed.medOverrides ?? {};
+  const meds = (parsed.medications ?? [])
+    .filter((med) => med.startDate <= localToday && (!med.endDate || med.endDate >= localToday))
+    .flatMap((med) => {
+      const times = med.frequency === "as-needed" ? [] : med.times.length ? med.times : ["08:00"];
+      return times.map((time) => {
+        const id = `${localToday}-${med.id}-${time}`;
+        const status = medOverrides[id]?.status ?? "pending";
+        const taken = status === "taken";
+        const overdue = !taken && status !== "skipped" && toMinutes(time) < nowMinutes;
+        return {
+          id,
+          name: med.name,
+          dose: med.dose && med.dose !== "—" ? med.dose : undefined,
+          time: fmtTime(time),
+          taken,
+          overdue,
+          _min: toMinutes(time),
+        };
+      });
+    })
+    // Untaken first (overdue then upcoming, both by time); taken last.
+    .sort((a, b) => Number(a.taken) - Number(b.taken) || a._min - b._min)
+    .slice(0, 6)
+    .map((m) => ({ id: m.id, name: m.name, dose: m.dose, time: m.time, taken: m.taken, overdue: m.overdue }));
+
   const num = (r: { available?: boolean; score: number }) => (r.available === false ? null : Math.round(r.score));
   const res = NextResponse.json({
     date: last.day.date,
@@ -155,6 +193,7 @@ export async function GET(req: NextRequest) {
     fat: totals.fat,
     tasks,
     events,
+    medications: meds,
     updatedAt: snap.updatedAt,
   });
   // Let the widget cache briefly; scores only change on sync.
