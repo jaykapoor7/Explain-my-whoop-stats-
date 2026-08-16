@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion, useInView } from "framer-motion";
-import { ArrowLeft, ChevronDown, HelpCircle } from "lucide-react";
+import { ArrowLeft, ChevronDown, ChevronRight, HelpCircle } from "lucide-react";
 import { cn, signed } from "@/lib/format";
 import { Contributor } from "@/lib/types";
 
@@ -317,7 +317,13 @@ export function DialTile({
   delta?: number;
 }) {
   const inner = (
-    <div className="card flex flex-col items-center gap-2.5 px-3 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lift">
+    <div className="card relative flex h-full flex-col items-center gap-2.5 px-3 py-5 text-center transition-all hover:-translate-y-0.5 hover:shadow-lift">
+      {/* Affordance: signals the tile opens a full breakdown page. Icon-only so a
+          row of these doesn't repeat "more" text; darkens + nudges on hover. */}
+      <ChevronRight
+        size={14}
+        className="absolute right-2.5 top-2.5 text-ink-500/45 transition-all group-hover:translate-x-0.5 group-hover:text-ink-400"
+      />
       {available ? (
         <ScoreRing score={score} scale={scale} color={color} size={92} />
       ) : (

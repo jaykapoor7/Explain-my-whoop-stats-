@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Flame, Footprints, ListChecks, NotebookPen, Pill, UtensilsCrossed } from "lucide-react";
+import { ArrowRight, Check, ChevronDown, ChevronRight, Flame, Footprints, ListChecks, NotebookPen, Pill, UtensilsCrossed } from "lucide-react";
 import { Card, ContributorLedger, Delta, DialTile, IconBadge, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
 import { HealthAgeStrip } from "@/components/health-age";
@@ -106,6 +106,7 @@ export default function TodayPage() {
               delta={t.sleep.deltaVsYesterday}
             />
           </div>
+          <p className="mt-2 text-center text-[11px] text-ink-500">Tap any ring for the full breakdown — what drove it, your trend and baseline.</p>
 
           {/* Strain — secondary, slim */}
           <Link href="/strain" className="group mt-3 block">
@@ -156,7 +157,7 @@ export default function TodayPage() {
           <Link href="/nutrition">
             <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color={DOMAIN_COLOR.nutrition} size={26}><UtensilsCrossed size={13} /></IconBadge> Nutrition</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color={DOMAIN_COLOR.nutrition} size={26}><UtensilsCrossed size={13} /></IconBadge> Nutrition <ChevronRight size={13} className="text-ink-500/50 transition-transform group-hover:translate-x-0.5" /></span>
                 <span className="tabular text-xs text-ink-400">
                   <span className="text-ink-100">{fmtNum(data.todayTotals.kcal)}</span> / {fmtNum(kcalGoal)} kcal
                 </span>
@@ -195,7 +196,7 @@ export default function TodayPage() {
           <Link href="/medication">
             <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#e089d2" size={26}><Pill size={13} /></IconBadge> Medication</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#e089d2" size={26}><Pill size={13} /></IconBadge> Medication <ChevronRight size={13} className="text-ink-500/50" /></span>
                 <span className="tabular text-xs text-ink-400">
                   {meds.length ? (
                     <>
@@ -218,7 +219,7 @@ export default function TodayPage() {
           <Link href="/journal">
             <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#a98b3f" size={26}><NotebookPen size={13} /></IconBadge> Mood &amp; journal</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#a98b3f" size={26}><NotebookPen size={13} /></IconBadge> Mood &amp; journal <ChevronRight size={13} className="text-ink-500/50" /></span>
                 <span className="tabular text-xs text-ink-400">
                   {mood !== undefined ? <><span className="text-ink-100">{mood}</span> / 10</> : "not logged"}
                 </span>
