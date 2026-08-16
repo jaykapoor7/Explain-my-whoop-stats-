@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Check, Copy, LogIn, LogOut, Plus, Share2, Trophy, Users } from "lucide-react";
-import { Card, PageHeader, Section, SkeletonPage } from "@/components/ui";
+import { Card, PageHeader, Section, SegmentedControl, SkeletonPage } from "@/components/ui";
 import { useAccount } from "@/components/account";
 import { useHealth } from "@/lib/data/use-health";
 import { DOMAIN_COLOR, cn } from "@/lib/format";
@@ -223,11 +223,11 @@ export default function FriendsPage() {
         title="Friends"
         sub="Form a group and compete on recovery, sleep and strain — cross-platform."
         right={
-          <div className="flex overflow-hidden rounded-lg border border-black/[0.08] text-xs">
-            {(["today", "week"] as Period[]).map((p) => (
-              <button key={p} onClick={() => setPeriod(p)} className={cn("px-3 py-1.5 font-medium capitalize", period === p ? "bg-black/[0.1] text-ink-50" : "text-ink-400")}>{p === "week" ? "This week" : "Today"}</button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={period}
+            onChange={setPeriod}
+            options={[{ value: "today" as Period, label: "Today" }, { value: "week" as Period, label: "This week" }]}
+          />
         }
       />
 
@@ -265,7 +265,7 @@ export default function FriendsPage() {
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">Create a group and share its invite link with friends, or join one with a code they send you.</p>
         </Card>
       ) : (
-        <Section title="Your groups" sub="Only your three headline scores are shared — nothing else.">
+        <Section title="Your groups" sub="Only your three headline scores are shared — nothing else." accent={DOMAIN_COLOR.recovery} icon={<Trophy size={15} />}>
           <div className="space-y-4">
             {groups.map((g) => <GroupCard key={g.id} group={g} meSub={meSub} period={period} onLeave={leave} />)}
           </div>
