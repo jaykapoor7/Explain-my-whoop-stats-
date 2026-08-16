@@ -22,8 +22,8 @@ function Tip({ active, payload, label, unit, name }: { active?: boolean; payload
   if (!active || !payload?.length) return null;
   const v = payload[0]?.value;
   return (
-    <div className="rounded-lg border border-black/10 bg-ink-800/95 px-3 py-2 text-xs shadow-lift backdrop-blur">
-      <div className="font-medium text-ink-50">{typeof label === "string" && label.includes("-") ? fmtDate(label, { weekday: "short", month: "short", day: "numeric" }) : label}</div>
+    <div className="rounded-xl border border-[rgba(59,46,20,0.12)] bg-[#fffefb]/95 px-3 py-2 text-xs shadow-lift backdrop-blur">
+      <div className="font-semibold text-ink-50">{typeof label === "string" && label.includes("-") ? fmtDate(label, { weekday: "short", month: "short", day: "numeric" }) : label}</div>
       <div className="mt-0.5 text-ink-300">
         {name ? `${name}: ` : ""}
         {typeof v === "number" ? fmtNum(v, v % 1 ? 1 : 0) : v}
@@ -72,12 +72,11 @@ export function TrendArea({
           dataKey="value"
           name={name}
           stroke={color}
-          strokeWidth={2.5}
+          strokeWidth={2}
           fill={`url(#${id})`}
           dot={false}
-          activeDot={{ r: 4, strokeWidth: 2, stroke: "#fdfaf3" }}
+          activeDot={{ r: 4, strokeWidth: 2, stroke: "#fefcf8" }}
           connectNulls
-          style={{ filter: `drop-shadow(0 4px 8px ${color}33)` }}
         />
       </AreaChart>
     </ResponsiveContainer>
@@ -228,8 +227,8 @@ export function StrainCurve({ activities, color }: { activities: { start: string
         <AreaChart data={data} margin={{ top: 8, right: 10, left: -8, bottom: 0 }}>
           <defs>
             <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor={color} stopOpacity={0.55} />
-              <stop offset="100%" stopColor={color} stopOpacity={0.08} />
+              <stop offset="0%" stopColor={color} stopOpacity={0.3} />
+              <stop offset="100%" stopColor={color} stopOpacity={0.03} />
             </linearGradient>
           </defs>
           <CartesianGrid {...GRID} />
@@ -241,11 +240,10 @@ export function StrainCurve({ activities, color }: { activities: { start: string
             type="stepAfter"
             dataKey="value"
             stroke={color}
-            strokeWidth={3.5}
+            strokeWidth={2.25}
             fill={`url(#${gid})`}
             isAnimationActive={false}
             dot={false}
-            style={{ filter: `drop-shadow(0 3px 6px ${color}44)` }}
           />
         </AreaChart>
       </ResponsiveContainer>
