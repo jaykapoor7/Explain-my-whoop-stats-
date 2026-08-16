@@ -4,6 +4,7 @@ import { personalSleepNeed, sleepDebtMin } from "./sleep-coach";
 import { calcStrain } from "./strain";
 import { calcRecovery } from "./recovery";
 import { calcEnergy } from "./energy";
+import { isoOf } from "../format";
 
 /** A day with every derived score attached. The unit the whole UI consumes. */
 export interface ScoredDay {
@@ -96,9 +97,13 @@ function baselineAt(days: DailySummary[], i: number, scored: ScoredDay[]): Perso
 
 /** Compute every day's scores in chronological order, wiring deltas + baselines.
  * `opts.maxHr` personalises the strain scale (age-derived); resting HR comes
- * from each day's rolling personal baseline. */
-export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number } = {}): ScoredDay[] {
+ * from each day's rolling personal baseline. `opts.now` (epoch ms, real
+ * wall-clock time) lets Energy keep draining across the day from ordinary
+ * wakefulness — applied ONLY to whichever day is actually today, never to
+ * completed history, so past days' scores and baselines stay stable. */
+export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number; now?: number } = {}): ScoredDay[] {
   const out: ScoredDay[] = [];
+  const liveDate = opts.now != null ? isoOf(new Date(opts.now)) : null;
   for (let i = 0; i < days.length; i++) {
     const raw = days[i];
     // Fill in a personalised sleep need + rolling debt from history, so the
@@ -115,7 +120,8 @@ export function computeScoredDays(days: DailySummary[], opts: { maxHr?: number }
     const prevStrain = i > 0 ? out[i - 1].strain.score : 10;
     const recovery = calcRecovery(day, baseline, sleep, prevStrain);
     const strain = calcStrain(day, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });
-    const energy = calcEnergy(day, baseline, sleep, recovery, prevStrain, { restHr: baseline.rhrBpm, maxHr: opts.maxHr });
+    const isLiveToday = liveDate != null && day.date === liveDate && i === days.length - 1;
+    const energy = calcEnergy(day, baseline, sleep, recovery, prevStrain, { restHr: baseline.rhrBpm, maxHr: opts.maxHr }, isLiveToday ? opts.now : undefined);
 
     // deltas vs yesterday + baselines for display (only between days that both have the pillar)
     if (i > 0) {

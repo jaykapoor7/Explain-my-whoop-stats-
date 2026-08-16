@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { DailySummary, Goal, JournalEntry, Medication, MedicationEvent, Meal, NutritionTotals, PlannerTask } from "../types";
 import { applyGoalTargets, DEFAULT_GOALS, useApp } from "./store";
 import { computeScoredDays, nutritionTotals, ScoredDay } from "../scoring/engine";
@@ -9,6 +9,19 @@ import { generateInsights, Insight } from "../insights/insights";
 import { analyzeUser, PersonalHealthModel } from "../analytics";
 import { ageFromBirthYear } from "../scoring/health-age";
 import { todayISO } from "../format";
+
+/** Ticks every 15 minutes so today's Energy score keeps reflecting ordinary
+ * wakefulness drain across the day (not just new synced activity) without
+ * polling any network — purely a local re-render trigger. Coarse on purpose:
+ * no need for the "any point in the day" number to update by the minute. */
+function useLiveNow(): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const iv = setInterval(() => setNow(Date.now()), 15 * 60_000);
+    return () => clearInterval(iv);
+  }, []);
+  return now;
+}
 
 /**
  * Single read path: synced wearable days + the user's own logs merged into
@@ -57,6 +70,7 @@ export interface HealthData {
 export function useHealth(): HealthData {
   const s = useApp();
   const tISO = todayISO();
+  const liveNow = useLiveNow();
 
   // The merged raw day stream (wearable + manual + the user's own logs), before
   // scoring. Both the score engine and the analytics engine read from this.
@@ -82,8 +96,8 @@ export function useHealth(): HealthData {
   }, [s.wearableDays, s.manualDays, s.activityResolutions, s.activityTypeEdits, s.meals, s.medications, s.medOverrides, s.journal]);
 
   const days = useMemo<ScoredDay[]>(
-    () => computeScoredDays(merged, { maxHr: maxHrFromAge(ageFromBirthYear(s.settings.birthYear)) }),
-    [merged, s.settings.birthYear]
+    () => computeScoredDays(merged, { maxHr: maxHrFromAge(ageFromBirthYear(s.settings.birthYear)), now: liveNow }),
+    [merged, s.settings.birthYear, liveNow]
   );
   const model = useMemo<PersonalHealthModel>(
     () => analyzeUser(merged, { actualAge: ageFromBirthYear(s.settings.birthYear) }),

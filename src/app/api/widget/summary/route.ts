@@ -46,7 +46,9 @@ export async function GET(req: NextRequest) {
   for (const d of parsed.manualDays ?? []) byDate.set(d.date, d);
   for (const d of parsed.wearableDays ?? []) byDate.set(d.date, d);
   const days = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date));
-  const scored = computeScoredDays(days);
+  // Pass real "now" so Energy reflects ordinary wakefulness drain across the
+  // day (not just synced activity) — the whole point of checking the widget.
+  const scored = computeScoredDays(days, { now: Date.now() });
   const last = scored[scored.length - 1];
 
   if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, protein: null, carbs: null, fat: null, updatedAt: snap.updatedAt });

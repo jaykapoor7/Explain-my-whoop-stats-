@@ -13,7 +13,11 @@ import { countedActivities, estimateActivityLoad } from "./strain";
  *      baseline, AND how hard you went YESTERDAY (a big day leaves residual
  *      fatigue, so you start lower; an easy/rest day tops you up). This is the
  *      "how much can I expend today" number.
- *   2. SPEND — today's counted activity draws the tank down from there.
+ *   2. SPEND — today's counted activity draws the tank down from there, via a
+ *      logarithmic transform of the SAME personalised strain load Strain
+ *      shows for that activity (not a 1:1 copy of the number — diminishing
+ *      returns as effort climbs), plus a small linear term for all-day
+ *      ambient movement (steps), mirroring Strain's own ambient term.
  *
  * Energy now = morning capacity − spend. Every term is signed and grouped so
  * the UI can show "you woke with X, you've spent Y, you have Z left".
@@ -24,6 +28,22 @@ import { countedActivities, estimateActivityLoad } from "./strain";
  * so a typical day reads as usable energy rather than a harsh middling score.
  * Readiness and yesterday's load move you off it; NOT shown as a flat "neutral". */
 export const ENERGY_ANCHOR = 52;
+
+/** Scale for the log curve below — tune this one constant to make activity
+ * spend feel heavier or lighter overall. */
+const ACTIVITY_SPEND_SCALE = 6;
+
+/** Strain load → energy points spent, on a LOGARITHMIC curve, not 1:1.
+ * A strain of 14 does not cost 14 energy points — the first bit of exertion
+ * costs a real, noticeable chunk of your tank, but each additional unit of
+ * strain on top of an already-hard effort costs progressively less (the way
+ * "one more hard set" barely registers once you're already deep into a
+ * session). Monotonic and capped well below the 21 max, since even an
+ * all-out day shouldn't zero out your entire energy budget from one activity. */
+export function energySpendForLoad(load: number): number {
+  if (!(load > 0)) return 0;
+  return Math.round(clamp(ACTIVITY_SPEND_SCALE * Math.log1p(load), 1, 20));
+}
 
 export interface EnergySplit {
   morningCapacity: number; // start-of-day score (0..100)
@@ -47,7 +67,13 @@ export function calcEnergy(
   sleep: ScoreResult,
   recovery: ScoreResult,
   prevStrain: number,
-  hr: { restHr?: number; maxHr?: number } = {}
+  hr: { restHr?: number; maxHr?: number } = {},
+  /** Real wall-clock "now" (epoch ms), passed ONLY for the day that is
+   * actually in progress right now — lets energy keep draining through the
+   * day from ordinary wakefulness, even between syncs, so you can check "how
+   * much do I have left" at any point and not just after a workout. Omit (or
+   * leave undefined) for any completed/historical day. */
+  now?: number
 ): EnergyScore {
   const sleepOk = sleep.available !== false;
   const recoveryOk = recovery.available !== false;
@@ -124,16 +150,18 @@ export function calcEnergy(
   const morningCapacity = softScore(ENERGY_ANCHOR + capacity.reduce((a, c) => a + c.points, 0));
 
   // ---------- Phase 2: spend (today's activity draws it down) ----------
-  // Same personalised load Strain shows for this activity (HR-reserve based,
-  // via the user's own resting/max HR) — spent 1:1, not discounted, so the
-  // number here always matches what "What affected you" shows on Strain.
+  // Start from the same personalised load Strain shows for this activity
+  // (HR-reserve based, via the user's own resting/max HR) — but the ENERGY
+  // COST of that load is logarithmic, not a 1:1 copy of the strain number.
+  // Diminishing returns: the first chunk of exertion costs the most; extra
+  // strain on an already-hard effort costs progressively less.
   const loadOf = (a: (typeof day.activities)[number]) => (a.avgHr > 0 ? estimateActivityLoad(a.durationMin, a.avgHr, hr.restHr, hr.maxHr) : a.load);
   const spend = countedActivities(day).map((a) => {
     const load = loadOf(a);
-    const pts = -Math.round(clamp(load, 0, 21));
+    const pts = -energySpendForLoad(load);
     return term(a.type, pts, `${a.durationMin}m${a.avgHr > 0 ? ` at avg ${a.avgHr} bpm` : ""}`, {
       group: "spend",
-      math: `${a.type} carried ${load.toFixed(1)} strain — the same load shown on Strain — spent 1:1 → ${pts}.`,
+      math: `${a.type} carried ${load.toFixed(1)} strain — the same load shown on Strain. Energy cost is logarithmic (diminishing returns as effort climbs), not a 1:1 copy of the strain number: ${ACTIVITY_SPEND_SCALE}×ln(1+${load.toFixed(1)}) → ${pts}.`,
     });
   });
   // All-day movement spends too, even with no formal workout — mirrors
@@ -147,6 +175,25 @@ export function calcEnergy(
         group: "spend",
         math: `${day.steps.toLocaleString()} steps today — all-day movement spends a little energy even without a workout → ${ambient}.`,
       }));
+    }
+  }
+  // Ordinary wakefulness spends too — even sitting still, your energy eases
+  // across the day (homeostatic sleep pressure builds the longer you're
+  // awake). Only for the day actually in progress right now, using real
+  // wall-clock time, so this is what makes "how much do I have left at 3pm"
+  // meaningfully different from "at 9am" even with no new activity synced.
+  // Linear and capped low — activity remains the dominant spend.
+  if (now != null && day.sleep.wake) {
+    const wakeMs = Date.parse(day.sleep.wake);
+    if (isFinite(wakeMs) && now > wakeMs) {
+      const hoursAwake = clamp((now - wakeMs) / 3_600_000, 0, 18);
+      const pts = -Math.round(clamp(hoursAwake * 0.9, 0, 14));
+      if (pts <= -1) {
+        spend.push(term("Time awake", pts, `${hoursAwake.toFixed(1)}h since waking`, {
+          group: "spend",
+          math: `${hoursAwake.toFixed(1)}h awake since ${fmtHM(day.sleep.wake)} — energy eases gradually across the day even without activity, capped at 14 → ${pts}. Updates as the day goes on.`,
+        }));
+      }
     }
   }
 
@@ -168,4 +215,10 @@ export function calcEnergy(
 
 function fmtShort(min: number): string {
   return min >= 60 ? `${Math.floor(min / 60)}h ${Math.round(min % 60)}m` : `${Math.round(min)}m`;
+}
+
+function fmtHM(iso: string): string {
+  const d = new Date(iso);
+  if (!isFinite(d.getTime())) return iso;
+  return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 }
