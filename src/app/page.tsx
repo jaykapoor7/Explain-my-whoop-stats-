@@ -168,6 +168,73 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* Second product shot — the learning/patterns view, preview on the left
+          this time for rhythm against the hero. */}
+      <section className="mx-auto grid max-w-6xl items-center gap-12 px-6 py-10 lg:grid-cols-[0.98fr_1.02fr]">
+        <div className="order-2 lg:order-1">
+          <div className={`${cardCls} p-6`}>
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7b68ee]/15 text-[#7b68ee]">✦</span>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-400">Patterns · what CURA has learned</div>
+            </div>
+
+            {/* HRV trend, rising */}
+            <div className="mt-4 rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+              <div className="flex items-baseline justify-between">
+                <span className="text-[12px] font-medium text-ink-200">Overnight HRV</span>
+                <span className="tabular text-[12px] text-ink-400">62 ms · <span className="text-good">↑ 8% vs baseline</span></span>
+              </div>
+              <svg viewBox="0 0 300 64" className="mt-2 h-16 w-full" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="sp" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#13b57e" stopOpacity="0.28" />
+                    <stop offset="100%" stopColor="#13b57e" stopOpacity="0" />
+                  </linearGradient>
+                </defs>
+                <path d="M0 44 C 30 46 45 40 70 41 C 100 42 120 30 150 32 C 180 34 200 22 230 18 C 260 14 280 12 300 9 L 300 64 L 0 64 Z" fill="url(#sp)" />
+                <path d="M0 44 C 30 46 45 40 70 41 C 100 42 120 30 150 32 C 180 34 200 22 230 18 C 260 14 280 12 300 9" fill="none" stroke="#13b57e" strokeWidth="2.5" strokeLinecap="round" />
+              </svg>
+            </div>
+
+            {/* Learned associations */}
+            <div className="mt-4 space-y-2.5">
+              <div className="rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[13px] font-semibold text-ink-100">Late caffeine → shorter sleep</span>
+                  <span className="rounded-full bg-[#eb9d18]/15 px-2 py-0.5 text-[10px] font-semibold text-[#b9791a]">Moderate</span>
+                </div>
+                <p className="mt-1 text-[11.5px] text-ink-400">~38 min less sleep after caffeine past 3pm · 17 days observed</p>
+              </div>
+              <div className="rounded-xl border border-black/[0.06] bg-black/[0.015] p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[13px] font-semibold text-ink-100">Sleep → Recovery</span>
+                  <span className="tabular text-[12px] font-semibold text-good">r = 0.62</span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-black/[0.06]">
+                  <div className="h-full rounded-full bg-good" style={{ width: "62%", opacity: 0.85 }} />
+                </div>
+                <p className="mt-1.5 text-[11px] text-ink-500">strong positive relationship · 42 days</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="order-1 lg:order-2">
+          <h2 className="font-display text-[1.9rem] font-bold leading-tight tracking-[-0.02em] text-ink-50">
+            It gets to know you — then tells you what actually moves your numbers.
+          </h2>
+          <p className="mt-4 text-[16px] leading-relaxed text-ink-300">
+            Log the life around the data — caffeine, alcohol, training, stress, late meals — and {APP_NAME} quietly
+            correlates it against your own physiology. Only associations with enough evidence surface, each with its
+            sample size and a confidence rating. No breathless claims, no fake causation — just what the numbers,
+            <span className="text-ink-100"> your numbers</span>, actually support.
+          </p>
+          <Link href="/today" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-recovery underline-offset-4 hover:underline">
+            See it on your own data <ArrowRight size={15} />
+          </Link>
+        </div>
+      </section>
+
       {/* How it works — three steps, left-aligned, minimal chrome. */}
       <section className="mx-auto max-w-6xl px-6 py-8">
         <div className="grid gap-8 sm:grid-cols-3">
