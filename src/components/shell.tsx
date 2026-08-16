@@ -22,6 +22,7 @@ import { cn } from "@/lib/format";
 import { AutoSync } from "@/components/auto-sync";
 import { AccountProvider, AccountChip } from "@/components/account";
 import { Coach } from "@/components/coach";
+import { FloatingBack } from "@/components/ui";
 import { Logo } from "@/components/logo";
 
 // The daily metrics (Energy, Recovery, Sleep, Strain, Health Age) are reached
@@ -190,6 +191,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <main className="mx-auto min-w-0 max-w-3xl px-4 pb-28 pt-6 sm:px-6 lg:ml-56 lg:max-w-5xl lg:pb-12 lg:pt-8 xl:mx-auto xl:max-w-6xl xl:pl-56">
           {children}
         </main>
+        {/* A back control on every app page — fades in top-left as you scroll,
+            so there's always a way back from any page or drilled-in section. */}
+        <FloatingBack />
         <Coach />
       </div>
     </AccountProvider>

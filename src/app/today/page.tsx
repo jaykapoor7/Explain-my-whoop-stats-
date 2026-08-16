@@ -194,23 +194,25 @@ export default function TodayPage() {
           </Link>
 
           {t && (
-            <Card className="h-full p-4">
-              <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100">
-                  <IconBadge color={DOMAIN_COLOR.strain} size={26}><Footprints size={13} /></IconBadge> Activity
-                </span>
-                <span className="tabular text-xs text-ink-400">
-                  <span className="text-ink-100">{fmtNum(t.day.steps)}</span> / {fmtNum(stepsGoal)} steps
-                </span>
-              </div>
-              <div className="mt-2.5">
-                <ProgressBar value={t.day.steps} max={stepsGoal} color={DOMAIN_COLOR.strain} />
-              </div>
-              <div className="mt-2 text-[11px] text-ink-400">
-                {fmtNum(t.day.activeCalories + t.day.restingCalories)} kcal burned ·{" "}
-                {t.day.activities.filter((a) => a.confidence !== "low").length} activities
-              </div>
-            </Card>
+            <Link href="/strain">
+              <Card className="card-interactive h-full p-4">
+                <div className="flex items-baseline justify-between">
+                  <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100">
+                    <IconBadge color={DOMAIN_COLOR.strain} size={26}><Footprints size={13} /></IconBadge> Activity <ChevronRight size={13} className="text-ink-500/50" />
+                  </span>
+                  <span className="tabular text-xs text-ink-400">
+                    <span className="text-ink-100">{fmtNum(t.day.steps)}</span> / {fmtNum(stepsGoal)} steps
+                  </span>
+                </div>
+                <div className="mt-2.5">
+                  <ProgressBar value={t.day.steps} max={stepsGoal} color={DOMAIN_COLOR.strain} />
+                </div>
+                <div className="mt-2 text-[11px] text-ink-400">
+                  {fmtNum(t.day.activeCalories + t.day.restingCalories)} kcal burned ·{" "}
+                  {t.day.activities.filter((a) => a.confidence !== "low").length} activities
+                </div>
+              </Card>
+            </Link>
           )}
 
           <Link href="/medication">

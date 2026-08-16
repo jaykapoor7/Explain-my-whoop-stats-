@@ -566,7 +566,6 @@ export function PageHeader({ title, sub, right, back }: { title: string; sub?: s
   return (
     <div>
       {back && <BackButton className="mb-3" />}
-      {back && <FloatingBack />}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-[2rem] font-bold leading-[1.05] tracking-[-0.02em] text-ink-50 sm:text-[2.5rem]">{title}</h1>
