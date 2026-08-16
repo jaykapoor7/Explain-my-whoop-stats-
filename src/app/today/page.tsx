@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Check, ChevronDown, Flame, Footprints } from "lucide-react";
-import { Card, ContributorLedger, Delta, DialTile, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
+import { ArrowRight, Check, ChevronDown, Flame, Footprints, ListChecks, NotebookPen, Pill, UtensilsCrossed } from "lucide-react";
+import { Card, ContributorLedger, Delta, DialTile, IconBadge, PageHeader, ProgressBar, Section, SkeletonPage, Why } from "@/components/ui";
 import { Landing } from "@/components/landing";
 import { HealthAgeStrip } from "@/components/health-age";
 import { DailyStateStrip, IntelligenceInsights, StageBanner } from "@/components/intelligence";
@@ -151,12 +151,12 @@ export default function TodayPage() {
       {/* Right column */}
       {data.isLatest && (
       <div className="mt-8 space-y-8 lg:mt-0">
-      <Section className="mt-0" title="Today's essentials">
+      <Section className="mt-0" title="Today's essentials" accent="#a98b3f">
         <div className="grid gap-3 sm:grid-cols-2">
           <Link href="/nutrition">
-            <Card className="p-4 transition-all hover:-translate-y-0.5 hover:shadow-lift">
+            <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="text-[13px] font-semibold text-ink-100">Nutrition</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color={DOMAIN_COLOR.nutrition} size={26}><UtensilsCrossed size={13} /></IconBadge> Nutrition</span>
                 <span className="tabular text-xs text-ink-400">
                   <span className="text-ink-100">{fmtNum(data.todayTotals.kcal)}</span> / {fmtNum(kcalGoal)} kcal
                 </span>
@@ -173,10 +173,10 @@ export default function TodayPage() {
           </Link>
 
           {t && (
-            <Card className="p-4">
+            <Card className="h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="flex items-center gap-1.5 text-[13px] font-semibold text-ink-100">
-                  <Footprints size={13} className="text-ink-400" /> Activity
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100">
+                  <IconBadge color={DOMAIN_COLOR.strain} size={26}><Footprints size={13} /></IconBadge> Activity
                 </span>
                 <span className="tabular text-xs text-ink-400">
                   <span className="text-ink-100">{fmtNum(t.day.steps)}</span> / {fmtNum(stepsGoal)} steps
@@ -193,9 +193,9 @@ export default function TodayPage() {
           )}
 
           <Link href="/medication">
-            <Card className="p-4 transition-all hover:-translate-y-0.5 hover:shadow-lift">
+            <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="text-[13px] font-semibold text-ink-100">Medication</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#e089d2" size={26}><Pill size={13} /></IconBadge> Medication</span>
                 <span className="tabular text-xs text-ink-400">
                   {meds.length ? (
                     <>
@@ -216,9 +216,9 @@ export default function TodayPage() {
           </Link>
 
           <Link href="/journal">
-            <Card className="p-4 transition-all hover:-translate-y-0.5 hover:shadow-lift">
+            <Card className="card-interactive h-full p-4">
               <div className="flex items-baseline justify-between">
-                <span className="text-[13px] font-semibold text-ink-100">Mood & journal</span>
+                <span className="flex items-center gap-2 text-[13px] font-semibold text-ink-100"><IconBadge color="#a98b3f" size={26}><NotebookPen size={13} /></IconBadge> Mood &amp; journal</span>
                 <span className="tabular text-xs text-ink-400">
                   {mood !== undefined ? <><span className="text-ink-100">{mood}</span> / 10</> : "not logged"}
                 </span>
@@ -234,7 +234,7 @@ export default function TodayPage() {
         </div>
       </Section>
 
-      <Section className="mt-0" title="Plan" action={<Link href="/planner" className="text-xs font-medium text-ink-300 hover:text-ink-100">Planner →</Link>}>
+      <Section className="mt-0" title="Plan" accent="#5b6fd6" icon={<ListChecks size={15} />} action={<Link href="/planner" className="text-xs font-medium text-ink-300 hover:text-ink-100">Planner →</Link>}>
         <Card className="p-4">
           <div className="flex items-baseline justify-between">
             <span className="text-[13px] font-semibold text-ink-100">Today</span>
