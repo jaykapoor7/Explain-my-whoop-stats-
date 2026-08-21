@@ -28,16 +28,16 @@ import { Logo } from "@/components/logo";
 // The daily metrics (Energy, Recovery, Sleep, Strain, Health Age) are reached
 // by tapping their cards on Today, so the nav stays to the tools + views.
 const NAV = [
-  { href: "/today", label: "Today", icon: Sun, color: "#211c14" },
-  { href: "/trends", label: "Trends", icon: LineChart, color: "#2a8fc4" },
-  { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#2298cf" },
-  { href: "/medication", label: "Medication", icon: Pill, color: "#c2569f" },
-  { href: "/journal", label: "Journal", icon: NotebookPen, color: "#a98b3f" },
-  { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6" },
-  { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f" },
-  { href: "/friends", label: "Friends", icon: Users, color: "#e0894e" },
-  { href: "/profile", label: "Profile", icon: User, color: "#4a8f7a" },
-  { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252" },
+  { href: "/today", label: "Today", icon: Sun, color: "#211c14", group: "" },
+  { href: "/trends", label: "Trends", icon: LineChart, color: "#2a8fc4", group: "" },
+  { href: "/nutrition", label: "Nutrition", icon: UtensilsCrossed, color: "#2298cf", group: "Track" },
+  { href: "/medication", label: "Medication", icon: Pill, color: "#c2569f", group: "Track" },
+  { href: "/journal", label: "Journal", icon: NotebookPen, color: "#a98b3f", group: "Track" },
+  { href: "/planner", label: "Planner", icon: CalendarDays, color: "#5b6fd6", group: "Track" },
+  { href: "/goals", label: "Goals", icon: Target, color: "#4fa82f", group: "You" },
+  { href: "/friends", label: "Friends", icon: Users, color: "#e0894e", group: "You" },
+  { href: "/profile", label: "Profile", icon: User, color: "#4a8f7a", group: "You" },
+  { href: "/settings", label: "Settings", icon: Settings, color: "#6b6252", group: "You" },
 ];
 
 // Bottom tab bar keeps the four daily-use views; everything else lives behind
@@ -47,40 +47,47 @@ const MOBILE_PRIMARY = ["/today", "/nutrition", "/medication", "/planner"];
 function DesktopNav() {
   const pathname = usePathname();
   return (
-    <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-black/[0.06] bg-ink-900/70 px-3 py-5 backdrop-blur-xl lg:flex">
-      <Link href="/today" className="mb-6 flex items-center gap-2.5 px-2">
-        <Logo size={36} className="shrink-0 shadow-lift" />
+    <aside className="fixed inset-y-0 left-0 z-40 hidden w-56 flex-col border-r border-black/[0.06] bg-ink-900/75 px-3 py-5 backdrop-blur-xl lg:flex">
+      <Link href="/today" className="mb-7 flex items-center gap-2.5 px-2">
+        <Logo size={34} className="shrink-0" />
         <div>
-          <div className="font-display text-[19px] font-bold leading-none tracking-[0.14em] text-ink-50">CURA</div>
+          <div className="font-display text-[18px] font-bold leading-none tracking-[0.14em] text-ink-50">CURA</div>
           <div className="mt-1 text-[10px] tracking-wide text-ink-400">your body, clearly</div>
         </div>
       </Link>
       <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon, color }) => {
+        {NAV.map(({ href, label, icon: Icon, color, group }, i) => {
           const active = pathname.startsWith(href);
+          const newGroup = group && group !== (NAV[i - 1]?.group ?? "");
           return (
-            <Link
-              key={href}
-              href={href}
-              className={cn(
-                "relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
-                active ? "text-ink-50" : "text-ink-400 hover:bg-black/[0.04] hover:text-ink-100"
+            <div key={href}>
+              {newGroup && (
+                <div className="px-3 pb-1 pt-4 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-500">{group}</div>
               )}
-            >
-              {active && (
-                <motion.span
-                  layoutId="nav-pill"
-                  className="absolute inset-0 rounded-xl border border-black/[0.08] bg-black/[0.06]"
-                  transition={{ type: "spring", bounce: 0.16, duration: 0.5 }}
-                />
-              )}
-              <Icon size={15} strokeWidth={2} className="relative z-10" style={{ color: active ? color : undefined }} />
-              <span className="relative z-10 font-medium">{label}</span>
-            </Link>
+              <Link
+                href={href}
+                className={cn(
+                  "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-[13px] transition-colors",
+                  active ? "text-ink-50" : "text-ink-400 hover:text-ink-100"
+                )}
+              >
+                {active ? (
+                  <motion.span
+                    layoutId="nav-pill"
+                    className="absolute inset-0 rounded-xl border border-black/[0.05] bg-[#fffefb] shadow-[0_1px_2px_rgba(59,46,20,0.07),0_1px_0_rgba(255,255,255,0.8)_inset]"
+                    transition={{ type: "spring", bounce: 0.16, duration: 0.5 }}
+                  />
+                ) : (
+                  <span className="absolute inset-0 rounded-xl opacity-0 transition-opacity group-hover:bg-black/[0.03] group-hover:opacity-100" />
+                )}
+                <Icon size={15} strokeWidth={2.1} className="relative z-10 transition-colors" style={{ color: active ? color : undefined }} />
+                <span className={cn("relative z-10", active ? "font-semibold" : "font-medium")}>{label}</span>
+              </Link>
+            </div>
           );
         })}
       </nav>
-      <div className="mt-2 shrink-0 pt-2">
+      <div className="mt-2 shrink-0 border-t border-black/[0.06] pt-3">
         <AccountChip />
       </div>
     </aside>
