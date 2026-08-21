@@ -1,14 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { CalendarDays, ChevronLeft, ChevronRight, Flame, LineChart, Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Flame, LineChart, Loader2, Plus, Search, Trash2, UtensilsCrossed, X } from "lucide-react";
 import { Card, EmptyState, IconBadge, PageHeader, ProgressBar, Section, SegmentedControl, SkeletonPage, Why } from "@/components/ui";
 import { MiniBars } from "@/components/charts";
 import { useHealth } from "@/lib/data/use-health";
 import { useApp } from "@/lib/data/store";
 import { nutritionTotals } from "@/lib/scoring/engine";
-import { FOOD_DB } from "@/lib/foods";
+import { searchFoods } from "@/lib/foods";
 import { DOMAIN_COLOR, addDays, cn, fmtDate, fmtNum, relativeDay, todayISO } from "@/lib/format";
 import { Meal, MealKind, NutritionFood } from "@/lib/types";
 
@@ -39,12 +39,45 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
   const [selected, setSelected] = useState<NutritionFood | null>(null);
   const [custom, setCustom] = useState(false);
   const [cf, setCf] = useState({ name: "", kcal: "", protein: "", carbs: "", fat: "" });
+  const [remote, setRemote] = useState<NutritionFood[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const results = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    if (!query) return FOOD_DB.slice(0, 6);
-    return FOOD_DB.filter((f) => f.name.toLowerCase().includes(query)).slice(0, 8);
+  // Instant, offline-first layer: the curated Indian + everyday staples.
+  const local = useMemo(() => searchFoods(q), [q]);
+
+  // Vast layer: Open Food Facts via our server route, debounced so we query once
+  // the user pauses typing. Failures are silent — the curated results still show.
+  useEffect(() => {
+    const query = q.trim();
+    if (query.length < 2) { setRemote([]); setLoading(false); return; }
+    setLoading(true);
+    const ctrl = new AbortController();
+    const t = setTimeout(async () => {
+      try {
+        const r = await fetch(`/api/nutrition/search?q=${encodeURIComponent(query)}`, { signal: ctrl.signal });
+        const j = (await r.json()) as { results?: NutritionFood[] };
+        setRemote(Array.isArray(j.results) ? j.results : []);
+      } catch {
+        /* aborted or offline — keep curated results */
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
+    return () => { ctrl.abort(); clearTimeout(t); };
   }, [q]);
+
+  // Curated matches first (trusted staples), then de-duplicated remote hits.
+  const results = useMemo(() => {
+    const seen = new Set(local.map((f) => f.name.toLowerCase()));
+    const merged = [...local];
+    for (const f of remote) {
+      const k = f.name.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      merged.push(f);
+    }
+    return merged.slice(0, 30);
+  }, [local, remote]);
 
   const commit = (food: NutritionFood) => {
     const meal: Meal = { id: `u-${Date.now()}`, date, kind, items: [{ food, servings }] };
@@ -66,7 +99,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
             <button
               key={k}
               onClick={() => setKind(k)}
-              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", kind === k ? "bg-ink-50 text-[#241f18]" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]")}
+              className={cn("rounded-full px-3 py-1.5 text-xs font-medium transition", kind === k ? "bg-ink-50 text-ink-950" : "border border-black/12 text-ink-300 hover:bg-black/[0.06]")}
             >
               {MEAL_LABEL[k]}
             </button>
@@ -80,11 +113,12 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
               <input
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setSelected(null); }}
-                placeholder="Search foods…"
-                className="h-10 w-full rounded-xl border border-black/10 bg-ink-875 pl-9 pr-3 text-sm text-ink-100 outline-none focus:border-black/25"
+                placeholder="Search foods — Indian & everyday…"
+                className="h-10 w-full rounded-xl border border-black/10 bg-ink-875 pl-9 pr-9 text-sm text-ink-100 outline-none focus:border-black/25"
               />
+              {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-ink-400" />}
             </div>
-            <div className="mt-2 max-h-52 space-y-1 overflow-y-auto">
+            <div className="mt-2 max-h-64 space-y-1 overflow-y-auto">
               {results.map((f) => (
                 <button
                   key={f.id}
@@ -94,15 +128,20 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
                     selected?.id === f.id ? "bg-black/[0.09]" : "hover:bg-black/[0.05]"
                   )}
                 >
-                  <span className="text-sm text-ink-100">
-                    {f.name} <span className="ml-1 text-xs text-ink-500">{f.serving}</span>
+                  <span className="min-w-0 text-sm text-ink-100">
+                    <span className="truncate">{f.name}</span> <span className="ml-1 text-xs text-ink-500">{f.serving}</span>
                   </span>
                   <span className="tabular shrink-0 text-xs text-ink-400">
                     {f.kcal} kcal · {f.protein}P {f.carbs}C {f.fat}F
                   </span>
                 </button>
               ))}
-              {!results.length && <p className="px-3 py-2 text-xs text-ink-400">No match — add it as a custom food.</p>}
+              {!results.length && !loading && (
+                <p className="px-3 py-2 text-xs text-ink-400">
+                  {q.trim().length >= 2 ? "No match — add it as a custom food below." : "Type to search thousands of foods."}
+                </p>
+              )}
+              {!results.length && loading && <p className="px-3 py-2 text-xs text-ink-400">Searching…</p>}
             </div>
             <div className="mt-3 flex items-center justify-between gap-3 border-t border-black/[0.05] pt-3">
               <button onClick={() => setCustom(true)} className="text-xs font-medium text-nutrition hover:underline">
