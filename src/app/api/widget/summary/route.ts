@@ -111,6 +111,20 @@ export async function GET(req: NextRequest) {
     if (hasSignal(scored[i])) { last = scored[i]; break; }
   }
 
+  // Energy is a wake-period battery, NOT a calendar metric — it must not reset at
+  // midnight. recovery/sleep are derived from last night's sleep, so they
+  // correctly go null after midnight until a new sleep is logged; energy reflects
+  // the user's current waking state and has to stay answerable until they sleep.
+  // So we source energy from the most recent day that actually has an energy
+  // value — the engine already carries the still-draining battery onto today when
+  // no new sleep has happened — decoupled from `last`. When a new sleep completes,
+  // a fresh energy score becomes the latest available one and energy resets then,
+  // not at the clock rollover.
+  let energyDay = last;
+  for (let i = scored.length - 1; i >= 0; i--) {
+    if (scored[i].energy.available !== false) { energyDay = scored[i]; break; }
+  }
+
   if (!last) return NextResponse.json({ recovery: null, energy: null, sleep: null, sleepHours: null, strain: null, strainStatus: null, calories: null, caloriesBurnt: null, protein: null, carbs: null, fat: null, tasks: [], events: [], medications: [], updatedAt: snap.updatedAt });
 
   // Macros = what's been eaten on the user's real local day (resets naturally at
@@ -182,22 +196,21 @@ export async function GET(req: NextRequest) {
         };
       });
     })
-    // Untaken first (overdue then upcoming, both by time); taken last.
-    .sort((a, b) => Number(a.taken) - Number(b.taken) || a._min - b._min)
+    // Order for the widget's 4-item cap: overdue first, then upcoming (both
+    // untaken, by time), then taken doses last — so missed/pending stay visible.
+    .sort((a, b) => Number(a.taken) - Number(b.taken) || Number(b.overdue) - Number(a.overdue) || a._min - b._min)
     .slice(0, 6)
     .map((m) => ({ id: m.id, name: m.name, dose: m.dose, time: m.time, taken: m.taken, overdue: m.overdue }));
 
   const num = (r: { available?: boolean; score: number }) => (r.available === false ? null : Math.round(r.score));
 
-  // Energy carries across midnight (it's a wake-period battery, not a calendar
-  // score) — handled centrally in computeScoredDays, so `last.energy` already
-  // holds the carried, still-draining value on a fresh post-midnight day.
   const res = NextResponse.json({
     date: last.day.date,
     recovery: num(last.recovery),
     recoveryStatus: last.recovery.available === false ? null : last.recovery.status,
-    energy: num(last.energy),
-    energyStatus: last.energy.available === false ? null : last.energy.status,
+    // Energy from energyDay (carries across midnight), everything else from last.
+    energy: num(energyDay.energy),
+    energyStatus: energyDay.energy.available === false ? null : energyDay.energy.status,
     sleep: num(last.sleep),
     sleepStatus: last.sleep.available === false ? null : last.sleep.status,
     sleepHours: last.day.sleep.asleepMin > 0 ? Math.round((last.day.sleep.asleepMin / 60) * 10) / 10 : null,
