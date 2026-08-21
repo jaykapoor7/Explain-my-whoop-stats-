@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Moon, Activity, BatteryCharging, HeartPulse, Lock, LineChart, Sparkles } from "lucide-react";
+import { ArrowRight, Lock, LineChart, Sparkles } from "lucide-react";
 import { Logo } from "@/components/logo";
+import { ScoresShowcase } from "@/components/card-swipe";
 import { APP_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
@@ -74,14 +75,7 @@ const MINI = [
   { name: "Strain", score: 11.4, color: "#ef5a45", scale: "/21" },
 ];
 
-const PILLARS = [
-  { icon: HeartPulse, color: "#13b57e", name: "Recovery", body: "How ready you are today, from overnight HRV and resting heart rate against your own baseline." },
-  { icon: Moon, color: "#7b68ee", name: "Sleep", body: "A nightly score from time asleep vs your personal need, plus deep, REM and efficiency." },
-  { icon: Activity, color: "#ef5a45", name: "Strain", body: "Cardiovascular load scored against your own heart-rate reserve — not a generic 0–21 curve." },
-  { icon: BatteryCharging, color: "#eb9d18", name: "Energy", body: "The capacity you woke with and how much is left, from recovery, sleep and yesterday's load." },
-];
-
-const READS = ["Overnight HRV", "Resting HR", "Sleep stages", "Respiratory rate", "Activity & steps", "Workouts"];
+const READS =["Overnight HRV", "Resting HR", "Sleep stages", "Respiratory rate", "Activity & steps", "Workouts"];
 
 export default function Landing() {
   return (
@@ -207,34 +201,28 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* The differentiator + the four scores as a bento grid. */}
+      {/* The differentiator — copy left, an interactive deck of the four scores right. */}
       <section className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
-        <Eyebrow>Why CURA</Eyebrow>
-        <div className="mt-4 max-w-2xl">
-          <h2 className="font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.3rem]">
-            Most apps hand you a number. CURA tells you where it came from.
-          </h2>
-          <p className="mt-4 text-[16px] leading-relaxed text-ink-300">
-            Every score is a running total you can read line by line — what helped, what hurt, and by how much, always
-            against <span className="text-ink-100">your own</span> normal range rather than a population average. Over
-            weeks it learns your patterns: how late caffeine costs you sleep, how a hard week bleeds into recovery.
-          </p>
-        </div>
-
-        <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {PILLARS.map((p) => (
-            <div
-              key={p.name}
-              className="group relative overflow-hidden rounded-2xl border border-black/[0.07] bg-gradient-to-b from-[#fefcf8] to-[#fbf7ef] p-5 shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset,0_4px_10px_-6px_rgba(59,46,20,0.1)] transition-transform hover:-translate-y-1"
-            >
-              <span className="absolute inset-x-0 top-0 h-0.5" style={{ background: p.color }} />
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: `${p.color}1c`, color: p.color, boxShadow: `inset 0 0 0 1px ${p.color}22` }}>
-                <p.icon size={18} />
-              </span>
-              <h3 className="mt-4 text-[15px] font-semibold text-ink-50">{p.name}</h3>
-              <p className="mt-1.5 text-[13px] leading-relaxed text-ink-400">{p.body}</p>
+        <div className="grid items-center gap-14 lg:grid-cols-[1fr_0.82fr]">
+          <div>
+            <Eyebrow>Why CURA</Eyebrow>
+            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.3rem]">
+              Most apps hand you a number. CURA tells you where it came from.
+            </h2>
+            <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-ink-300">
+              Every score is a running total you can read line by line — what helped, what hurt, and by how much, always
+              against <span className="text-ink-100">your own</span> normal range rather than a population average. Over
+              weeks it learns your patterns: how late caffeine costs you sleep, how a hard week bleeds into recovery.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-2">
+              {[["Recovery", "#13b57e"], ["Sleep", "#7b68ee"], ["Strain", "#ef5a45"], ["Energy", "#eb9d18"]].map(([name, color]) => (
+                <span key={name} className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.08] bg-[#fdfaf3] px-3 py-1 text-[12px] font-medium text-ink-300">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: color }} /> {name}
+                </span>
+              ))}
             </div>
-          ))}
+          </div>
+          <ScoresShowcase />
         </div>
       </section>
 
