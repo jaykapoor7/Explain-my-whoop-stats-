@@ -161,7 +161,10 @@ export default function JournalPage() {
             {/* Ratings with custom sliders */}
             <div className="space-y-5">
               {RATING_KEYS.map(({ key, label, color, invert }) => {
-                const v = draft.ratings[key];
+                // Fall back to a neutral 5 when a rating is missing — older entries
+                // predate focus/sleepQuality, and an undefined value would produce a
+                // NaN track %, leaving the slider with no track (just a floating thumb).
+                const v = draft.ratings[key] ?? 5;
                 return (
                   <div key={key}>
                     <div className="flex items-center justify-between">
