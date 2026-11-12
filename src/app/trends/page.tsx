@@ -54,7 +54,7 @@ export default function TrendsPage() {
   if (!data.days.length)
     return (
       <div className="animate-fadeUp">
-        <PageHeader back title="Trends & Insights" sub="What is changing — and what appears to affect you." />
+        <PageHeader back title="Trends & Insights" sub="What is changing, and what appears to affect you." />
         <ConnectGate title="Trends" />
       </div>
     );
@@ -71,7 +71,7 @@ export default function TrendsPage() {
       <PageHeader
         back
         title="Trends & Insights"
-        sub="What is changing — and what appears to affect you."
+        sub="What is changing, and what appears to affect you."
         right={
           <SegmentedControl
             value={range}
@@ -108,13 +108,13 @@ export default function TrendsPage() {
       </Card>
 
       {data.model.digest.available && (
-        <Section title="This week" sub="Your biggest mover of the last 7 days — and the likeliest reason" accent="#13b57e" icon={<CalendarDays size={15} />}>
+        <Section title="This week" sub="Your biggest mover of the last 7 days, and the likeliest reason" accent="#13b57e" icon={<CalendarDays size={15} />}>
           <WeeklyDigestCard digest={data.model.digest} />
         </Section>
       )}
 
-      <Section title="What CURA is seeing" sub="Ranked by what matters — deviations, trends and patterns in your own data. Tap “why” to see the evidence." accent="#7b68ee" icon={<Sparkles size={15} />}>
-        <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet — insights sharpen as your baseline fills in." basisDays={data.model.dataQuality.coreCoverageDays} />
+      <Section title="What CURA is seeing" sub="Ranked by what matters: deviations, trends and patterns in your own data. Tap “why” to see the evidence." accent="#7b68ee" icon={<Sparkles size={15} />}>
+        <IntelligenceInsights insights={data.model.insights} empty="Not enough history yet. Insights get sharper as your baseline fills in." basisDays={data.model.dataQuality.coreCoverageDays} />
       </Section>
 
       <Section title="Relationships" sub="Correlation between paired metrics over your full history" accent="#2298cf" icon={<GitCompareArrows size={15} />}>

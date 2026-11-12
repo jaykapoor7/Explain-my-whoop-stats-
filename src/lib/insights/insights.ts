@@ -137,7 +137,7 @@ function trendInsight(days: ScoredDay[], key: string, betterWhenLower: boolean, 
   return {
     id,
     title: `${label} trending ${down ? "down" : "up"}`,
-    detail: `Your ${m.label} averaged ${fmtNum(mean(recent), m.decimals)}${m.unit} over the last 7 days vs ${fmtNum(mean(prior), m.decimals)}${m.unit} the week before — ${good ? "a good sign, keep it going" : "worth keeping an eye on"}.`,
+    detail: `Your ${m.label} averaged ${fmtNum(mean(recent), m.decimals)}${m.unit} over the last 7 days vs ${fmtNum(mean(prior), m.decimals)}${m.unit} the week before, ${good ? "a good sign, keep it going" : "worth keeping an eye on"}.`,
     n: vals.length,
     strength: strengthOf(effect),
     domain,
@@ -150,7 +150,7 @@ function corrInsight(days: ScoredDay[], aKey: string, bKey: string, lag: 0 | 1, 
   const c = correlate(days, aKey, bKey, lag);
   if (!c || Math.abs(c.r) < 0.32) return null;
   const p = phrase(c.r > 0 ? "higher" : "lower");
-  return { id, title: p.title, detail: `${p.detail} (r = ${fmtNum(c.r, 2)} across ${c.n} days — an association in your data, not proof of cause).`, n: c.n, strength: strengthOf(Math.abs(c.r)), domain };
+  return { id, title: p.title, detail: `${p.detail} (r = ${fmtNum(c.r, 2)} across ${c.n} days; an association in your data, not proof of cause).`, n: c.n, strength: strengthOf(Math.abs(c.r)), domain };
 }
 
 /** Weekend vs weekday sleep. */
@@ -168,7 +168,7 @@ function weekendInsight(days: ScoredDay[]): Insight | null {
   return {
     id: "weekend-sleep",
     title: `You sleep ${fmtNum(Math.abs(diff) / 60, 1)}h ${more ? "more" : "less"} on weekends`,
-    detail: `Across your data, weekend nights averaged ${fmtNum(mean(we) / 60, 1)}h vs ${fmtNum(mean(wd) / 60, 1)}h on weekdays. Big swings can leave you groggy on Mondays — a steadier schedule reads better.`,
+    detail: `Across your data, weekend nights averaged ${fmtNum(mean(we) / 60, 1)}h vs ${fmtNum(mean(wd) / 60, 1)}h on weekdays. Big swings can leave you groggy on Mondays. A steadier schedule reads better.`,
     n: we.length + wd.length,
     strength: Math.abs(diff) >= 45 ? "clear" : "moderate",
     domain: "sleep",

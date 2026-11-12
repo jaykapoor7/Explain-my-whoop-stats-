@@ -140,7 +140,7 @@ export default function MedicationPage() {
       <PageHeader
         back
         title="Medication"
-        sub="Schedule, adherence and history — treated as sensitive data."
+        sub="Schedule, adherence and history, treated as sensitive data."
         right={
           <button onClick={() => setAdding(!adding)} className="flex items-center gap-1.5 rounded-full px-4 py-2 text-xs font-semibold text-[#241f18]" style={{ background: ACCENT }}>
             <Plus size={14} /> Add
@@ -160,7 +160,7 @@ export default function MedicationPage() {
             </span>
             <h3 className="mt-4 font-display text-lg font-bold text-ink-50">Track your medications</h3>
             <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
-              Add what you take and CURA builds a daily schedule, tracks how consistently you take it, and — over time —
+              Add what you take and CURA builds a daily schedule, tracks how consistently you take it and, over time,
               shows how it lines up with your sleep, recovery and mood.
             </p>
             <button onClick={() => setAdding(true)} className="mt-5 inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-xs font-semibold text-[#241f18]" style={{ background: ACCENT }}>
@@ -248,7 +248,7 @@ export default function MedicationPage() {
                 );
               })}
               {!data.todayMedEvents.some((e) => e.scheduled) && (
-                <Card className="p-4 text-xs text-ink-400">Only as-needed medications configured — nothing scheduled today.</Card>
+                <Card className="p-4 text-xs text-ink-400">Only as-needed medications configured. Nothing scheduled today.</Card>
               )}
             </div>
           </Section>
@@ -310,7 +310,7 @@ export default function MedicationPage() {
       )}
 
       {medInsights.length > 0 && (
-        <Section title="Observed associations" sub="Observational only — never medical advice">
+        <Section title="Observed associations" sub="Observational only, never medical advice">
           <div className="space-y-3">
             {medInsights.map((i) => (
               <Card key={i.id} className="p-4">

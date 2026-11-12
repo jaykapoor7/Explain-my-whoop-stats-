@@ -35,9 +35,9 @@ export function SessionPlanner({ current, target, restHr = 60, maxHr = 185 }: { 
   const added = estimateActivityLoad(minutes, hr, rest, max);
   const projected = Math.min(21, Math.round((current + added) * 10) / 10);
   const verdict =
-    projected < target.low ? { text: "below your target — room for more", c: "#eb9d18" }
+    projected < target.low ? { text: "below your target, room for more", c: "#eb9d18" }
     : projected <= target.high ? { text: "right in your target zone", c: "#13b57e" }
-    : { text: "over your target — that's a big day", c: "#ef5a45" };
+    : { text: "over your target: that's a big day", c: "#ef5a45" };
 
   const barMax = Math.max(21, target.high + 3);
   const pct = (v: number) => `${Math.min(100, (v / barMax) * 100)}%`;

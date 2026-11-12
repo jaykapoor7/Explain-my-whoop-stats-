@@ -53,7 +53,7 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader back title="Settings" sub="Your profile, connected data and privacy — all in one place." />
+      <PageHeader back title="Settings" sub="Your profile, connected data and privacy." />
 
       {notice?.kind === "setup" && (
         <Card className="mt-5 flex items-start gap-3 border border-warn/25 bg-warn/[0.06] p-4">
@@ -85,7 +85,7 @@ export default function SettingsPage() {
                 {account.user?.email && <div className="truncate text-xs text-ink-400">{account.user.email}</div>}
                 <div className={cn("mt-1 flex items-center gap-1 text-[11px] font-medium", account.syncError || !account.syncDurable ? "text-warn" : "text-good")}>
                   {account.syncing ? <><Loader2 size={11} className="animate-spin" /> syncing…</>
-                    : account.syncError ? <><AlertTriangle size={11} /> sync error — try again shortly</>
+                    : account.syncError ? <><AlertTriangle size={11} /> sync error, try again shortly</>
                     : !account.syncDurable ? <><AlertTriangle size={11} /> sync unavailable right now</>
                     : <><Cloud size={11} /> synced across your devices</>}
                 </div>
@@ -94,7 +94,7 @@ export default function SettingsPage() {
             </div>
           ) : (
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-[13px] leading-relaxed text-ink-400">Sign in with Google to use CURA on your laptop and phone with everything in sync — your data, connection and friends follow you.</p>
+              <p className="text-[13px] leading-relaxed text-ink-400">Sign in with Google to use CURA on your laptop and phone with everything in sync: your data, connection and friends.</p>
               <button onClick={account.signIn} className="flex shrink-0 items-center gap-2 rounded-full bg-recovery px-5 py-2.5 text-xs font-semibold text-[#241f18]"><LogIn size={14} /> Sign in with Google</button>
             </div>
           )}
@@ -120,7 +120,7 @@ export default function SettingsPage() {
         <FitbitCard autoSyncOnConnected />
       </Section>
 
-      <Section title="Other wearables" sub="Connect Oura, WHOOP or Polar directly — CURA syncs and scores them the same way.">
+      <Section title="Other wearables" sub="Connect Oura, WHOOP or Polar directly. CURA syncs and scores them the same way.">
         <Connections />
       </Section>
 
@@ -131,8 +131,8 @@ export default function SettingsPage() {
           </span>
           <p className="text-[13px] leading-relaxed text-ink-400">
             When you&apos;re signed in, your data is stored in your own account so it syncs across your devices; signed
-            out, it stays only in this browser. Medication and journal data are treated as sensitive — never used for
-            advertising or to train models — and your Google token is encrypted at rest. See our{" "}
+            out, it stays only in this browser. Medication and journal data are treated as sensitive (never used for
+            advertising or to train models), and your Google token is encrypted at rest. See our{" "}
             <Link href="/privacy" className="text-recovery underline">Privacy Policy</Link>.
           </p>
         </Card>

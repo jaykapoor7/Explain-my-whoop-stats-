@@ -64,7 +64,7 @@ function PairInner() {
         </h1>
         <p className="mx-auto mt-1.5 max-w-xs text-xs leading-relaxed text-ink-400">
           {phase === "linking" && "Bringing your Fitbit connection over from your other device."}
-          {phase === "syncing" && "Your connection is on this device — fetching your recent history."}
+          {phase === "syncing" && "Your connection is on this device. Fetching your recent history."}
           {phase === "done" && (detail || "Taking you to your dashboard.")}
           {phase === "error" && detail}
         </p>

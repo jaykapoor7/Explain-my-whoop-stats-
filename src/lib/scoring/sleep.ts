@@ -34,7 +34,7 @@ export function calcSleep(day: DailySummary, baseline?: PersonalBaseline): { raw
   const s = day.sleep;
   if (!hasSleep(day)) {
     return {
-      raw: unavailable("sleep", 100, "No data", "No sleep was recorded for this night — wear your device overnight, then sync."),
+      raw: unavailable("sleep", 100, "No data", "No sleep was recorded for this night. Wear your device overnight, then sync."),
       features: { deepRemMin: 0 },
     };
   }
@@ -121,7 +121,7 @@ function sleepExplain(terms: Contributor[], s: DailySummary["sleep"], deepRem: n
   const lead = `${(s.asleepMin / 60).toFixed(1)}h asleep at ${s.efficiencyPct}% efficiency, ${restorePct}% of it restorative (deep + REM).`;
   if (help && hurt) return `${lead} Boosted most by ${lc(help.label)}, held back by ${lc(hurt.label)}.`;
   if (hurt) return `${lead} Mainly held back by ${lc(hurt.label)}.`;
-  if (help) return `${lead} A strong night — led by ${lc(help.label)}.`;
+  if (help) return `${lead} A strong night, led by ${lc(help.label)}.`;
   return lead;
 }
 

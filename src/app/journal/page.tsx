@@ -118,7 +118,7 @@ export default function JournalPage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader back title="Journal" sub="Log the life around the data — it becomes your personal experiment system." />
+      <PageHeader back title="Journal" sub="Log what happens around the data so CURA can compare it with your scores." />
 
       {/* Week date strip */}
       <div className="mt-5 flex items-center gap-2">
@@ -281,7 +281,7 @@ export default function JournalPage() {
           </Section>
 
           {journalInsights.length > 0 && (
-            <Section className="mt-0" title="Patterns from your logs" sub="Observed associations — not causation" accent="#7b68ee" icon={<Sparkles size={15} />}>
+            <Section className="mt-0" title="Patterns from your logs" sub="Observed associations, not causation" accent="#7b68ee" icon={<Sparkles size={15} />}>
               <div className="space-y-3">
                 {journalInsights.map((i) => (
                   <Card key={i.id} className="flex items-start gap-3 p-4">
@@ -339,7 +339,7 @@ export default function JournalPage() {
 
       <div className="mt-8">
         <Why summary="How does the journal power insights?">
-          Every tag becomes a variable CURA can compare against your physiology — e.g. HRV, recovery and sleep on days
+          Every tag becomes a variable CURA can compare against your physiology, for example HRV, recovery and sleep on days
           after you smoked vs days you didn&apos;t, always with the sample size shown. Associations are reported
           observationally and never as proof of cause.
         </Why>

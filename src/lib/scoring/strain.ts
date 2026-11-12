@@ -77,7 +77,7 @@ export function calcStrain(day: DailySummary, hr: { restHr?: number; maxHr?: num
   const ignoredLow = day.activities.filter((a) => a.confidence === "low" && a.resolved !== "confirmed").length;
   const lead = counted.length
     ? `${counted.length} counted ${counted.length === 1 ? "activity" : "activities"} for ${rounded.toFixed(1)} load.`
-    : `A light day — daily movement only, for ${rounded.toFixed(1)} load.`;
+    : `A light day: daily movement only, for ${rounded.toFixed(1)} load.`;
   return build(
     "strain",
     21,

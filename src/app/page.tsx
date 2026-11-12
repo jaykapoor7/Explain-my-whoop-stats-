@@ -6,34 +6,36 @@ import { ScoresShowcase } from "@/components/card-swipe";
 import { APP_NAME } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  // Absolute so the tab reads exactly "CURA — …" (matches the OAuth consent
-  // screen app name) rather than the layout's "… · CURA" template.
-  title: { absolute: "CURA — your body, clearly" },
+  // Absolute so the tab starts with "CURA" (the OAuth consent screen app name)
+  // rather than using the layout's "… · CURA" template.
+  title: { absolute: "CURA: your body, clearly" },
   description:
-    "CURA turns your wearable data into clear daily Recovery, Sleep, Strain and Energy scores, each explained in plain English, with personal patterns and trends.",
+    "CURA turns Fitbit and Google Health data into four daily scores (recovery, sleep, strain and energy) and shows what raised or lowered each one.",
 };
 
-/** Static score ring for the marketing preview (no animation — server-rendered). */
-function Ring({ score, color, label, size = 132 }: { score: number; color: string; label: string; size?: number }) {
+/** Static score ring for the marketing preview (no animation, server-rendered).
+ * Drawn in a fixed viewBox so it scales down to fit three across on a phone. */
+function Ring({ score, color, label }: { score: number; color: string; label: string }) {
+  const size = 112;
   const stroke = 9;
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
   const off = c * (1 - score / 100);
   return (
-    <div className="relative grid shrink-0 place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+    <div className="relative grid aspect-square w-[80px] shrink-0 place-items-center sm:w-[112px]">
+      <svg viewBox={`0 0 ${size} ${size}`} className="absolute inset-0 h-full w-full" style={{ transform: "rotate(-90deg)" }}>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="rgba(59,46,20,0.08)" strokeWidth={stroke} />
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={c} strokeDashoffset={off} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="tabular font-display text-[2.2rem] font-bold leading-none tracking-[-0.02em] text-ink-50">{score}</span>
-        <span className="mt-1.5 text-[9px] font-semibold uppercase tracking-[0.18em]" style={{ color }}>{label}</span>
+        <span className="tabular font-display text-[1.6rem] font-bold leading-none tracking-[-0.02em] text-ink-50 sm:text-[2.2rem]">{score}</span>
+        <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.12em] sm:mt-1.5 sm:text-[9px] sm:tracking-[0.18em]" style={{ color }}>{label}</span>
       </div>
     </div>
   );
 }
 
-/** Small-caps section eyebrow — consistent rhythm marker above every section head. */
+/** Small-caps section eyebrow: the rhythm marker above every section head. */
 function Eyebrow({ children, color = "#13b57e" }: { children: React.ReactNode; color?: string }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -69,7 +71,8 @@ const LEDGER = [
   { label: "Training load", detail: "easy yesterday", pts: "+2", good: true, w: "18%" },
 ];
 
-const READS =["Overnight HRV", "Resting HR", "Sleep stages", "Respiratory rate", "Activity & steps", "Workouts"];
+// Only what the Google Health sync actually pulls (see src/lib/fitbit/server.ts).
+const READS = ["Overnight HRV", "Resting HR", "Sleep stages", "Activity & steps", "Workouts"];
 
 export default function Landing() {
   return (
@@ -112,12 +115,11 @@ export default function Landing() {
             <span className="h-1.5 w-1.5 rounded-full bg-recovery" /> Recovery · Sleep · Strain · Energy
           </span>
           <h1 className="mx-auto mt-6 max-w-3xl font-display text-[2.85rem] font-bold leading-[0.98] tracking-[-0.035em] text-ink-50 sm:text-[4rem]">
-            Understand your body,<br className="hidden sm:block" /> not just your numbers.
+            Your Fitbit data,<br className="hidden sm:block" /> explained.
           </h1>
           <p className="mx-auto mt-6 max-w-xl text-[17px] leading-relaxed text-ink-300">
-            Your Fitbit gives you charts. {APP_NAME} gives you an answer. Four daily scores, each measured against
-            <span className="text-ink-100"> your own</span> baseline and broken down into the exact reasons behind it —
-            so you know how ready you are, and why.
+            {APP_NAME} gives you four daily scores: recovery, sleep, strain and energy. Each one is measured against
+            <span className="text-ink-100"> your own</span> baseline and broken down into what raised or lowered it.
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Link href="/today" className="group inline-flex items-center gap-2 rounded-full bg-recovery px-6 py-3 text-sm font-semibold text-[#0c3325] shadow-lift transition hover:brightness-[1.04]">
@@ -130,13 +132,13 @@ export default function Landing() {
           <p className="mt-6 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-ink-400">
             <span>Works with Google Health &amp; Fitbit</span>
             <span className="text-ink-600">·</span>
-            <span>your data stays yours</span>
+            <span>data never sold</span>
             <span className="text-ink-600">·</span>
             <span>not a medical device</span>
           </p>
         </div>
 
-        {/* Wide product dashboard — the shipped Today view, framed and centered. */}
+        {/* Wide product dashboard: the shipped Today view, framed and centered. */}
         <div className="mx-auto mt-14 max-w-5xl px-6 pb-14">
           <AppWindow tab="today">
             <div className="flex items-center justify-between border-b border-black/[0.06] pb-4">
@@ -144,18 +146,20 @@ export default function Landing() {
                 <div className="text-[11px] font-medium uppercase tracking-[0.14em] text-ink-400">Today</div>
                 <div className="mt-0.5 font-display text-lg font-bold text-ink-50">Sunday morning</div>
               </div>
-              <span className="rounded-full bg-recovery/15 px-3 py-1 text-[11px] font-semibold text-recovery">Adequate · in line with baseline</span>
+              <span className="shrink-0 rounded-full bg-recovery/15 px-3 py-1 text-[11px] font-semibold text-recovery">
+                Adequate<span className="hidden sm:inline"> · in line with baseline</span>
+              </span>
             </div>
 
             {/* Three rings across the top */}
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            <div className="mt-5 grid grid-cols-3 gap-2 sm:gap-3">
               {[
                 { score: 72, color: "#13b57e", label: "Recovery", sub: "Adequate" },
                 { score: 65, color: "#eb9d18", label: "Energy", sub: "Charged" },
                 { score: 88, color: "#7b68ee", label: "Sleep", sub: "8h 02m" },
               ].map((r) => (
-                <div key={r.label} className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-black/[0.015] px-3 py-5">
-                  <Ring score={r.score} color={r.color} label={r.label} size={112} />
+                <div key={r.label} className="flex flex-col items-center rounded-2xl border border-black/[0.06] bg-black/[0.015] px-1 py-4 sm:px-3 sm:py-5">
+                  <Ring score={r.score} color={r.color} label={r.label} />
                   <span className="mt-2 text-[11px] text-ink-400">{r.sub}</span>
                 </div>
               ))}
@@ -191,7 +195,7 @@ export default function Landing() {
           </AppWindow>
         </div>
 
-        {/* Capability strip — honest "what it reads", not fake company logos. */}
+        {/* Capability strip: what it actually reads, not fake company logos. */}
         <div className="border-y border-black/[0.06] bg-[#f6f1e7]/60">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-8 gap-y-3 px-6 py-5">
             <span className="text-[11px] font-semibold uppercase tracking-[0.2em] text-ink-500">Reads from your wearable</span>
@@ -204,18 +208,19 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* The differentiator — copy left, an interactive deck of the four scores right. */}
+      {/* The differentiator: copy left, an interactive deck of the four scores right. */}
       <section className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
         <div className="grid items-center gap-14 lg:grid-cols-[1fr_0.82fr]">
           <div>
             <Eyebrow>Why CURA</Eyebrow>
-            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.3rem]">
-              Most apps hand you a number. CURA tells you where it came from.
+            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 text-balance sm:text-[2.3rem]">
+              Every score shows where it came from.
             </h2>
             <p className="mt-4 max-w-xl text-[16px] leading-relaxed text-ink-300">
-              Every score is a running total you can read line by line — what helped, what hurt, and by how much, always
-              against <span className="text-ink-100">your own</span> normal range rather than a population average. Over
-              weeks it learns your patterns: how late caffeine costs you sleep, how a hard week bleeds into recovery.
+              Each score is a running total you can read line by line: what raised it, what lowered it and by how many
+              points. It is compared with <span className="text-ink-100">your own</span> normal range, not a population
+              average. Over a few weeks it also picks up patterns, such as how late caffeine affects your sleep or how a
+              hard week affects your recovery.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               {[["Recovery", "#13b57e"], ["Sleep", "#7b68ee"], ["Strain", "#ef5a45"], ["Energy", "#eb9d18"]].map(([name, color]) => (
@@ -229,7 +234,7 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Second product shot — the learning / patterns view. */}
+      {/* Second product shot: the learning / patterns view. */}
       <section id="patterns" className="border-t border-black/[0.06]">
         <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 py-20 sm:py-24 lg:grid-cols-[0.98fr_1.02fr]">
           <div className="order-2 lg:order-1">
@@ -282,14 +287,14 @@ export default function Landing() {
 
           <div className="order-1 lg:order-2">
             <Eyebrow color="#7b68ee">Learns your patterns</Eyebrow>
-            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.3rem]">
-              It gets to know you — then tells you what actually moves your numbers.
+            <h2 className="mt-4 font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 text-balance sm:text-[2.3rem]">
+              See which habits move your numbers.
             </h2>
             <p className="mt-4 text-[16px] leading-relaxed text-ink-300">
-              Log the life around the data — caffeine, alcohol, training, stress, late meals — and {APP_NAME} quietly
-              correlates it against your own physiology. Only associations with enough evidence surface, each with its
-              sample size and a confidence rating. No breathless claims, no fake causation — just what
-              <span className="text-ink-100"> your numbers</span> actually support.
+              Log what happens around the data, like caffeine, alcohol, training, stress and late meals, and {APP_NAME}{" "}
+              compares it with your own measurements. A pattern only appears once there is enough data behind it, and it
+              shows its sample size and a confidence rating. Findings are reported as associations in
+              <span className="text-ink-100"> your numbers</span>, not as causes.
             </p>
             <Link href="/today" className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-[#5b4fd0] underline-offset-4 hover:underline">
               See it on your own data <ArrowRight size={15} />
@@ -302,14 +307,14 @@ export default function Landing() {
       <section id="how" className="border-t border-black/[0.06]">
         <div className="mx-auto max-w-6xl px-6 py-20 sm:py-24">
           <Eyebrow color="#2298cf">How it works</Eyebrow>
-          <h2 className="mt-4 max-w-2xl font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.3rem]">
-            From raw wearable data to an answer you can act on.
+          <h2 className="mt-4 max-w-2xl font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 text-balance sm:text-[2.3rem]">
+            From wearable data to four explained scores.
           </h2>
           <div className="mt-12 grid gap-8 sm:grid-cols-3">
             {[
-              { n: "01", t: "Connect your wearable", b: "Sign in with Google to link your Google Health / Fitbit data — sleep, heart rate, HRV and activity." },
+              { n: "01", t: "Connect your wearable", b: "Sign in with Google to link your Google Health or Fitbit data: sleep, heart rate, HRV and activity." },
               { n: "02", t: "Get scores that fit you", b: "CURA computes Recovery, Sleep, Strain and Energy each day against your own baseline, not a generic one." },
-              { n: "03", t: "See the why, and the patterns", b: "Every score breaks down into its factors, with trends and personal patterns — synced across your devices." },
+              { n: "03", t: "See what drove them", b: "Every score breaks down into its factors, with trends and personal patterns. Your data syncs across your devices." },
             ].map((s) => (
               <div key={s.n} className="relative border-t border-black/[0.08] pt-5">
                 <div className="font-display text-sm font-bold tracking-[0.2em] text-recovery">{s.n}</div>
@@ -321,8 +326,8 @@ export default function Landing() {
           <div className="mt-10 flex items-start gap-3 rounded-2xl border border-black/[0.07] bg-[#f6f1e7]/50 p-5">
             <LineChart size={18} className="mt-0.5 shrink-0 text-ink-400" />
             <p className="text-[13.5px] leading-relaxed text-ink-300">
-              Plus journaling, nutrition, medication tracking and a body-aware planner that schedules around how
-              recovered you are — one place instead of five apps.
+              It also has a journal, nutrition and medication tracking, and a planner that suggests how hard to go based
+              on your recovery.
             </p>
           </div>
         </div>
@@ -332,16 +337,16 @@ export default function Landing() {
       <section className="mx-auto max-w-6xl px-6 py-16">
         <div className="relative overflow-hidden rounded-[1.6rem] border border-black/[0.08] bg-gradient-to-br from-recovery/[0.12] via-[#fdfaf3] to-sleep/[0.10] px-8 py-14 text-center shadow-[0_1px_0_0_rgba(255,255,255,0.7)_inset,0_30px_70px_-40px_rgba(59,46,20,0.45)] sm:px-12">
           <div aria-hidden className="pointer-events-none absolute left-1/2 top-[-8rem] h-64 w-[40rem] -translate-x-1/2 rounded-full bg-recovery/10 blur-3xl" />
-          <h2 className="mx-auto max-w-2xl font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 sm:text-[2.5rem]">
-            Stop guessing how you feel. Start knowing.
+          <h2 className="mx-auto max-w-2xl font-display text-[2rem] font-bold leading-[1.08] tracking-[-0.025em] text-ink-50 text-balance sm:text-[2.5rem]">
+            See what is behind your numbers.
           </h2>
-          <p className="mx-auto mt-4 max-w-xl text-[16px] leading-relaxed text-ink-300">
-            Connect your wearable and get your first set of personalised scores — with the reasons behind every one — in minutes.
+          <p className="mx-auto mt-4 max-w-xl text-balance text-[16px] leading-relaxed text-ink-300">
+            Connect your wearable to get your personal scores, each with the reasons behind it.
           </p>
           <Link href="/today" className="group mt-8 inline-flex items-center gap-2 rounded-full bg-ink-50 px-7 py-3.5 text-sm font-semibold text-ink-950 shadow-lift transition hover:opacity-90">
             Open CURA <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <p className="mt-5 text-xs text-ink-400">Free to use · your data stays yours · not a medical device</p>
+          <p className="mt-5 text-xs text-ink-400">Free to use · data never sold · not a medical device</p>
         </div>
       </section>
 
@@ -375,7 +380,7 @@ export default function Landing() {
                 <span className="font-display text-base font-bold tracking-[0.16em] text-ink-100">CURA</span>
               </div>
               <p className="mt-3 text-[13px] leading-relaxed text-ink-400">
-                Your wearable data, turned into clear daily scores you can actually understand.
+                Daily scores from your wearable data, each one explained.
               </p>
             </div>
             <div className="flex gap-14">
@@ -396,9 +401,8 @@ export default function Landing() {
               </div>
             </div>
           </div>
-          <div className="mt-10 flex flex-col items-start justify-between gap-2 border-t border-black/[0.06] pt-6 text-xs text-ink-500 sm:flex-row sm:items-center">
+          <div className="mt-10 border-t border-black/[0.06] pt-6 text-xs text-ink-500">
             <p>© {new Date().getFullYear()} {APP_NAME}. A personal wellness tool, not a medical device.</p>
-            <p>Made for people who want the why, not just the number.</p>
           </div>
         </div>
       </footer>

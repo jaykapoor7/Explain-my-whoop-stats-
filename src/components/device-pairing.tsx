@@ -72,7 +72,7 @@ function PairModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <p className="mx-auto mt-2 max-w-xs text-xs leading-relaxed text-ink-400">
-          Scan this with your phone&apos;s camera to bring your Fitbit connection across — no setup to repeat. The code
+          Scan this with your phone&apos;s camera to bring your Fitbit connection across with no setup to repeat. The code
           works once and expires in a few minutes.
         </p>
 

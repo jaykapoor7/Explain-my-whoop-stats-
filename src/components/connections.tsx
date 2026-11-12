@@ -25,7 +25,7 @@ export function Connections() {
     const r = await fetch(`/api/connect/${id}/sync`, { cache: "no-store" }).catch(() => null);
     const j = (await r?.json().catch(() => null)) as { days?: [] ; count?: number } | null;
     if (r?.ok && j?.days) { setWearableDays(j.days, new Date().toISOString()); setMsg({ id, text: `Synced ${j.count} days.`, ok: true }); }
-    else setMsg({ id, text: "Couldn't sync — try reconnecting.", ok: false });
+    else setMsg({ id, text: "Couldn't sync. Try reconnecting.", ok: false });
     setBusy(null);
   }, [setWearableDays]);
 
@@ -78,7 +78,7 @@ export function Connections() {
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/[0.06] text-ink-300"><Apple size={17} /></span>
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-ink-50">Apple Watch</div>
-          <div className="text-[11px] text-ink-400">Apple Health has no web API — coming via the CURA iOS app.</div>
+          <div className="text-[11px] text-ink-400">Apple Health has no web API, so it will come through the CURA iOS app.</div>
         </div>
         <span className="rounded-full bg-black/[0.05] px-3 py-1.5 text-[11px] font-medium text-ink-500">Via the app</span>
       </Card>

@@ -21,7 +21,7 @@ export default function HealthAgePage() {
   const r = calcHealthAgeWeekly(data.days, actualAge);
   const accent = r.deltaYears <= 0 ? YOUNGER : OLDER;
 
-  const header = <PageHeader title="Health Age" sub="How old your body reads versus the calendar — and how to turn it back." back />;
+  const header = <PageHeader title="Health Age" sub="How old your body reads versus the calendar, and how to turn it back." back />;
 
   // Not enough to show yet.
   if (!r.available) {
@@ -36,7 +36,7 @@ export default function HealthAgePage() {
             <>
               <h3 className="mt-4 font-display text-lg font-bold text-ink-50">Add your birth year</h3>
               <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
-                CURA estimates how old your body reads from your HRV, resting heart rate, sleep and activity — then shows
+                CURA estimates how old your body reads from your HRV, resting heart rate, sleep and activity, then shows
                 the trend and what&apos;s moving it.
               </p>
               <div className="mt-5 flex justify-center"><AgeSetter /></div>
@@ -67,7 +67,7 @@ export default function HealthAgePage() {
     <div className="animate-fadeUp">
       <PageHeader
         title="Health Age"
-        sub="How old your body reads versus the calendar — and how to turn it back."
+        sub="How old your body reads versus the calendar, and how to turn it back."
         right={<span className="tabular rounded-full px-3 py-1.5 text-sm font-semibold" style={{ background: `${accent}1f`, color: accent }}>{r.status}</span>}
         back
       />
@@ -125,7 +125,7 @@ export default function HealthAgePage() {
       )}
 
       {/* Full factor breakdown as diverging bars around a centre line */}
-      <Section title="Every factor" sub="Younger to the left, older to the right — around your calendar age" accent={accent}>
+      <Section title="Every factor" sub="Younger to the left, older to the right, relative to your calendar age" accent={accent}>
         <Card className="space-y-1 p-3">
           <div className="mb-1 flex items-center justify-between px-1 text-[10px] font-semibold uppercase tracking-[0.1em]">
             <span style={{ color: YOUNGER }}>Reads younger</span>
@@ -154,12 +154,12 @@ export default function HealthAgePage() {
 
       <div className="mt-6">
         <Why summary="How is Health Age calculated?">
-          It reads your last ~4 weeks across nine markers — HRV level and its night-to-night stability, resting heart
-          rate, sleep duration, efficiency and consistency, daily steps, how often you train, and your average recovery
-          — and compares each against rough age-expected values, nudging your calendar age up or down. Higher, steadier
+          It reads your last ~4 weeks across nine markers (HRV level and its night-to-night stability, resting heart
+          rate, sleep duration, efficiency and consistency, daily steps, how often you train, and your average recovery)
+          and compares each against rough age-expected values, nudging your calendar age up or down. Higher, steadier
           HRV, a low resting HR, consistent quality sleep and regular training read younger; erratic HRV, short or
           irregular sleep and low activity read older. This is an estimate for motivation, not a validated clinical
-          measure — and never medical advice.
+          measure, and never medical advice.
         </Why>
       </div>
     </div>
@@ -187,7 +187,7 @@ function AgeScale({ physio, actual, accent }: { physio: number; actual: number; 
         <Marker pct={pos(physio)} label="Your body" value={physio} color={accent} />
       </div>
       <p className="mt-1.5 text-[11px] text-ink-500">
-        {younger ? "Your body sits to the left of the calendar — reading younger." : "Your body sits to the right of the calendar — reading older."} Refreshes weekly.
+        {younger ? "Your body sits to the left of the calendar, reading younger." : "Your body sits to the right of the calendar, reading older."} Refreshes weekly.
       </p>
     </div>
   );

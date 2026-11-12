@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "CURA",
     short_name: "CURA",
-    description: "Your body, clearly explained — daily recovery, sleep, strain and energy scores from your wearable, with the patterns behind them.",
+    description: "Your body, clearly explained: daily recovery, sleep, strain and energy scores from your wearable, with the patterns behind them.",
     start_url: "/today",
     display: "standalone",
     background_color: "#f4efe4",

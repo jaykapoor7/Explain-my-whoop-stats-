@@ -62,7 +62,7 @@ export function weeklyDigest(layered: LayeredMetric[], relationships: Relationsh
   let detail: string;
   if (pct != null && recent != null && prior != null) {
     detail = flat
-      ? `Your ${def.label} is holding around ${Math.round(recent)}${def.unit ? " " + def.unit : ""} — steady vs the week before.`
+      ? `Your ${def.label} is holding around ${Math.round(recent)}${def.unit ? " " + def.unit : ""}, steady vs the week before.`
       : `Your ${def.label} is ${rawDelta > 0 ? "up" : "down"} ${Math.abs(pct)}% vs the week before (${Math.round(recent)}${def.unit ? " " + def.unit : ""} vs ${Math.round(prior)}).`;
   } else {
     detail = `Your ${def.label} is ${trendWord} over the last 7 days.`;

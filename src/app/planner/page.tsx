@@ -34,7 +34,7 @@ function planMessage(dateLabel: string, scheduled: PlannerTask[], todos: Planner
       const time = t.start ? `${fmtTime(t.start)} · ` : "";
       lines.push(`${t.done ? "✅" : "▫️"} ${time}${t.title}${t.estMin ? ` (${t.estMin}m)` : ""}`);
     }
-  } else lines.push("— nothing scheduled —");
+  } else lines.push("Nothing scheduled.");
   const openTodos = todos.filter((t) => !t.done);
   if (openTodos.length) {
     lines.push("", "To-do:");
@@ -256,10 +256,10 @@ export default function PlannerPage() {
     rec === undefined
       ? "Connect your Fitbit and the planner will suggest scheduling around your recovery."
       : rec >= 67
-        ? "Recovery is high today — a great day for your hardest study block or training."
+        ? "Recovery is high today: a great day for your hardest study block or training."
         : rec >= 34
-          ? "Moderate recovery — a normal workload is fine; keep the hardest block before evening."
-          : "Low recovery — shorter blocks today, and swap intense training for a walk.";
+          ? "Moderate recovery: a normal workload is fine; keep the hardest block before evening."
+          : "Low recovery: shorter blocks today, and swap intense training for a walk.";
   const recColor = rec === undefined ? "#a4977f" : rec >= 67 ? "#13b57e" : rec >= 34 ? "#eb9d18" : "#ef5a45";
 
   const doneCount = scheduled.filter((t) => t.done).length;
@@ -280,7 +280,7 @@ export default function PlannerPage() {
       <PageHeader
         back
         title="Planner"
-        sub="Plan your days around your body — with a to-do list and WhatsApp reminders."
+        sub="Plan your days around your body, with a to-do list and WhatsApp reminders."
         right={
           <div className="flex items-center gap-2">
             <button onClick={toggleReminders} className={cn("flex items-center gap-1.5 rounded-full border px-3 py-2 text-xs font-medium transition", settings.browserReminders ? "border-recovery/40 bg-recovery/10 text-recovery" : "border-black/[0.1] text-ink-400 hover:text-ink-100")} title="Browser reminders while the app is open">
@@ -361,7 +361,7 @@ export default function PlannerPage() {
             </div>
           ) : (
             <button onClick={() => setAdding(true)} className="w-full rounded-2xl border border-dashed border-black/[0.12] px-4 py-8 text-center text-xs text-ink-500 transition hover:border-black/25 hover:text-ink-300">
-              Nothing planned for {relativeDay(selected).toLowerCase()} — tap to add something.
+              Nothing planned for {relativeDay(selected).toLowerCase()}. Tap to add something.
             </button>
           )}
         </Section>

@@ -28,9 +28,9 @@ export default function PrivacyPage() {
 
       <H>Information we collect</H>
       <ul className="mt-3 list-disc space-y-1.5 pl-5">
-        <LI><span className="text-ink-100">Google account details</span> — when you sign in with Google we receive your name, email address, profile picture and Google account ID, to create and identify your account.</LI>
-        <LI><span className="text-ink-100">Health &amp; fitness data</span> — with your explicit consent, we read sleep, heart-rate variability, resting heart rate, workouts, steps, calories and weight from the Google Health API to compute your scores.</LI>
-        <LI><span className="text-ink-100">Data you enter</span> — journal entries, medications, meals, planner tasks, goals and preferences you choose to log.</LI>
+        <LI><span className="text-ink-100">Google account details</span>: when you sign in with Google we receive your name, email address, profile picture and Google account ID, to create and identify your account.</LI>
+        <LI><span className="text-ink-100">Health &amp; fitness data</span>: with your explicit consent, we read sleep, heart-rate variability, resting heart rate, workouts, steps, calories and weight from the Google Health API to compute your scores.</LI>
+        <LI><span className="text-ink-100">Data you enter</span>: journal entries, medications, meals, planner tasks, goals and preferences you choose to log.</LI>
       </ul>
 
       <H>How we use your information</H>

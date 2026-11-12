@@ -200,15 +200,15 @@ export default function FriendsPage() {
   if (!account.signedIn) {
     return (
       <div className="animate-fadeUp">
-        <PageHeader back title="Friends" sub="Form a group and compete on recovery, sleep and strain — on any wearable." />
+        <PageHeader back title="Friends" sub="Form a group and compete on recovery, sleep and strain, on any wearable." />
         <Card className="mt-5 p-8 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-recovery/12 text-recovery"><Trophy size={22} /></span>
           <h3 className="mt-4 font-display text-lg font-bold text-ink-50">Sign in to compete</h3>
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">
             Friend groups sync through your account. Because everyone is scored by the same engine, a Fitbit, a Pixel
-            Watch or a manual logger can all go head-to-head — cross-platform.
+            Watch or a manual logger can all go head-to-head.
           </p>
-          {code && <p className="mt-2 text-[12px] text-ink-500">You have an invite to code <span className="tabular font-semibold text-ink-300">{code}</span> — sign in and it&apos;ll be ready to join.</p>}
+          {code && <p className="mt-2 text-[12px] text-ink-500">You have an invite to code <span className="tabular font-semibold text-ink-300">{code}</span>. Sign in and it&apos;ll be ready to join.</p>}
           <button onClick={account.signIn} className="mt-5 inline-flex items-center gap-2 rounded-full bg-recovery px-6 py-3 text-sm font-semibold text-[#241f18]"><LogIn size={16} /> Sign in with Google</button>
         </Card>
       </div>
@@ -222,7 +222,7 @@ export default function FriendsPage() {
       <PageHeader
         back
         title="Friends"
-        sub="Form a group and compete on recovery, sleep and strain — cross-platform."
+        sub="Form a group and compete on recovery, sleep and strain, on any wearable."
         right={
           <SegmentedControl
             value={period}
@@ -235,7 +235,7 @@ export default function FriendsPage() {
       {nudge && (
         <Card className="mt-5 flex items-center gap-3 p-4" style={{ background: "linear-gradient(135deg, #f4c04e26, transparent)" }}>
           <span className="text-2xl">🏆</span>
-          <p className="text-sm text-ink-100">You&apos;re <span className="font-bold">#1</span> in <span className="font-semibold">{nudge.group}</span> for {nudge.metric} this week — nice work.</p>
+          <p className="text-sm text-ink-100">You&apos;re <span className="font-bold">#1</span> in <span className="font-semibold">{nudge.group}</span> for {nudge.metric} this week. Nice work.</p>
         </Card>
       )}
 
@@ -266,7 +266,7 @@ export default function FriendsPage() {
           <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-400">Create a group and share its invite link with friends, or join one with a code they send you.</p>
         </Card>
       ) : (
-        <Section title="Your groups" sub="Only your three headline scores are shared — nothing else." accent={DOMAIN_COLOR.recovery} icon={<Trophy size={15} />}>
+        <Section title="Your groups" sub="Only your three headline scores are shared, nothing else." accent={DOMAIN_COLOR.recovery} icon={<Trophy size={15} />}>
           <div className="space-y-4">
             {groups.map((g) => <GroupCard key={g.id} group={g} meSub={meSub} period={period} onLeave={leave} />)}
           </div>

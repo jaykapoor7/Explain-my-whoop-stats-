@@ -14,7 +14,7 @@ interface SwipeCard {
   icon: ReactNode;
 }
 
-/** Static score ring (no count-up — this is a marketing deck, rendered many times). */
+/** Static score ring (no count-up: this is a marketing deck, rendered many times). */
 function DeckRing({ score, color, label, scale }: { score: number; color: string; label: string; scale?: string }) {
   const size = 112, stroke = 8;
   const r = (size - stroke) / 2;
@@ -39,14 +39,14 @@ function DeckRing({ score, color, label, scale }: { score: number; color: string
 const CARDS: SwipeCard[] = [
   { title: "Recovery", color: "#13b57e", score: 72, note: "HRV +1.3σ vs your normal", description: "How ready your body is today, from overnight HRV and resting heart rate against your own baseline.", icon: <HeartPulse size={20} /> },
   { title: "Sleep", color: "#7b68ee", score: 88, note: "8h 02m · 94% efficiency", description: "A nightly score from time asleep vs your personal need, plus deep, REM and efficiency.", icon: <Moon size={20} /> },
-  { title: "Strain", color: "#ef5a45", score: 11.4, scale: "/21", note: "Threshold run · zone 4", description: "Cardiovascular load scored against your own heart-rate reserve — not a generic curve.", icon: <Activity size={20} /> },
+  { title: "Strain", color: "#ef5a45", score: 11.4, scale: "/21", note: "Threshold run · zone 4", description: "Cardiovascular load scored against your own heart-rate reserve, not a generic curve.", icon: <Activity size={20} /> },
   { title: "Energy", color: "#eb9d18", score: 65, note: "65% battery left at 2pm", description: "The capacity you woke with and how much is left, from recovery, sleep and yesterday's load.", icon: <BatteryCharging size={20} /> },
 ];
 
 /**
  * A swipeable, stacked card deck (drag or arrows) showcasing the four daily
  * scores on the landing. Built natively on the app's design system + the
- * framer-motion we already ship — no extra icon/carousel dependencies.
+ * framer-motion we already ship, with no extra icon/carousel dependencies.
  */
 export function ScoresShowcase() {
   const items = CARDS;
