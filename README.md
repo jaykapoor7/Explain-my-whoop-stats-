@@ -1,220 +1,72 @@
-# Health OS
+# CURA
 
-An open-source personal Health OS for your Fitbit Air.
+CURA turns Fitbit and Google Health data into four daily scores (recovery, sleep, strain and energy) and shows what raised or lowered each one. It is a personal wellness tool, not a medical device.
 
-Most health apps hand you a number and leave. Health OS is built around one rule:
+Live: https://explain-my-whoop-stats.vercel.app/
 
-> **Never just show a number.** Explain what it means, what pushed it up or down, and how it
-> affected everything else.
+## What it does
 
-Every score follows the same path:
+- **Four daily scores.** Each score is a sum of signed contributions (for example "HRV +13", "Sleep debt −11"), so the explanation is the calculation itself. Inputs are compared with your own rolling 14-day baseline, not population norms.
+- **No phantom workouts.** Short heart-rate spikes are marked low confidence and left out of strain until you confirm, ignore or retype them.
+- **Trends and patterns.** Compares your journal tags (caffeine, alcohol, late meals and so on) with your scores. A pattern is only shown once it clears a minimum sample size, always with `n`, and is worded as an association, never as a cause.
+- **Logging tools.** Journal, nutrition (food search via Open Food Facts), medication schedule and adherence, a planner with WhatsApp reminders, and editable goals.
+- **Extras.** A Health Age estimate, friend groups that compare headline scores, and an assistant that answers questions about your stats in the browser (no AI service is called).
+- **Other wearables.** Manual entry for any device. Optional Oura, WHOOP and Polar connectors (Oura is mapped; the others connect but their data mapping is still in progress).
 
-```
-DATA → SCORE → WHY → IMPACT → PERSONAL PATTERNS → ACTION
-```
+## How it handles your data
 
-Your data is fetched from Google Health on demand and stored **in your browser only**. There is no
-database, no account, and no server-side copy of your health data.
+- Signing in with Google creates your CURA account and connects Google Health in one step. CURA asks for read-only health scopes and never writes to your Google data.
+- Synced health data and everything you log is kept in your browser (`localStorage`).
+- While you are signed in, a copy of that data is also saved to the server database so it syncs across your devices. Your Google refresh token is stored encrypted (AES-256-GCM) and the session cookie is signed and httpOnly.
+- If you never sign in (for example, you enter numbers by hand), your data stays in your browser.
+- If you use Friends, your headline recovery, sleep and strain scores are shared with the members of your groups.
+- Settings has **Reset local data** (this browser) and **Delete account** (profile, stored token and cloud data).
+- There are no analytics or ad trackers. The full policy is in the app at `/privacy`.
 
----
-
-## Sections
-
-| Section | What it answers |
-| --- | --- |
-| **Today** | What state am I in, and *what affected me*? A signed ledger (↑ Sleep +9, ↓ Late football −6) plus "Explain My Day". |
-| **Energy** | How much usable capacity do I have right now? |
-| **Recovery** | How prepared is my body for more stress? HRV, resting HR, sleep and yesterday's strain. |
-| **Sleep** | How well did last night restore me? Stages, efficiency, debt, consistency — and how it rippled into today. |
-| **Strain** | How much load did I take on? Per-activity breakdown with confidence gating. |
-| **Nutrition** | Calories and macros (protein, carbs, fat, fiber, sugar, sodium) vs your goals, intake vs expenditure. |
-| **Medication** | Your own schedule, reminders and adherence. Observational only — never advice. |
-| **Journal** | Mood, stress, energy, focus and tags. The input side of personal experiments. |
-| **Assistant** | Ask questions about your own stats in plain language. Runs entirely on-device. |
-| **Trends** | Correlations and group comparisons across your history, always with sample sizes. |
-| **Planner** | What's on today, and how it lines up with your capacity. |
-| **Goals** | Editable targets that drive every other page's thresholds. |
-| **Settings** | Connection, privacy, and a one-click wipe of everything. |
-
----
-
-## The "no phantom workouts" rule
-
-Wrist wearables mistake stress, caffeine, a hot shower or a bus sprint for exercise. Health OS
-never silently turns a short HR spike into a workout.
-
-Every detected activity carries a confidence level:
-
-- **High / Medium** → counted toward strain normally.
-- **Low** → shown, but **excluded from your strain score** until you resolve it with
-  **Ignore**, **Confirm as workout**, or **Edit type**.
-
-Your corrections are stored and are the intended training signal for better detection later.
-
----
-
-## Scoring
-
-Four independent calculators live in `src/lib/scoring/`:
-
-- `sleep.ts` — duration vs personal need, efficiency, deep + REM share, timing consistency, awakenings
-- `recovery.ts` — overnight HRV vs baseline, resting HR vs baseline, sleep score, yesterday's strain
-- `strain.ts` — summed load of *counted* activities plus a movement term
-- `energy.ts` — recovery, sleep debt, accumulated strain, nutrition and time of day
-
-Each returns a `ScoreResult` with **signed contributors that sum to the score**, so the "why" is
-never a post-hoc narration — it *is* the calculation. Baselines are rolling 14-day personal
-baselines, not population norms.
-
-> These are deliberate, deterministic placeholders. The final health algorithms are designed
-> separately; nothing here is tuned or validated.
-
----
-
-## Statistics honesty
-
-`src/lib/insights/insights.ts` only reports patterns that clear a minimum sample size, and always
-prints `n`. It uses Welch-style group comparisons and Pearson correlations, and it phrases every
-finding observationally:
-
-- "On days you logged *X*, your recovery averaged 6 points higher (n = 23)."
-- **Never** "X causes Y", and **never** a recommendation about medication.
-
----
-
-## Connecting your Fitbit (Google Health API)
-
-Fitbit's developer surface has moved to the **Google Health API** with Google OAuth 2.0 — the
-legacy Fitbit Web API is deprecated (sunset September 2026). This app targets the current API.
-
-Open **Settings → Connect**, and the app walks you through it. In full:
-
-### 1. Google Cloud APIs to enable
-
-In the [Google Cloud console](https://console.cloud.google.com), create a project and enable:
-
-- **Google Health API** (`health.googleapis.com`) — the only API required.
-
-### 2. OAuth consent screen
-
-- User type **External**.
-- Add yourself under **Test users**. All `googlehealth.*` scopes are **Restricted**, so while the
-  consent screen is in *Testing*, only listed test users can connect. Publishing to public users
-  requires Google's verification review.
-- Add these scopes:
-
-```
-https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
-https://www.googleapis.com/auth/googlehealth.sleep.readonly
-https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
-```
-
-All three are read-only. Health OS never writes to your Google Health data.
-
-### 3. OAuth client
-
-Create **Credentials → OAuth client ID → Web application**. The client ID ends in
-`.apps.googleusercontent.com`.
-
-**Authorized redirect URIs** — add every origin you use, exactly:
-
-```
-http://localhost:3000/api/fitbit/callback
-https://<your-app>.vercel.app/api/fitbit/callback
-```
-
-**Authorized JavaScript origins** are not needed (this is a server-side code flow).
-
-### 4. Environment variables
-
-All optional — if unset, the app prompts for the client ID and secret in the UI and keeps them in
-httpOnly cookies in your browser.
-
-| Variable | Purpose |
-| --- | --- |
-| `GOOGLE_CLIENT_ID` | Web OAuth client ID (`….apps.googleusercontent.com`) |
-| `GOOGLE_CLIENT_SECRET` | Web OAuth client secret (`GOCSPX-…`) |
-| `APP_URL` | Public origin, e.g. `https://your-app.vercel.app`. Used to build the redirect URI; must match a registered one. |
-
-On Vercel: **Settings → Environment Variables**, applied to Production and Preview. See
-`.env.example`.
-
-### 5. What gets synced
-
-`POST /api/fitbit/sync` pulls the last 30 days:
-
-| Data | Google Health data type |
-| --- | --- |
-| Resting heart rate | `daily-resting-heart-rate` |
-| HRV | `daily-heart-rate-variability` |
-| Steps | `steps` (daily roll-up) |
-| Calories | `total-calories` (daily roll-up, chunked to the documented 14-day cap) |
-| Sleep sessions & stages | `sleep` |
-| Workouts | `exercise` |
-| Weight | `weight` |
-
-The flow is Authorization Code + PKCE with `access_type=offline`; access and refresh tokens live in
-httpOnly cookies and never reach the client bundle.
-
-> **Field-mapping caveat:** per-data-type response field names for some types are not fully
-> published, so the mapper probes several plausible field names and fails soft per field rather
-> than dropping the whole day. If a metric reads as missing after your first real sync, that mapper
-> is where to look.
-
----
-
-## Running it
+## Run it locally
 
 ```bash
 npm install
 npm run dev          # http://localhost:3000
 ```
 
+The app runs with no environment variables set; see `.env.example` for all of them. Without `DATABASE_URL`, accounts and sync use a JSON file under `.data/` (single server only). Set `AUTH_SECRET` in production.
+
+Google sign-in needs `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` from a Google Cloud project with the **Google Health API** (`health.googleapis.com`) enabled:
+
+1. On the OAuth consent screen, add these scopes, and add yourself as a test user while the app is in Testing (the scopes are Restricted, so public use needs Google's verification):
+
+   ```
+   https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly
+   https://www.googleapis.com/auth/googlehealth.sleep.readonly
+   https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly
+   ```
+
+2. Create a **Web application** OAuth client and register `http://localhost:3000/api/fitbit/callback` (plus your deployed origin's equivalent) as a redirect URI. Set `APP_URL` if the public origin differs from the request origin.
+
+The first sync pulls the last 30 days.
+
+Checks:
+
 ```bash
-npm run typecheck    # tsc --noEmit, strict
+npm run typecheck
 npm run lint
 npm run build
+npm run test:analytics   # analytics engine against synthetic users
 ```
 
-Deploying to Vercel: import the repo, framework preset **Next.js** (pinned in `vercel.json`), add
-the environment variables above, deploy.
+## Where things live
 
----
-
-## Phone widgets
-
-Health OS is an installable PWA. On iPhone: open it in Safari → **Share → Add to Home Screen** for
-a standalone icon. `/widget` is a compact, glanceable view of Energy, Recovery, Sleep and Strain
-designed for that.
-
-**An honest limit:** true iOS *lock screen* widgets require a native app using Apple's WidgetKit.
-No web app of any kind can add one — that would need a companion iOS app, which this repo does not
-include.
-
----
-
-## Privacy
-
-- Health data lives in `localStorage` in your browser. There is no database and no analytics.
-- OAuth tokens and client credentials are httpOnly cookies, never exposed to client JavaScript.
-- Medication, journal and health data are treated as sensitive: never logged, never transmitted
-  anywhere except directly to Google's API for your own sync.
-- **Settings → Clear all data** wipes everything, including stored credentials.
-- No secrets or personal health data are committed to this repository.
-
----
+- `src/lib/scoring`: the sleep, recovery, strain and energy calculators. They are hand-written heuristics, not clinically validated.
+- `src/lib/analytics` and `src/lib/insights`: baselines, trends, events and pattern detection.
+- `src/lib/fitbit`: Google Health OAuth (Authorization Code + PKCE), sync and field mapping.
+- `src/app`: pages and API routes.
+- `ios/CuraLockWidget`: an optional iPhone Lock Screen widget (SwiftUI + WidgetKit). See its README.
 
 ## Stack
 
-Next.js 14 (App Router) · TypeScript (strict) · Tailwind CSS · Recharts · Zustand · framer-motion
-
-Business logic is kept out of the UI: `src/lib/scoring`, `src/lib/insights`, `src/lib/assistant`
-and `src/lib/fitbit` are all independently testable and hold no React.
-
----
+Next.js 14 (App Router), TypeScript, Tailwind CSS, framer-motion, Recharts, Zustand, and Postgres (`pg`) for accounts and sync.
 
 ## Not medical advice
 
-Health OS is a personal data tool, not a medical device. It reports patterns in your own data. It
-does not diagnose, and it will never recommend starting, stopping, or changing any medication or
-dose. Talk to a clinician about anything that concerns you.
+CURA reports patterns in your own data. It does not diagnose, and it never recommends starting, stopping or changing a medication or dose. Talk to a clinician about anything that concerns you.

@@ -34,12 +34,12 @@ export function detectEvents(days: DailySummary[], b: Baselines): HealthEvent[] 
   // Recovery crash — agreeing autonomic drop today.
   if (hrvLow && rhr && !rhr.insufficient && rhr.z != null && rhr.z >= 1) {
     out.push({ type: "recovery-crash", severity: "elevated", date: today, confidence: conf(hrv!.confidence, rhr.confidence),
-      title: "Recovery crash", detail: `HRV is well below your baseline and resting HR is up — a clear autonomic dip today.` });
+      title: "Recovery crash", detail: `HRV is well below your baseline and resting HR is up: a clear autonomic dip today.` });
   }
   // Unusually strong recovery.
   if (hrv && !hrv.insufficient && hrv.z != null && hrv.z >= 1.75) {
     out.push({ type: "strong-recovery", severity: "info", date: today, confidence: hrv.confidence,
-      title: "Primed", detail: `HRV is well above your baseline — a strong recovery signal.` });
+      title: "Primed", detail: `HRV is well above your baseline, a strong recovery signal.` });
   }
   // Sustained runs.
   if (hrv && hrv.sustainedDays >= 4) {
@@ -59,17 +59,17 @@ export function detectEvents(days: DailySummary[], b: Baselines): HealthEvent[] 
   const declining = (s?: typeof hrv, good = 1) => s && !s.insufficient && s.shortTrend.zPerWeek * good <= -0.5;
   if (declining(hrv, 1) && declining(rhr, -1) && !hrvLow) {
     out.push({ type: "emerging-fatigue", severity: "notice", date: today, confidence: conf(hrv?.confidence, rhr?.confidence),
-      title: "Emerging fatigue", detail: `HRV is trending down while resting HR trends up over the past week — worth easing off.` });
+      title: "Emerging fatigue", detail: `HRV is trending down while resting HR trends up over the past week. Worth easing off.` });
   }
   // Improvement streak.
   if (hrv && !hrv.insufficient && hrv.longTrend.zPerWeek >= 0.4 && hrv.drift === "rising") {
     out.push({ type: "improvement-streak", severity: "info", date: today, confidence: hrv.confidence,
-      title: "HRV trending up", detail: `Your HRV baseline has been drifting upward — your autonomic fitness is improving.` });
+      title: "HRV trending up", detail: `Your HRV baseline has been drifting upward: your autonomic fitness is improving.` });
   }
   // High-load spike.
   if (strain && !strain.insufficient && strain.z != null && strain.z >= 2) {
     out.push({ type: "high-load-spike", severity: "info", date: today, confidence: strain.confidence,
-      title: "Big training load", detail: `Today's load is well above your usual — expect recovery to lean on it tomorrow.` });
+      title: "Big training load", detail: `Today's load is well above your usual. Expect recovery to lean on it tomorrow.` });
   }
 
   return out.filter((e) => e.confidence >= 0.25).sort((a, b) => (b.severity === "elevated" ? 1 : 0) - (a.severity === "elevated" ? 1 : 0));

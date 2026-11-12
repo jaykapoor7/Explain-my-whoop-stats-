@@ -48,7 +48,7 @@ export function trainingLoad(days: ScoredDay[]): TrainingLoad {
   if (chronicVals.length < 7 || chronic <= 0) {
     return {
       available: false, acute, chronic, ratio: 0, status: "balanced",
-      label: "Building your baseline", guidance: "Keep logging activity — after about a week CURA can show whether you're ramping up or backing off relative to your own normal.",
+      label: "Building your baseline", guidance: "Keep logging activity. After about a week CURA can show whether you're ramping up or backing off relative to your own normal.",
       confidence: "low", acuteDays: acuteVals.length, chronicDays: chronicVals.length,
     };
   }
@@ -62,19 +62,19 @@ export function trainingLoad(days: ScoredDay[]): TrainingLoad {
   if (ratio < 0.8) {
     status = "detraining";
     label = "Backing off";
-    guidance = "Your recent load is below your normal — fine for a deload, but a long stretch here lets fitness fade. A steady session or two brings you back to balance.";
+    guidance = "Your recent load is below your normal. That's fine for a deload, but a long stretch here lets fitness fade. A steady session or two brings you back to balance.";
   } else if (ratio <= 1.3) {
     status = "balanced";
     label = "Balanced";
-    guidance = "Your recent load sits right around your normal — a sustainable place to build fitness without digging a fatigue hole.";
+    guidance = "Your recent load sits right around your normal, a sustainable place to build fitness without digging a fatigue hole.";
   } else if (ratio <= 1.5) {
     status = "ramping";
     label = "Ramping up";
-    guidance = "You're training up faster than usual. That's how fitness grows — just protect recovery and sleep so the extra load sticks.";
+    guidance = "You're training up faster than usual. That's how fitness grows; protect recovery and sleep so the extra load sticks.";
   } else {
     status = "overreaching";
     label = "Overreaching";
-    guidance = "Your recent load is well above what your body is adapted to. Higher strain-injury risk — prioritise recovery, and consider an easier day before the next hard one.";
+    guidance = "Your recent load is well above what your body is adapted to. Higher strain-injury risk: prioritise recovery, and consider an easier day before the next hard one.";
   }
 
   return { available: true, acute, chronic, ratio, status, label, guidance, confidence, acuteDays: acuteVals.length, chronicDays: chronicVals.length };

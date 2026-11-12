@@ -41,7 +41,7 @@ export function useFitbit() {
       setWearableDays(r.days, r.syncedAt);
       setMessage({ kind: "ok", text: `Synced ${r.count} days.` });
     } catch (e) {
-      setMessage({ kind: "err", text: e instanceof Error && e.message === "not_connected" ? "Not connected yet." : "Sync failed — try reconnecting." });
+      setMessage({ kind: "err", text: e instanceof Error && e.message === "not_connected" ? "Not connected yet." : "Sync failed. Try reconnecting." });
     } finally {
       setBusy(null);
     }
@@ -92,7 +92,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
             {account.signedIn && account.user?.email ? (
               <>Signed in as <span className="font-medium text-ink-200">{account.user.email}</span>. </>
             ) : null}
-            Sleep, HRV, resting heart rate, workouts, steps, calories and weight — synced to every device you sign in on.
+            Sleep, HRV, resting heart rate, workouts, steps, calories and weight, synced to every device you sign in on.
           </p>
 
           {/* --- Not connected: connect this device --- */}
@@ -144,7 +144,7 @@ export function FitbitCard({ autoSyncOnConnected = false }: { autoSyncOnConnecte
             </p>
           )}
           {!connectedData && status?.connected && !message && (
-            <p className="mt-2 text-[11px] text-ink-500">Connected — run your first sync to pull the last 30 days.</p>
+            <p className="mt-2 text-[11px] text-ink-500">Connected. Run your first sync to pull the last 30 days.</p>
           )}
         </div>
       </div>
@@ -159,8 +159,8 @@ export function ConnectGate({ title }: { title: string }) {
       <Card className="p-5 text-center">
         <p className="text-sm font-semibold text-ink-100">No wearable data yet</p>
         <p className="mx-auto mt-1 max-w-sm text-xs leading-relaxed text-ink-400">
-          {title} is computed from your Fitbit data. Connect your account below and sync — scores, baselines and
-          explanations appear immediately after.
+          {title} is computed from your Fitbit data. Connect your account below and sync. Scores, baselines and
+          explanations appear right after.
         </p>
       </Card>
       <FitbitCard autoSyncOnConnected />

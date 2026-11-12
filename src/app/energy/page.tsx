@@ -48,7 +48,7 @@ export default function EnergyPage() {
               <div className="mt-5 space-y-2 rounded-xl bg-black/[0.03] p-4 text-xs leading-relaxed text-ink-300">
                 <p>
                   You don&apos;t start every day at the same place. This morning your body woke with a capacity of{" "}
-                  <span className="font-semibold" style={{ color: "#13b57e" }}>{morningCapacity}</span> — built from{" "}
+                  <span className="font-semibold" style={{ color: "#13b57e" }}>{morningCapacity}</span>, built from{" "}
                   <span className="font-semibold text-ink-100">last night&apos;s sleep</span>,{" "}
                   <span className="font-semibold text-ink-100">this morning&apos;s recovery &amp; HRV</span>, and{" "}
                   <span className="font-semibold text-ink-100">how hard you went yesterday</span> (a big day leaves residual fatigue). That&apos;s how much you can expend today.
@@ -56,7 +56,7 @@ export default function EnergyPage() {
                 <p>
                   Since waking, activity has <span className="font-semibold" style={{ color: DOMAIN_COLOR.strain }}>spent {spent}</span>, leaving{" "}
                   <span className="font-semibold" style={{ color: col }}>{score}</span> in the tank. Your{" "}
-                  <span className="font-semibold text-ink-100">baseline</span> — the dashed line below — is your own 14-day typical energy ({e.baseline}); this morning you woke{" "}
+                  <span className="font-semibold text-ink-100">baseline</span> (the dashed line below) is your own 14-day typical energy ({e.baseline}); this morning you woke{" "}
                   {vsBaseline === 0 ? (
                     <span className="font-semibold text-ink-100">right on it</span>
                   ) : (

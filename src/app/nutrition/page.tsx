@@ -113,7 +113,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
               <input
                 value={q}
                 onChange={(e) => { setQ(e.target.value); setSelected(null); }}
-                placeholder="Search foods — Indian & everyday…"
+                placeholder="Search foods: Indian & everyday…"
                 className="h-10 w-full rounded-xl border border-black/10 bg-ink-875 pl-9 pr-9 text-sm text-ink-100 outline-none focus:border-black/25"
               />
               {loading && <Loader2 size={15} className="absolute right-3 top-1/2 -translate-y-1/2 animate-spin text-ink-400" />}
@@ -138,7 +138,7 @@ function AddFood({ date, onClose }: { date: string; onClose: () => void }) {
               ))}
               {!results.length && !loading && (
                 <p className="px-3 py-2 text-xs text-ink-400">
-                  {q.trim().length >= 2 ? "No match — add it as a custom food below." : "Type to search thousands of foods."}
+                  {q.trim().length >= 2 ? "No match. Add it as a custom food below." : "Type to search thousands of foods."}
                 </p>
               )}
               {!results.length && loading && <p className="px-3 py-2 text-xs text-ink-400">Searching…</p>}
@@ -301,7 +301,7 @@ export default function NutritionPage() {
         <Why summary="Intake vs expenditure">
           You&apos;ve eaten {fmtNum(tot.kcal)} kcal against roughly {burn ? `${fmtNum(burn)} kcal burned` : "connect Fitbit for burn"} (resting + activity),
           a net of {fmtNum(tot.kcal - burn)} kcal. Your calorie goal is {fmtNum(kcalGoal)} and your protein
-          target is {proteinGoal}g — designed around your current weight goal.
+          target is {proteinGoal}g, set around your current weight goal.
         </Why>
       </Card>
 

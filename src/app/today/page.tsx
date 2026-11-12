@@ -76,7 +76,7 @@ export default function TodayPage() {
     <div className="animate-fadeUp">
       <PageHeader
         title={relativeDay(t.day.date)}
-        sub={`${fmtDateLong(t.day.date)} — ${data.isLatest ? "here's how you're doing." : "how this day went."}`}
+        sub={`${fmtDateLong(t.day.date)} · ${data.isLatest ? "Here's how you're doing." : "How this day went."}`}
         right={<DaySwitcher />}
       />
 
@@ -115,7 +115,7 @@ export default function TodayPage() {
               delta={t.sleep.deltaVsYesterday}
             />
           </div>
-          <p className="mt-2 text-center text-[11px] text-ink-500">Tap any ring for the full breakdown — what drove it, your trend and baseline.</p>
+          <p className="mt-2 text-center text-[11px] text-ink-500">Tap any ring for the full breakdown: what drove it, your trend and baseline.</p>
 
           {/* Strain — secondary, slim */}
           <Link href="/strain" className="group mt-3 block">
@@ -233,7 +233,7 @@ export default function TodayPage() {
                 <ProgressBar value={medsTaken} max={Math.max(1, meds.length)} color="#e089d2" />
               </div>
               <div className="mt-2 text-[11px] text-ink-400">
-                {meds.length ? (medsTaken === meds.length ? "All doses logged — nice." : `${meds.length - medsTaken} dose${meds.length - medsTaken > 1 ? "s" : ""} outstanding`) : "Add medications to track adherence"}
+                {meds.length ? (medsTaken === meds.length ? "All doses logged." : `${meds.length - medsTaken} dose${meds.length - medsTaken > 1 ? "s" : ""} outstanding`) : "Add medications to track adherence"}
               </div>
             </Card>
           </Link>
@@ -273,7 +273,7 @@ export default function TodayPage() {
                 {task.start && <span className="ml-auto tabular text-ink-500">{task.start}</span>}
               </div>
             ))}
-            {!tasksToday.length && <p className="text-xs text-ink-400">Nothing scheduled — add tasks, classes or workouts in the Planner.</p>}
+            {!tasksToday.length && <p className="text-xs text-ink-400">Nothing scheduled. Add tasks, classes or workouts in the Planner.</p>}
           </div>
         </Card>
       </Section>

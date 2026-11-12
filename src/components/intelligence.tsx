@@ -192,12 +192,12 @@ export function WeeklyDigestCard({ digest }: { digest: WeeklyDigest }) {
 }
 
 export function IntelligenceInsights({ insights, empty, basisDays }: { insights: AnalyticsInsight[]; empty?: string; basisDays?: number }) {
-  if (!insights.length) return <Card className="p-5 text-sm text-ink-400">{empty ?? "Not enough history yet — insights sharpen as your baseline fills in."}</Card>;
+  if (!insights.length) return <Card className="p-5 text-sm text-ink-400">{empty ?? "Not enough history yet. Insights get sharper as your baseline fills in."}</Card>;
   return (
     <div className="space-y-3">
       {typeof basisDays === "number" && basisDays > 0 && (
         <p className="flex items-center gap-1 px-1 text-[11px] text-ink-500">
-          <CalendarRange size={11} /> Drawn from {basisDays} days of your data — reliability grows as history fills in.
+          <CalendarRange size={11} /> Drawn from {basisDays} days of your data. Reliability grows as history fills in.
         </p>
       )}
       {insights.map((i) => (

@@ -108,7 +108,7 @@ export default function ProfilePage() {
 
   return (
     <div className="animate-fadeUp">
-      <PageHeader back title="Profile" sub="Who you are — and the details that personalize your scores." />
+      <PageHeader back title="Profile" sub="Who you are, and the details that personalize your scores." />
 
       {/* Identity */}
       <Card className="tint mt-5 p-5" style={{ ["--accent" as string]: "#13b57e" }}>
@@ -129,7 +129,7 @@ export default function ProfilePage() {
                 </div>
               </>
             ) : (
-              <div className="text-xs text-ink-400">Not signed in — data stays on this device.</div>
+              <div className="text-xs text-ink-400">Not signed in. Data stays on this device.</div>
             )}
           </div>
           {account.signedIn ? (

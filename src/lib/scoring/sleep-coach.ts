@@ -101,7 +101,7 @@ export function sleepCoach(history: DailySummary[], wakeTime?: string): SleepCoa
 
   const debtH = debt >= 60 ? `${(debt / 60).toFixed(1)}h` : `${debt}m`;
   const rationale = nights.length < 5
-    ? `Based on an 8h target for now — a few more nights and CURA will tune this to your own need.`
+    ? `Based on an 8h target for now. A few more nights and CURA will tune this to your own need.`
     : `Your body runs on about ${(need / 60).toFixed(1)}h. ${debt >= 45 ? `You're carrying ${debtH} of sleep debt, so tonight's target is bumped up to pay some back.` : `You're on top of your sleep debt.`}${strainAdd >= 8 ? " Yesterday was active, so a touch more is added." : ""}`;
 
   return {

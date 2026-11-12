@@ -40,7 +40,7 @@ export default function AssistantPage() {
 
   return (
     <div className="flex h-[calc(100dvh-10rem)] flex-col animate-fadeUp lg:h-[calc(100dvh-7rem)]">
-      <PageHeader title="Assistant" sub="Ask about your stats — answered from your own data, entirely on-device." />
+      <PageHeader title="Assistant" sub="Ask about your stats. Answers come from your own data, on this device." />
 
       <div className="mt-4 flex-1 space-y-3 overflow-y-auto pb-3 pr-1">
         {msgs.length === 0 && (

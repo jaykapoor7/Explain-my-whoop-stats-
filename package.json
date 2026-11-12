@@ -1,8 +1,8 @@
 {
-  "name": "health-os",
+  "name": "cura",
   "version": "0.1.0",
   "private": true,
-  "description": "An open-source personal Health OS — turn wearable data into scores, explanations, and personal patterns.",
+  "description": "CURA turns Fitbit and Google Health data into daily recovery, sleep, strain and energy scores, each one explained.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

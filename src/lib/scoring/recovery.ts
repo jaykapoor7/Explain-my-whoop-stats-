@@ -56,13 +56,13 @@ export function calcRecovery(
   if (hasHrv(day)) {
     const pts = Math.round(SCALE * W.hrv * zHrv);
     terms.push(term("HRV", pts,
-      `${day.hrv.rmssdMs} ms — ${sig1(zHrv)} vs your normal`,
+      `${day.hrv.rmssdMs} ms, ${sig1(zHrv)} vs your normal`,
       { math: `lnRMSSD readiness (the HRV4Training/Kubios standard): log of your ${day.hrv.rmssdMs} ms vs your ${Math.round(baseline.hrvMs)} ms baseline, standardised by your own ${Math.round(cv * 100)}% variability → ${sig1(zHrv)}, weighted 50% → ${pts >= 0 ? "+" : ""}${pts}.` }));
   }
   if (hasRhr(day)) {
     const pts = Math.round(SCALE * W.rhr * zRhr);
     terms.push(term("Resting HR", pts,
-      `${day.rhr.bpm} bpm — ${sig1(zRhr)} vs your normal`,
+      `${day.rhr.bpm} bpm, ${sig1(zRhr)} vs your normal`,
       { math: `Resting HR ${day.rhr.bpm} bpm is ${Math.abs(rhrDelta).toFixed(0)} bpm ${rhrDelta > 0 ? "above" : "below"} your ${Math.round(baseline.rhrBpm)} bpm baseline (${sig1(zRhr)}), weighted 25% → ${pts >= 0 ? "+" : ""}${pts}.` }));
   }
   const sleepPts = Math.round(SCALE * W.sleep * zSleep);
@@ -79,7 +79,7 @@ export function calcRecovery(
   if (debtPts !== 0) {
     terms.push(term("Sleep debt", debtPts,
       `${fmtShort(day.sleep.debtMin)} accrued shortfall`,
-      { math: `You're carrying ${fmtShort(day.sleep.debtMin)} of rolling sleep debt — a direct readiness cost of about 3 points per hour → ${debtPts}.` }));
+      { math: `You're carrying ${fmtShort(day.sleep.debtMin)} of rolling sleep debt, a direct readiness cost of about 3 points per hour → ${debtPts}.` }));
   }
 
   const score = clamp(Math.round(RECOVERY_BASE + terms.reduce((a, c) => a + c.points, 0)), 1, 99);
@@ -94,10 +94,10 @@ export function calcRecovery(
     terms,
     status,
     status === "Primed"
-      ? `Your body absorbed yesterday's load and is ready for more${topHelp ? ` — led by ${lc(topHelp.label)}` : ""}.`
+      ? `Your body absorbed yesterday's load and is ready for more${topHelp ? `, led by ${lc(topHelp.label)}` : ""}.`
       : status === "Adequate"
-        ? `Partial recovery — you can train, but keep it moderate. Biggest drag: ${lc(topHurt?.label ?? "accumulated load")}.`
-        : `Your body is still repairing. Prioritise rest today — ${lc(topHurt?.label ?? "load")} hit hardest.`
+        ? `Partial recovery: you can train, but keep it moderate. Biggest drag: ${lc(topHurt?.label ?? "accumulated load")}.`
+        : `Your body is still repairing. Prioritise rest today: ${lc(topHurt?.label ?? "load")} hit hardest.`
   );
 }
 

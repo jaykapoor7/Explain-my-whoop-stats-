@@ -34,7 +34,7 @@ function TrainingLoadSection({ tl }: { tl: TrainingLoad }) {
     </div>
   );
   return (
-    <Section title="Training load" sub="Acute (7-day) vs chronic (28-day) — are you ramping up or backing off?" accent={DOMAIN_COLOR.strain} icon={<TrendingUp size={15} />}>
+    <Section title="Training load" sub="Acute (7-day) vs chronic (28-day): are you ramping up or backing off?" accent={DOMAIN_COLOR.strain} icon={<TrendingUp size={15} />}>
       <Card className="tint p-5" style={{ ["--accent" as string]: c }}>
         {tl.available ? (
           <>
@@ -46,7 +46,7 @@ function TrainingLoadSection({ tl }: { tl: TrainingLoad }) {
                   <StatusPill text={`${tl.ratio.toFixed(2)}× ratio`} color={c} />
                   <ConfidenceBadge level={tl.confidence} />
                 </div>
-                <p className="mt-0.5 text-[11px] text-ink-400">acute:chronic ratio — around 0.8–1.3 is a balanced, sustainable zone</p>
+                <p className="mt-0.5 text-[11px] text-ink-400">acute:chronic ratio (around 0.8–1.3 is a balanced, sustainable zone)</p>
               </div>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -55,7 +55,7 @@ function TrainingLoadSection({ tl }: { tl: TrainingLoad }) {
             </div>
             <p className="mt-4 text-xs leading-relaxed text-ink-300">{tl.guidance}</p>
             {tl.confidence !== "high" && (
-              <p className="mt-2 text-[11px] text-ink-500">Based on {tl.chronicDays} days so far — this sharpens as your history fills in.</p>
+              <p className="mt-2 text-[11px] text-ink-500">Based on {tl.chronicDays} days so far. This gets more accurate as your history fills in.</p>
             )}
           </>
         ) : (
@@ -101,7 +101,7 @@ function ActivityRow({ a, restHr, maxHr }: { a: Activity; restHr: number; maxHr:
         <div className="mt-3 rounded-xl border border-warn/25 bg-warn/[0.06] p-3">
           <p className="text-xs leading-relaxed text-ink-200">
             Short elevated-HR block detected. It is <span className="font-semibold">not counted as a workout</span>{" "}
-            unless you confirm it — stress, caffeine or a hot shower can look like this.
+            unless you confirm it. Stress, caffeine or a hot shower can look like this.
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <button
@@ -158,7 +158,7 @@ export default function StrainPage() {
       ringLabel="Strain"
       pick={(s) => s.strain}
       baselineLabel={(s) => `Your typical daily strain is ${s.baseline} over the last two weeks (0–21 scale).`}
-      algoNote="Each workout's load is personalised to your heart-rate reserve — how hard the session was relative to YOUR resting and max heart rate — so the same effort scores by your own fitness, not a generic scale. Strain sums those plus a term for all-day movement from your steps; unrecognized short HR spikes are excluded unless you confirm them."
+      algoNote="Each workout's load is personalised to your heart-rate reserve (how hard the session was relative to YOUR resting and max heart rate), so the same effort scores by your own fitness, not a generic scale. Strain sums those plus a term for all-day movement from your steps; unrecognized short HR spikes are excluded unless you confirm them."
       belowHero={(data) => {
         const rec = data.today!.recovery;
         const t = strainTarget(rec.available === false ? null : rec.score, data.today!.baseline.strain);
@@ -166,7 +166,7 @@ export default function StrainPage() {
         const cur = data.today!.strain.available === false ? 0 : data.today!.strain.score;
         const pct = Math.min(100, (cur / Math.max(1, t.high)) * 100);
         return (
-          <Section title="Today's target" sub="How hard to go today — from your recovery">
+          <Section title="Today's target" sub="How hard to go today, based on your recovery">
             <Card className="p-5">
               <div className="flex flex-wrap items-center gap-4">
                 <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl" style={{ background: `${DOMAIN_COLOR.strain}1f`, color: DOMAIN_COLOR.strain }}>
@@ -216,7 +216,7 @@ export default function StrainPage() {
               </Card>
             </Section>
           )}
-          <Section title="Activity breakdown" sub="Per-activity load — low-confidence blocks need your review">
+          <Section title="Activity breakdown" sub="Per-activity load. Low-confidence blocks need your review.">
             {acts.length ? (
               <div className="space-y-3">
                 {acts.map((a) => (

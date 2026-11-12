@@ -116,7 +116,7 @@ export function ScorePage({
 
       {belowHero?.(data)}
 
-      <Section title="What affected you" sub="Signed contributions — these sum to today's score" accent={color}>
+      <Section title="What affected you" sub="Signed contributions that sum to today's score" accent={color}>
         <Card>
           <ContributorLedger contributors={score.contributors} />
         </Card>
@@ -163,11 +163,11 @@ function ScoreMath({ title, base, score, color, baseline }: { title: string; bas
         <MathCell top={title} val={`${score}`} sub="today" color={color} strong />
       </div>
       <p className="mt-4 rounded-xl bg-black/[0.03] p-4 text-xs leading-relaxed text-ink-300">
-        Your {lc} starts at a neutral <span className="font-semibold text-ink-100">{base}</span> — a middling day.
+        Your {lc} starts at a neutral <span className="font-semibold text-ink-100">{base}</span>, a middling day.
         Every factor under &ldquo;What affected you&rdquo; is a signed move off that base, and they sum to{" "}
         <span className="font-semibold" style={{ color: net >= 0 ? "#13b57e" : "#ef5a45" }}>{signed(net)}</span>, giving today&apos;s{" "}
         <span className="font-semibold" style={{ color }}>{score}</span>. Your{" "}
-        <span className="font-semibold text-ink-100">baseline</span> — the dashed line on the trend — is your own 14-day
+        <span className="font-semibold text-ink-100">baseline</span> (the dashed line on the trend) is your own 14-day
         typical ({baseline}{title === "Recovery" ? "%" : ""}), not a fixed target. Tap any factor to see its maths.
       </p>
     </Card>

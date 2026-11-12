@@ -67,18 +67,18 @@ function dataQuality(days: DailySummary[]): DataQuality {
   const metricsAvailable = METRIC_DEFS.filter((m) => series(days, m.key).some((v) => v != null)).map((m) => m.key);
   return {
     totalDays: days.length, coreCoverageDays, missingnessPct, longestGapDays: longestGap, metricsAvailable,
-    note: missingnessPct > 40 ? "Sparse recent data — wear your device consistently for sharper reads." : "Data coverage looks healthy.",
+    note: missingnessPct > 40 ? "Sparse recent data. Wear your device consistently for sharper reads." : "Data coverage looks healthy.",
   };
 }
 
 function stageFor(hrv: BaselineStat | undefined, rhr: BaselineStat | undefined): { stage: LearningStage; message: string } {
   const n = Math.max(hrv?.n ?? 0, rhr?.n ?? 0);
   const conf = Math.max(hrv?.confidence ?? 0, rhr?.confidence ?? 0);
-  if (n < 3) return { stage: "new", message: "CURA is just getting started — connect a device and give it a few nights." };
-  if (n < 7) return { stage: "learning", message: `CURA is learning your baseline — about ${7 - n} more nights until your first personalised reads.` };
-  if (n < 14) return { stage: "baseline-established", message: `Your baseline is established. ${14 - n} more nights unlocks trend and relationship detection.` };
+  if (n < 3) return { stage: "new", message: "CURA is just getting started. Connect a device and give it a few nights." };
+  if (n < 7) return { stage: "learning", message: `CURA is learning your baseline: about ${7 - n} more nights until your first personalised reads.` };
+  if (n < 14) return { stage: "baseline-established", message: `Your baseline is established. After ${14 - n} more nights, CURA can also detect trends and relationships.` };
   if (n < 30 || conf < 0.75) return { stage: "personalized", message: "Personalised model active. Reliability keeps climbing as history grows." };
-  return { stage: "high-confidence", message: "High-confidence personal model — trends and relationships are on solid footing." };
+  return { stage: "high-confidence", message: "High-confidence personal model: trends and relationships are on solid footing." };
 }
 
 export function analyzeUser(days: DailySummary[], opts: { actualAge?: number } = {}): PersonalHealthModel {

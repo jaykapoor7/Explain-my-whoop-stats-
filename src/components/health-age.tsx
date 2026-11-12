@@ -14,12 +14,12 @@ export const OLDER = "#eb9d18";
 /** Specific, doable ways to bring each ageing factor back down. */
 export const REC: Record<string, string> = {
   "HRV": "Support HRV with consistent sleep, hydration and easy aerobic days.",
-  "HRV stability": "Keep bed and wake times steady — regular nights calm HRV swings.",
+  "HRV stability": "Keep bed and wake times steady. Regular nights calm HRV swings.",
   "Resting heart rate": "Regular zone-2 cardio gradually lowers your resting heart rate.",
   "Sleep duration": "Aim for 7.5–8h a night and protect a consistent bedtime.",
   "Sleep efficiency": "Wind down before bed; limit late caffeine and screens to sleep more solidly.",
   "Sleep consistency": "Hold your bed and wake times within ~30 minutes day to day.",
-  "Daily activity": "Build a 7–10k step habit — everyday movement reads younger.",
+  "Daily activity": "Build a 7–10k step habit. Everyday movement reads younger.",
   "Structured training": "Train 3–4× a week; even short sessions count.",
   "Recovery capacity": "Ease your training load and improve sleep to lift recovery.",
 };
@@ -116,7 +116,7 @@ export function HealthAgeCard() {
           </div>
         ) : (
           <p className="mt-3 text-xs leading-relaxed text-ink-400">
-            Not enough synced data yet — Health Age needs about a week of HRV and resting-heart-rate readings.
+            Not enough synced data yet. Health Age needs about a week of HRV and resting-heart-rate readings.
           </p>
         )}
       </Card>

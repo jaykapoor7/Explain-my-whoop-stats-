@@ -44,10 +44,10 @@ export function strainTarget(recovery: number | null, baselineStrain: number): S
 
   const zone: StrainZone = recovery >= 67 ? "push" : recovery >= 50 ? "build" : recovery >= 34 ? "maintain" : "rest";
   const guidance =
-    zone === "push" ? `Recovery is high (${Math.round(recovery)}%) — your body can take on more today. Aim for around ${target.toFixed(1)} strain.`
-    : zone === "build" ? `Recovery is solid (${Math.round(recovery)}%) — a productive day at moderate load. Aim for around ${target.toFixed(1)}.`
-    : zone === "maintain" ? `Recovery is middling (${Math.round(recovery)}%) — keep it steady and don't dig a hole. Around ${target.toFixed(1)} is plenty.`
-    : `Recovery is low (${Math.round(recovery)}%) — hold back and let your body catch up. Keep strain near ${target.toFixed(1)}.`;
+    zone === "push" ? `Recovery is high (${Math.round(recovery)}%), so your body can take on more today. Aim for around ${target.toFixed(1)} strain.`
+    : zone === "build" ? `Recovery is solid (${Math.round(recovery)}%): a productive day at moderate load. Aim for around ${target.toFixed(1)}.`
+    : zone === "maintain" ? `Recovery is middling (${Math.round(recovery)}%). Keep it steady and don't dig a hole. Around ${target.toFixed(1)} is plenty.`
+    : `Recovery is low (${Math.round(recovery)}%). Hold back and let your body catch up. Keep strain near ${target.toFixed(1)}.`;
 
   return { available: true, target, low, high, zone, headline: HEADLINE[zone], guidance, activities: ACTIVITIES[zone] };
 }

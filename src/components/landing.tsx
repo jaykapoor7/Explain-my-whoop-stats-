@@ -6,10 +6,10 @@ import { useAccount } from "@/components/account";
 import { Logo } from "@/components/logo";
 
 const FEATURES = [
-  { icon: HeartPulse, color: "#13b57e", title: "Recovery, sleep, strain & energy", body: "One clear score for each, every morning — so you know what your body can handle today." },
-  { icon: Sparkles, color: "#eb9d18", title: "The “why” behind every number", body: "Plain-English explanations that show exactly what lifted or dragged each score." },
-  { icon: LineChart, color: "#2298cf", title: "Your own patterns", body: "CURA learns from your history — trends, baselines and what actually moves your recovery." },
-  { icon: NotebookPen, color: "#7b68ee", title: "Everything in one place", body: "Journal, medication, nutrition and a planner that schedules around how recovered you are." },
+  { icon: HeartPulse, color: "#13b57e", title: "Recovery, sleep, strain & energy", body: "One score for each, every morning, so you know what your body can handle today." },
+  { icon: Sparkles, color: "#eb9d18", title: "The “why” behind every number", body: "Plain-English explanations of what raised or lowered each score." },
+  { icon: LineChart, color: "#2298cf", title: "Your own patterns", body: "CURA learns from your history: trends, baselines and what moves your recovery." },
+  { icon: NotebookPen, color: "#7b68ee", title: "Everything in one place", body: "Journal, medication, nutrition and a planner that suggests how hard to go based on your recovery." },
 ];
 
 export function Landing() {
@@ -24,7 +24,7 @@ export function Landing() {
           <Logo size={56} className="mx-auto shadow-lift" />
           <h1 className="mt-6 font-display text-5xl font-bold tracking-[0.18em] text-ink-50 sm:text-7xl">CURA</h1>
           <p className="mx-auto mt-4 max-w-xl text-lg leading-snug text-ink-300 sm:text-xl">
-            Your body, clearly explained. Turn your wearable into daily scores you actually understand — and the patterns behind them.
+            Your body, clearly explained. Daily scores from your wearable, and the patterns behind them.
           </p>
           <div className="mt-8 flex flex-col items-center gap-3">
             <button
@@ -33,11 +33,11 @@ export function Landing() {
             >
               <LogIn size={17} /> Sign in with Google
             </button>
-            <p className="flex items-center gap-1.5 text-xs text-ink-500">
-              <Moon size={12} /> Works with Fitbit &amp; Google Health · sign in on any device and everything follows you.
+            <p className="text-balance text-xs text-ink-500">
+              <Moon size={12} className="mr-1.5 inline-block align-[-1px]" />Works with Fitbit &amp; Google Health · your data syncs to every device you sign in on.
             </p>
             <p className="text-xs text-ink-500">
-              On a different wearable? <Link href="/settings" className="font-medium text-recovery hover:underline">Add your numbers by hand →</Link>
+              On a different wearable? <Link href="/settings" className="whitespace-nowrap font-medium text-recovery hover:underline">Add your numbers by hand →</Link>
             </p>
           </div>
         </div>

@@ -110,7 +110,7 @@ export function calcEnergy(
   if (hasHrv(day)) {
     const zHrv = (day.hrv.rmssdMs - baseline.hrvMs) / hrvSigma;
     const pts = Math.round(cl(zHrv * 7, -14, 12));
-    capacity.push(term("HRV", pts, `${day.hrv.rmssdMs} ms — ${sig1(zHrv)} vs your normal`, {
+    capacity.push(term("HRV", pts, `${day.hrv.rmssdMs} ms, ${sig1(zHrv)} vs your normal`, {
       group: "capacity",
       math: `HRV ${day.hrv.rmssdMs} ms is ${sig1(zHrv)} from your ${Math.round(baseline.hrvMs)} ms baseline, against your own ±${Math.round(hrvSigma)} ms spread → ${pts >= 0 ? "+" : ""}${pts}.`,
     }));
@@ -119,7 +119,7 @@ export function calcEnergy(
   if (day.rhr.bpm > 0 && Math.abs(rhrDelta) >= 1.0) {
     const zRhr = (baseline.rhrBpm - day.rhr.bpm) / rhrSigma; // + = lower RHR (better)
     const pts = Math.round(cl(zRhr * 5, -12, 10));
-    capacity.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", pts, `${day.rhr.bpm} bpm — ${sig1(zRhr)} vs your normal`, {
+    capacity.push(term(rhrDelta > 0 ? "Elevated resting HR" : "Low resting HR", pts, `${day.rhr.bpm} bpm, ${sig1(zRhr)} vs your normal`, {
       group: "capacity",
       math: `Resting HR ${day.rhr.bpm} bpm is ${sig1(zRhr)} against your own ±${Math.round(rhrSigma)} bpm spread → ${pts >= 0 ? "+" : ""}${pts}. A raised RHR flags your body is still working.`,
     }));
@@ -161,7 +161,7 @@ export function calcEnergy(
     const pts = -energySpendForLoad(load);
     return term(a.type, pts, `${a.durationMin}m${a.avgHr > 0 ? ` at avg ${a.avgHr} bpm` : ""}`, {
       group: "spend",
-      math: `${a.type} carried ${load.toFixed(1)} strain — the same load shown on Strain. Energy cost is logarithmic (diminishing returns as effort climbs), not a 1:1 copy of the strain number: ${ACTIVITY_SPEND_SCALE}×ln(1+${load.toFixed(1)}) → ${pts}.`,
+      math: `${a.type} carried ${load.toFixed(1)} strain, the same load shown on Strain. Energy cost is logarithmic (diminishing returns as effort climbs), not a 1:1 copy of the strain number: ${ACTIVITY_SPEND_SCALE}×ln(1+${load.toFixed(1)}) → ${pts}.`,
     });
   });
   // All-day movement spends too, even with no formal workout — mirrors
@@ -173,7 +173,7 @@ export function calcEnergy(
     if (ambient !== 0) {
       spend.push(term("Daily movement", ambient, `${day.steps.toLocaleString()} steps`, {
         group: "spend",
-        math: `${day.steps.toLocaleString()} steps today — all-day movement spends a little energy even without a workout → ${ambient}.`,
+        math: `${day.steps.toLocaleString()} steps today. All-day movement spends a little energy even without a workout → ${ambient}.`,
       }));
     }
   }
@@ -191,7 +191,7 @@ export function calcEnergy(
       if (pts <= -1) {
         spend.push(term("Time awake", pts, `${hoursAwake.toFixed(1)}h since waking`, {
           group: "spend",
-          math: `${hoursAwake.toFixed(1)}h awake since ${fmtHM(day.sleep.wake)} — energy eases gradually across the day even without activity, capped at 14 → ${pts}. Updates as the day goes on.`,
+          math: `${hoursAwake.toFixed(1)}h awake since ${fmtHM(day.sleep.wake)}. Energy eases gradually across the day even without activity, capped at 14 → ${pts}. Updates as the day goes on.`,
         }));
       }
     }
@@ -209,7 +209,7 @@ export function calcEnergy(
     score,
     terms,
     status,
-    `You woke ${capWord} with a capacity of ${Math.round(morningCapacity)} — set by last night's sleep, this morning's recovery and how hard you went yesterday. From there, ${spendLine}.`
+    `You woke ${capWord} with a capacity of ${Math.round(morningCapacity)}, set by last night's sleep, this morning's recovery and how hard you went yesterday. From there, ${spendLine}.`
   );
 }
 
@@ -238,7 +238,7 @@ export function carryEnergy(src: EnergyScore, wakeIso: string | undefined, now: 
     contributors.push(
       term("Time awake", -decay, "carried across midnight", {
         group: "spend",
-        math: `You haven't slept since your last reading, so yesterday's battery carries over and keeps easing — about ${decay} for the hours you've been awake. It resets to a fresh morning capacity once you sleep.`,
+        math: `You haven't slept since your last reading, so yesterday's battery carries over and keeps easing, about ${decay} for the hours you've been awake. It resets to a fresh morning capacity once you sleep.`,
       }),
     );
   }
@@ -250,7 +250,7 @@ export function carryEnergy(src: EnergyScore, wakeIso: string | undefined, now: 
     score,
     contributors,
     status,
-    "You haven't slept since your last reading, so your energy carries over from then and keeps easing with time awake — it resets to a fresh morning capacity once you sleep.",
+    "You haven't slept since your last reading, so your energy carries over from then and keeps easing with time awake. It resets to a fresh morning capacity once you sleep.",
   );
 }
 
