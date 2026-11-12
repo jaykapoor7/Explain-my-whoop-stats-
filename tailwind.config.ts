@@ -1,8 +1,8 @@
 import type { Config } from "tailwindcss";
 
 /**
- * Health OS design tokens. Calm, premium, dark-first. A near-black canvas with
- * layered surfaces and one semantic accent per health domain.
+ * CURA design tokens: a warm cream canvas with layered surfaces and one
+ * semantic accent per health domain.
  */
 const config: Config = {
   content: ["./src/**/*.{ts,tsx}"],

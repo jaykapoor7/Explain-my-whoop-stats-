@@ -2,7 +2,7 @@ import type { Activity, ActivityConfidence, SleepSession } from "../types";
 import { estimateActivityLoad } from "../scoring/strain";
 
 /**
- * Pure mappers from Google Health API dataPoints → Health OS domain objects.
+ * Pure mappers from Google Health API dataPoints → CURA domain objects.
  * Field shapes verified against real Fitbit-sourced responses. Each point
  * wraps its payload under a camelCase key matching the data type
  * (e.g. `dailyRestingHeartRate`, `sleep`, `exercise`).
